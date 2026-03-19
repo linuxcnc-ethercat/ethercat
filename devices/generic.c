@@ -31,6 +31,7 @@
 #include <linux/version.h>
 #include <linux/if_arp.h> /* ARPHRD_ETHER */
 #include <linux/etherdevice.h>
+#include <linux/rtnetlink.h>
 
 #include "../globals.h"
 #include "ecdev.h"
@@ -39,7 +40,7 @@
 
 #define ETH_P_ETHERCAT 0x88A4
 
-#define EC_GEN_RX_BUF_SIZE 1600
+#define EC_GEN_RX_QUEUE_MAX 128
 
 #if defined(CONFIG_SUSE_KERNEL) && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
 #include <linux/suse_version.h>
@@ -75,9 +76,8 @@ typedef struct {
     struct list_head list;
     struct net_device *netdev;
     struct net_device *used_netdev;
-    struct socket *socket;
     ec_device_t *ecdev;
-    uint8_t *rx_buf;
+    struct sk_buff_head rx_queue;
 } ec_gen_device_t;
 
 typedef struct {
@@ -90,7 +90,6 @@ typedef struct {
 
 int ec_gen_device_init(ec_gen_device_t *);
 void ec_gen_device_clear(ec_gen_device_t *);
-int ec_gen_device_create_socket(ec_gen_device_t *, ec_gen_interface_desc_t *);
 int ec_gen_device_offer(ec_gen_device_t *, ec_gen_interface_desc_t *);
 int ec_gen_device_open(ec_gen_device_t *);
 int ec_gen_device_stop(ec_gen_device_t *);
@@ -145,6 +144,35 @@ static const struct net_device_ops ec_gen_netdev_ops = {
 
 /****************************************************************************/
 
+/** RX handler registered on the real network device.
+ *
+ * Intercepts EtherCAT frames (ethertype 0x88A4) before they reach the
+ * kernel protocol handlers and queues them for processing by the master's
+ * poll callback. Non-EtherCAT frames pass through to the normal stack.
+ */
+static rx_handler_result_t ec_gen_rx_handler(struct sk_buff **pskb)
+{
+    struct sk_buff *skb = *pskb;
+    ec_gen_device_t *gendev = rcu_dereference(skb->dev->rx_handler_data);
+
+    if (skb->protocol == htons(ETH_P_ETHERCAT)) {
+        if (skb_queue_len(&gendev->rx_queue) >= EC_GEN_RX_QUEUE_MAX) {
+            kfree_skb(skb);
+            return RX_HANDLER_CONSUMED;
+        }
+        /* Push the Ethernet header back. eth_type_trans() has already
+         * pulled it, but ecdev_receive() expects data starting at the
+         * Ethernet header (destination MAC). */
+        skb_push(skb, ETH_HLEN);
+        skb_queue_tail(&gendev->rx_queue, skb);
+        return RX_HANDLER_CONSUMED;
+    }
+
+    return RX_HANDLER_PASS;
+}
+
+/****************************************************************************/
+
 /** Init generic device.
  */
 int ec_gen_device_init(
@@ -155,8 +183,8 @@ int ec_gen_device_init(
     char null = 0x00;
 
     dev->ecdev = NULL;
-    dev->socket = NULL;
-    dev->rx_buf = NULL;
+    dev->used_netdev = NULL;
+    skb_queue_head_init(&dev->rx_queue);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
     dev->netdev = alloc_netdev(sizeof(ec_gen_device_t *), &null,
@@ -186,68 +214,20 @@ void ec_gen_device_clear(
 {
     if (dev->ecdev) {
         ecdev_close(dev->ecdev);
+    }
+    if (dev->used_netdev) {
+        rtnl_lock();
+        netdev_rx_handler_unregister(dev->used_netdev);
+        rtnl_unlock();
+        dev_put(dev->used_netdev);
+        dev->used_netdev = NULL;
+    }
+    if (dev->ecdev) {
         ecdev_withdraw(dev->ecdev);
+        dev->ecdev = NULL;
     }
-    if (dev->socket) {
-        sock_release(dev->socket);
-    }
+    skb_queue_purge(&dev->rx_queue);
     free_netdev(dev->netdev);
-
-    if (dev->rx_buf) {
-        kfree(dev->rx_buf);
-    }
-}
-
-/****************************************************************************/
-
-/** Creates a network socket.
- */
-int ec_gen_device_create_socket(
-        ec_gen_device_t *dev,
-        ec_gen_interface_desc_t *desc
-        )
-{
-    int ret;
-    struct sockaddr_ll sa;
-
-    dev->rx_buf = kmalloc(EC_GEN_RX_BUF_SIZE, GFP_KERNEL);
-    if (!dev->rx_buf) {
-        return -ENOMEM;
-    }
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
-    ret = sock_create_kern(&init_net, PF_PACKET, SOCK_RAW,
-            htons(ETH_P_ETHERCAT), &dev->socket);
-#else
-    ret = sock_create_kern(PF_PACKET, SOCK_RAW, htons(ETH_P_ETHERCAT),
-            &dev->socket);
-#endif
-    if (ret) {
-        printk(KERN_ERR PFX "Failed to create socket (ret = %i).\n", ret);
-        return ret;
-    }
-
-    printk(KERN_ERR PFX "Binding socket to interface %i (%s).\n",
-            desc->ifindex, desc->name);
-
-    memset(&sa, 0x00, sizeof(sa));
-    sa.sll_family = AF_PACKET;
-    sa.sll_protocol = htons(ETH_P_ETHERCAT);
-    sa.sll_ifindex = desc->ifindex;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
-    ret = kernel_bind(dev->socket, (struct sockaddr_unsized *) &sa, sizeof(sa));
-#else
-    ret = kernel_bind(dev->socket, (struct sockaddr *) &sa, sizeof(sa));
-#endif
-    if (ret) {
-        printk(KERN_ERR PFX "Failed to bind() socket to interface"
-                " (ret = %i).\n", ret);
-        sock_release(dev->socket);
-        dev->socket = NULL;
-        return ret;
-    }
-
-    return 0;
 }
 
 /****************************************************************************/
@@ -259,9 +239,11 @@ int ec_gen_device_offer(
         ec_gen_interface_desc_t *desc
         )
 {
-    int ret = 0;
+    int ret;
 
     dev->used_netdev = desc->netdev;
+    dev_hold(dev->used_netdev);
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
     eth_hw_addr_set(dev->netdev, desc->dev_addr);
 #else
@@ -269,20 +251,42 @@ int ec_gen_device_offer(
 #endif
 
     dev->ecdev = ecdev_offer(dev->netdev, ec_gen_poll, THIS_MODULE);
-    if (dev->ecdev) {
-        if (ec_gen_device_create_socket(dev, desc)) {
-            ecdev_withdraw(dev->ecdev);
-            dev->ecdev = NULL;
-        } else if (ecdev_open(dev->ecdev)) {
-            ecdev_withdraw(dev->ecdev);
-            dev->ecdev = NULL;
-        } else {
-            ecdev_set_link(dev->ecdev, netif_carrier_ok(dev->used_netdev)); // FIXME
-            ret = 1;
-        }
+    if (!dev->ecdev) {
+        dev_put(dev->used_netdev);
+        dev->used_netdev = NULL;
+        return 0;
     }
 
-    return ret;
+    rtnl_lock();
+    ret = netdev_rx_handler_register(dev->used_netdev,
+            ec_gen_rx_handler, dev);
+    rtnl_unlock();
+
+    if (ret) {
+        printk(KERN_ERR PFX "Failed to register rx_handler on %s"
+                " (ret = %i). Device busy (bridge/bond/OVS)?\n",
+                desc->name, ret);
+        ecdev_withdraw(dev->ecdev);
+        dev->ecdev = NULL;
+        dev_put(dev->used_netdev);
+        dev->used_netdev = NULL;
+        return 0;
+    }
+
+    if (ecdev_open(dev->ecdev)) {
+        rtnl_lock();
+        netdev_rx_handler_unregister(dev->used_netdev);
+        rtnl_unlock();
+        ecdev_withdraw(dev->ecdev);
+        dev->ecdev = NULL;
+        dev_put(dev->used_netdev);
+        dev->used_netdev = NULL;
+        return 0;
+    }
+
+    ecdev_set_link(dev->ecdev, netif_carrier_ok(dev->used_netdev));
+
+    return 1;
 }
 
 /****************************************************************************/
@@ -309,55 +313,57 @@ int ec_gen_device_stop(
 
 /****************************************************************************/
 
+/** Transmit an EtherCAT frame.
+ *
+ * The master calls ndo_start_xmit on the virtual device with a pre-allocated
+ * SKB from the TX ring. We must not consume or free that SKB, so we copy it
+ * and transmit the copy through the real device.
+ */
 int ec_gen_device_start_xmit(
         ec_gen_device_t *dev,
         struct sk_buff *skb
         )
 {
-    struct msghdr msg;
-    struct kvec iov;
-    size_t len = skb->len;
-    int ret;
+    struct sk_buff *copy;
+
+    if (unlikely(!dev->used_netdev))
+        return NETDEV_TX_BUSY;
 
     ecdev_set_link(dev->ecdev, netif_carrier_ok(dev->used_netdev));
 
-    iov.iov_base = skb->data;
-    iov.iov_len = len;
-    memset(&msg, 0, sizeof(msg));
+    copy = skb_copy(skb, GFP_ATOMIC);
+    if (unlikely(!copy))
+        return NETDEV_TX_BUSY;
 
-    ret = kernel_sendmsg(dev->socket, &msg, &iov, 1, len);
+    copy->dev = dev->used_netdev;
+    dev_queue_xmit(copy);
 
-    return ret == len ? NETDEV_TX_OK : NETDEV_TX_BUSY;
+    return NETDEV_TX_OK;
 }
 
 /****************************************************************************/
 
 /** Polls the device.
+ *
+ * Called by the master in its cyclic task. Drains all buffered EtherCAT
+ * frames from the rx_queue and passes them to the master.
  */
 void ec_gen_device_poll(
         ec_gen_device_t *dev
         )
 {
-    struct msghdr msg;
-    struct kvec iov;
-    int ret, budget = 10; // FIXME
+    struct sk_buff *skb;
+    int budget = 10;
+
+    if (unlikely(!dev->used_netdev))
+        return;
 
     ecdev_set_link(dev->ecdev, netif_carrier_ok(dev->used_netdev));
 
-    do {
-        iov.iov_base = dev->rx_buf;
-        iov.iov_len = EC_GEN_RX_BUF_SIZE;
-        memset(&msg, 0, sizeof(msg));
-
-        ret = kernel_recvmsg(dev->socket, &msg, &iov, 1, iov.iov_len,
-                MSG_DONTWAIT);
-        if (ret > 0) {
-            ecdev_receive(dev->ecdev, dev->rx_buf, ret);
-        } else if (ret < 0) {
-            break;
-        }
-        budget--;
-    } while (budget);
+    while (budget-- && (skb = skb_dequeue(&dev->rx_queue))) {
+        ecdev_receive(dev->ecdev, skb->data, skb->len);
+        kfree_skb(skb);
+    }
 }
 
 /****************************************************************************/

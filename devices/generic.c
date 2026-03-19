@@ -144,6 +144,72 @@ static const struct net_device_ops ec_gen_netdev_ops = {
 
 /****************************************************************************/
 
+/** Detach from the real network device.
+ *
+ * Unregisters the rx_handler and releases the dev_hold reference.
+ * Called both from normal cleanup and from the netdev notifier.
+ *
+ * \param rtnl_held  1 if the caller already holds rtnl_lock.
+ */
+static void ec_gen_device_detach_real(
+        ec_gen_device_t *dev,
+        int rtnl_held
+        )
+{
+    if (!dev->used_netdev)
+        return;
+
+    if (!rtnl_held)
+        rtnl_lock();
+    netdev_rx_handler_unregister(dev->used_netdev);
+    if (!rtnl_held)
+        rtnl_unlock();
+
+    dev_put(dev->used_netdev);
+    dev->used_netdev = NULL;
+
+    skb_queue_purge(&dev->rx_queue);
+}
+
+/****************************************************************************/
+
+/** Netdevice notifier.
+ *
+ * Handles NETDEV_UNREGISTER for the real device so we release our
+ * references before the kernel tears down the device. This is critical
+ * for clean shutdown/reboot when ethercatctl stop has not been called.
+ */
+static int ec_gen_netdev_event(struct notifier_block *nb,
+        unsigned long event, void *ptr)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+    struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+#else
+    struct net_device *dev = (struct net_device *)ptr;
+#endif
+    ec_gen_device_t *gendev;
+
+    if (event != NETDEV_UNREGISTER)
+        return NOTIFY_DONE;
+
+    list_for_each_entry(gendev, &generic_devices, list) {
+        if (gendev->used_netdev == dev) {
+            printk(KERN_INFO PFX "%s going away, detaching.\n",
+                    dev->name);
+            ec_gen_device_detach_real(gendev, 1);
+            break;
+        }
+    }
+
+    return NOTIFY_DONE;
+}
+
+static struct notifier_block ec_gen_notifier = {
+    .notifier_call = ec_gen_netdev_event,
+};
+
+/****************************************************************************/
+
 /** RX handler registered on the real network device.
  *
  * Intercepts EtherCAT frames (ethertype 0x88A4) before they reach the
@@ -207,6 +273,9 @@ int ec_gen_device_init(
 /****************************************************************************/
 
 /** Clear generic device.
+ *
+ * Order matters: close the master device first (stops polling), then
+ * detach the rx_handler from the real device, then withdraw.
  */
 void ec_gen_device_clear(
         ec_gen_device_t *dev
@@ -215,13 +284,7 @@ void ec_gen_device_clear(
     if (dev->ecdev) {
         ecdev_close(dev->ecdev);
     }
-    if (dev->used_netdev) {
-        rtnl_lock();
-        netdev_rx_handler_unregister(dev->used_netdev);
-        rtnl_unlock();
-        dev_put(dev->used_netdev);
-        dev->used_netdev = NULL;
-    }
+    ec_gen_device_detach_real(dev, 0);
     if (dev->ecdev) {
         ecdev_withdraw(dev->ecdev);
         dev->ecdev = NULL;
@@ -433,6 +496,12 @@ int __init ec_gen_init_module(void)
     INIT_LIST_HEAD(&generic_devices);
     INIT_LIST_HEAD(&descs);
 
+    ret = register_netdevice_notifier(&ec_gen_notifier);
+    if (ret) {
+        printk(KERN_ERR PFX "Failed to register netdevice notifier.\n");
+        return ret;
+    }
+
     rcu_read_lock();
     for_each_netdev_rcu(&init_net, netdev) {
         if (netdev->type != ARPHRD_ETHER)
@@ -466,6 +535,7 @@ out_err:
         kfree(desc);
     }
     clear_devices();
+    unregister_netdevice_notifier(&ec_gen_notifier);
     return ret;
 }
 
@@ -477,6 +547,7 @@ out_err:
  */
 void __exit ec_gen_cleanup_module(void)
 {
+    unregister_netdevice_notifier(&ec_gen_notifier);
     clear_devices();
     printk(KERN_INFO PFX "Unloading.\n");
 }

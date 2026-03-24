@@ -139,7 +139,7 @@ start)
         if [ "${MODULE}" != "generic" ] && [ "${MODULE}" != "ccat" ]; then
             # unload standard module and check if unloading was successful
             ${RMMOD} "${MODULE}" 2> /dev/null || true
-            if ${LSMOD} | grep "^${MODULE} " > /dev/null; then
+            if ${LSMOD} | grep "^${MODULE//-/_} " > /dev/null; then
                 # could not unload module
                 ${RMMOD} ${LOADED_MODULES}
                 exit 1
@@ -166,7 +166,7 @@ stop)
     # unload EtherCAT device modules
     for MODULE in ${DEVICE_MODULES} master; do
         ECMODULE=ec_${MODULE}
-        if ! ${LSMOD} | grep -q "^${ECMODULE} "; then
+        if ! ${LSMOD} | grep -q "^${ECMODULE//-/_} "; then
             continue # ec_* module not loaded
         fi
         if ! ${RMMOD} "${ECMODULE}"; then

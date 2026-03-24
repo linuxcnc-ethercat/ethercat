@@ -989,10 +989,11 @@ void ec_fsm_master_state_scan_slave(
     master->scan_index = master->slave_count;
     wake_up_interruptible(&master->scan_queue);
 
-    ec_master_calc_dc(master);
-
     // Attach slave configurations
     ec_master_attach_slave_configs(master);
+
+    // Calculate DC (needs attached slaves due to reference clock selection)
+    ec_master_calc_dc(master);
 
 #ifdef EC_EOE
     // check if EoE processing has to be started

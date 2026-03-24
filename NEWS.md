@@ -1,5 +1,9 @@
 # Since 1.6.8
 
+- Added SII caching functionality with
+    - the kernel module parameter `sii_caching`,
+    - the configuration variable `SII_CACHING`,
+    - and the API method `ecrt_master_sii_caching()`.
 - Added `--with-kmod-dir` and `--with-ip-cmd` configuration switches
   to specify the paths of the tools used in the `ethercatctl` script.
 - Changed the default path of the `ip` command to `/sbin/ip`.

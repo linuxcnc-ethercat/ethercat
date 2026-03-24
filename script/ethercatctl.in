@@ -121,9 +121,17 @@ start)
         exit 1
     fi
 
+    MODULE_PARAMS=(
+        main_devices="${DEVICES}"
+        backup_devices="${BACKUPS}"
+    )
+
+    if [ -n "$SII_CACHING" ]; then
+        MODULE_PARAMS+=(sii_caching="$SII_CACHING")
+    fi
+
     # load master module
-    if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master \
-            main_devices="${DEVICES}" backup_devices="${BACKUPS}"; then
+    if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master "${MODULE_PARAMS[@]}"; then
         exit 1
     fi
 

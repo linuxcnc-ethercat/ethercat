@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2024  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -143,6 +143,7 @@ static ATTRIBUTES int ec_ioctl_master(
     io.phase = (uint8_t) master->phase;
     io.active = (uint8_t) master->active;
     io.scan_busy = master->scan_busy;
+    io.sii_caching = master->sii_caching;
 
     up(&master->master_sem);
 
@@ -285,7 +286,8 @@ static ATTRIBUTES int ec_ioctl_slave(
 
     data.sync_count = slave->sii.sync_count;
     data.sdo_count = ec_slave_sdo_count(slave);
-    data.sii_nwords = slave->sii_nwords;
+    data.sii_nwords = slave->sii_page.word_count;
+    data.sii_parallel_words = slave->sii_parallel_words;
     ec_ioctl_strcpy(data.group, slave->sii.group);
     ec_ioctl_strcpy(data.image, slave->sii.image);
     ec_ioctl_strcpy(data.order, slave->sii.order);
@@ -942,15 +944,16 @@ static ATTRIBUTES int ec_ioctl_slave_sii_read(
     }
 
     if (!data.nwords
-            || data.offset + data.nwords > slave->sii_nwords) {
+            || data.offset + data.nwords > slave->sii_page.word_count) {
         up(&master->master_sem);
         EC_SLAVE_ERR(slave, "Invalid SII read offset/size %u/%u for slave SII"
-                " size %zu!\n", data.offset, data.nwords, slave->sii_nwords);
+                " size %zu!\n", data.offset, data.nwords,
+                slave->sii_page.word_count);
         return -EINVAL;
     }
 
     if (copy_to_user((void __user *) data.words,
-                slave->sii_words + data.offset, data.nwords * 2))
+                slave->sii_page.words + data.offset, data.nwords * 2))
         retval = -EFAULT;
     else
         retval = 0;
@@ -2383,6 +2386,29 @@ static ATTRIBUTES int ec_ioctl_reset(
     schedule_work(&master->sc_reset_work);
 #endif
     return 0;
+}
+
+/****************************************************************************/
+
+/** Set SII caching method.
+ *
+ * \return Always zero (success).
+ */
+static ATTRIBUTES int ec_ioctl_sii_caching(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    int ret = 0;
+    if (unlikely(!ctx->requested)) {
+        ret = -EPERM;
+        goto out_return;
+    }
+
+    ret = ecrt_master_sii_caching(master, (unsigned long) arg);
+out_return:
+    return ret;
 }
 
 /****************************************************************************/
@@ -5566,6 +5592,13 @@ static long ec_ioctl_nrt
                 break;
             }
             ret = ec_ioctl_set_send_interval(master, arg, ctx);
+            break;
+        case EC_IOCTL_SII_CACHING:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_sii_caching(master, arg, ctx);
             break;
         default:
 #ifdef EC_IOCTL_RTDM

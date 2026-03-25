@@ -30,6 +30,7 @@ bin_PROGRAMS = ethercat
 ethercat_SOURCES = \
 	Command.cpp \
 	CommandAlias.cpp \
+	CommandCache.cpp \
 	CommandCrc.cpp \
 	CommandCStruct.cpp \
 	CommandConfig.cpp \
@@ -73,6 +74,7 @@ endif
 noinst_HEADERS = \
 	Command.h \
 	CommandAlias.h \
+	CommandCache.h \
 	CommandCrc.h \
 	CommandCStruct.h \
 	CommandConfig.h \

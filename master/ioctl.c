@@ -2401,13 +2401,14 @@ static ATTRIBUTES int ec_ioctl_sii_caching(
         )
 {
     int ret = 0;
+    /* Remove condition to reserve master before setting cache levels.
     if (unlikely(!ctx->requested)) {
         ret = -EPERM;
         goto out_return;
-    }
+    }*/
 
     ret = ecrt_master_sii_caching(master, (unsigned long) arg);
-out_return:
+// out_return:
     return ret;
 }
 

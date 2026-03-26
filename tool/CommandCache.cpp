@@ -30,7 +30,7 @@ using namespace std;
 /****************************************************************************/
 
 CommandCache::CommandCache():
-    Command("cache", "Configure SII caching settings.")
+    Command("sii_caching", "Configure SII_CACHING settings.")
 {
 }
 
@@ -44,11 +44,7 @@ string CommandCache::helpString(const string &binaryBaseName) const
         << endl
         << getBriefDescription() << endl
         << endl
-        << "This command configures which slave identity properties are" << endl
-        << "used for SII caching. SII caching allows the master to" << endl
-        << "identify slaves by properties other than their ring position," << endl
-        << "enabling slave communication even if the ring topology" << endl
-        << "changes." << endl
+        << "This command configures cache level to speed up scanning process" << endl
         << endl
         << "Caching fields are specified as a decimal number that is a" << endl
         << "combination of the following flags:" << endl

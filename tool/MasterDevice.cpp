@@ -500,6 +500,17 @@ void MasterDevice::rescan()
 
 /****************************************************************************/
 
+void MasterDevice::setSiiCaching(unsigned int fields)
+{
+    if (ioctl(fd, EC_IOCTL_SII_CACHING, fields) < 0) {
+        stringstream err;
+        err << "Failed to set SII caching: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
 void MasterDevice::sdoDownload(ec_ioctl_slave_sdo_download_t *data)
 {
     if (ioctl(fd, EC_IOCTL_SLAVE_SDO_DOWNLOAD, data) < 0) {

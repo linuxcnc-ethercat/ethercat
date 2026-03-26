@@ -28,6 +28,7 @@
 using namespace std;
 
 #include "CommandAlias.h"
+#include "CommandCache.h"
 #include "CommandConfig.h"
 #include "CommandCrc.h"
 #include "CommandCStruct.h"
@@ -272,6 +273,7 @@ int main(int argc, char **argv)
     binaryBaseName = basename(argv[0]);
 
     commandList.push_back(new CommandAlias());
+    commandList.push_back(new CommandCache());
     commandList.push_back(new CommandConfig());
     commandList.push_back(new CommandCrc());
     commandList.push_back(new CommandCStruct());

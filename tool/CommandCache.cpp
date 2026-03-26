@@ -21,7 +21,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include <string>
+#include <cstdlib>
 using namespace std;
 
 #include "CommandCache.h"
@@ -84,10 +84,13 @@ void CommandCache::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    try {
-        fields = stoul(args[0]);
-    } catch (const exception &e) {
-        err << "Invalid caching fields value '" << args[0] << "': " << e.what();
+    // Use strtoul instead of stoul for older C++ standards
+    char *endptr;
+    fields = strtoul(args[0].c_str(), &endptr, 10);
+
+    // Basic error checking to ensure the string was actually a number
+    if (*endptr != '\0' || args[0].empty()) {
+        err << "Invalid caching fields value '" << args[0] << "'";
         throwInvalidUsageException(err);
     }
 

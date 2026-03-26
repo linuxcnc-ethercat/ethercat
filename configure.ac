@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------
 #
-#  Copyright (C) 2006-2025  Florian Pose, Ingenieurgemeinschaft IgH
+#  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
 #
 #  This file is part of the IgH EtherCAT Master.
 #
@@ -28,7 +28,7 @@ AC_PREREQ([2.59])
 # - Check for complete Doxygen comments
 # - Update version number below
 #
-AC_INIT([ethercat], [1.6.9], [fp@igh.de])
+AC_INIT([ethercat], [1.7.0], [fp@igh.de])
 AC_CONFIG_AUX_DIR([autoconf])
 AM_INIT_AUTOMAKE([-Wall -Wno-override -Werror dist-bzip2 subdir-objects foreign])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])

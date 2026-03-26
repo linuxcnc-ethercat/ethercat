@@ -1,5 +1,6 @@
 digraph slavescan {
     node [fontname="Helvetica"]
+    edge [fontname="Helvetica"]
 
     start
     start -> address [weight=10]
@@ -12,26 +13,47 @@ digraph slavescan {
 
     base
     base -> dc_cap [weight=10]
-    base -> enter_datalink [fontname="Helvetica", label="DC not\nsupported"]
+    base -> enter_datalink [label="DC not\nsupported"]
 
     dc_cap
-    dc_cap -> enter_datalink [weight=10]
+    dc_cap -> dc_times [weight=10]
+
+    dc_times
+    dc_times -> enter_datalink [weight=10]
 
     enter_datalink [shape=point, label=""]
     enter_datalink -> datalink [weight=10]
 
     datalink
-    datalink -> sii_size [weight=10]
+    datalink -> enter_assign_sii [weight=10]
+
+    enter_assign_sii [shape=point, label=""]
+    enter_assign_sii -> assign_sii
+
+    assign_sii
+    assign_sii -> enter_sii_ident
+    assign_sii -> enter_sii_size
+
+    enter_sii_ident [shape=point, label=""]
+    enter_sii_ident -> sii_ident
+
+    sii_ident
+    sii_ident -> enter_preop [weight=10, label="cached SII\npage found"]
+    sii_ident -> end
+    sii_ident -> enter_sii_size
+
+    enter_sii_size [shape=point, label=""]
+    enter_sii_size -> sii_size [weight=10]
 
     sii_size
     sii_size -> sii_data [weight=10]
 
     sii_data
-    sii_data -> end [fontname="Helvetica", label="No category\ndata"]
+    sii_data -> end [label="No category\ndata"]
     sii_data -> enter_preop [weight=10]
 
     enter_preop [shape=point, label=""]
-    enter_preop -> preop [fontname="Helvetica", label="Not in\nPREOP"]
+    enter_preop -> preop [label="Not in\nPREOP"]
     enter_preop -> sync [weight=10]
 
     preop

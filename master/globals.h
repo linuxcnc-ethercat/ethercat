@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2021  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT master.
  *
@@ -84,6 +84,12 @@
 
 /** Word offset of first SII category. */
 #define EC_FIRST_SII_CATEGORY_OFFSET 0x40
+
+/** Word offset of alias address. */
+#define EC_SII_WORD_OFFSET_ALIAS  (0x0004)
+
+/** Word offset of vendor ID. */
+#define EC_SII_WORD_OFFSET_VENDOR (0x0008)
 
 /** Size of a sync manager configuration page. */
 #define EC_SYNC_PAGE_SIZE 8

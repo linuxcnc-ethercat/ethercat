@@ -1,3 +1,10 @@
+# Version 1.7.0
+
+- Added SII caching functionality with
+    - the kernel module parameter `sii_caching`,
+    - the configuration variable `SII_CACHING`,
+    - and the API method `ecrt_master_sii_caching()`.
+
 # Version 1.6.9
 
 - Protect datagram injection mechanism against re-ordering.

@@ -820,3 +820,20 @@ int ecrt_master_reset(ec_master_t *master)
 }
 
 /****************************************************************************/
+
+int ecrt_master_sii_caching(ec_master_t *master,
+        ec_sii_caching_fields_t fields)
+{
+    int ret;
+
+    ret = ioctl(master->fd, EC_IOCTL_SII_CACHING, fields);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        fprintf(stderr, "Failed to set SII caching method: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+        return -EC_IOCTL_ERRNO(ret);
+    }
+
+    return 0;
+}
+
+/****************************************************************************/

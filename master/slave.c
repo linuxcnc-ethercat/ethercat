@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -49,6 +49,11 @@ unsigned int ec_slave_get_previous_port(const ec_slave_t *, unsigned int);
 unsigned int ec_slave_get_next_port(const ec_slave_t *, unsigned int);
 uint32_t ec_slave_calc_rtt_sum(const ec_slave_t *);
 ec_slave_t *ec_slave_find_next_dc_slave(ec_slave_t *);
+int ec_slave_fetch_sii_strings(ec_slave_t *, const uint8_t *, size_t);
+int ec_slave_fetch_sii_general(ec_slave_t *, const uint8_t *, size_t);
+int ec_slave_fetch_sii_syncs(ec_slave_t *, const uint8_t *, size_t);
+int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
+        ec_direction_t);
 
 /****************************************************************************/
 
@@ -109,8 +114,8 @@ void ec_slave_init(
     slave->has_dc_system_time = 0;
     slave->transmission_delay = 0U;
 
-    slave->sii_words = NULL;
-    slave->sii_nwords = 0;
+    ec_sii_page_init(&slave->sii_page);
+    slave->sii_parallel_words = 0;
 
     slave->sii.alias = 0x0000;
     slave->sii.vendor_id = 0x00000000;
@@ -251,10 +256,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
         kfree(pdo);
     }
 
-    if (slave->sii_words) {
-        kfree(slave->sii_words);
-    }
-
+    ec_sii_page_clear(&slave->sii_page);
     ec_fsm_slave_clear(&slave->fsm);
 }
 
@@ -309,6 +311,220 @@ void ec_slave_request_state(ec_slave_t *slave, /**< EtherCAT slave */
 {
     slave->requested_state = state;
     slave->error_flag = 0;
+}
+
+/****************************************************************************/
+
+/**
+   Analyzes SII data.
+   \return 0 in case of success, else < 0
+*/
+
+int ec_slave_analyze_sii_data(
+        ec_slave_t *slave /**< Slave. */
+        )
+{
+    uint16_t *cat_word, cat_type, cat_size;
+    int ret;
+
+    ec_slave_clear_sync_managers(slave);
+
+    slave->sii.alias =
+        EC_READ_U16(slave->sii_page.words + EC_SII_WORD_OFFSET_ALIAS);
+    slave->effective_alias = slave->sii.alias;
+    slave->sii_page.alias = slave->sii.alias;
+
+    slave->sii.vendor_id =
+        EC_READ_U32(slave->sii_page.words + EC_SII_WORD_OFFSET_VENDOR);
+    slave->sii_page.vendor_id = slave->sii.vendor_id;
+
+    slave->sii.product_code =
+        EC_READ_U32(slave->sii_page.words + 0x000A);
+    slave->sii_page.product_code = slave->sii.product_code;
+
+    slave->sii.revision_number =
+        EC_READ_U32(slave->sii_page.words + 0x000C);
+    slave->sii_page.revision_number = slave->sii.revision_number;
+
+    slave->sii.serial_number =
+        EC_READ_U32(slave->sii_page.words + 0x000E);
+    slave->sii_page.serial_number = slave->sii.serial_number;
+
+    slave->sii.boot_rx_mailbox_offset =
+        EC_READ_U16(slave->sii_page.words + 0x0014);
+    slave->sii.boot_rx_mailbox_size =
+        EC_READ_U16(slave->sii_page.words + 0x0015);
+    slave->sii.boot_tx_mailbox_offset =
+        EC_READ_U16(slave->sii_page.words + 0x0016);
+    slave->sii.boot_tx_mailbox_size =
+        EC_READ_U16(slave->sii_page.words + 0x0017);
+    slave->sii.std_rx_mailbox_offset =
+        EC_READ_U16(slave->sii_page.words + 0x0018);
+    slave->sii.std_rx_mailbox_size =
+        EC_READ_U16(slave->sii_page.words + 0x0019);
+    slave->sii.std_tx_mailbox_offset =
+        EC_READ_U16(slave->sii_page.words + 0x001A);
+    slave->sii.std_tx_mailbox_size =
+        EC_READ_U16(slave->sii_page.words + 0x001B);
+    slave->sii.mailbox_protocols =
+        EC_READ_U16(slave->sii_page.words + 0x001C);
+    if (slave->sii.mailbox_protocols) {
+        int need_delim = 0;
+        uint16_t all = EC_MBOX_AOE | EC_MBOX_COE | EC_MBOX_FOE |
+            EC_MBOX_SOE | EC_MBOX_VOE;
+        if ((slave->sii.mailbox_protocols & all) &&
+                slave->master->debug_level >= 1) {
+            EC_SLAVE_DBG(slave, 1, "Slave announces to support ");
+            if (slave->sii.mailbox_protocols & EC_MBOX_AOE) {
+                printk(KERN_CONT "AoE");
+                need_delim = 1;
+            }
+            if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
+                if (need_delim) {
+                    printk(KERN_CONT ", ");
+                }
+                printk(KERN_CONT "CoE");
+                need_delim = 1;
+            }
+            if (slave->sii.mailbox_protocols & EC_MBOX_FOE) {
+                if (need_delim) {
+                    printk(KERN_CONT ", ");
+                }
+                printk(KERN_CONT "FoE");
+                need_delim = 1;
+            }
+            if (slave->sii.mailbox_protocols & EC_MBOX_SOE) {
+                if (need_delim) {
+                    printk(KERN_CONT ", ");
+                }
+                printk(KERN_CONT "SoE");
+                need_delim = 1;
+            }
+            if (slave->sii.mailbox_protocols & EC_MBOX_VOE) {
+                if (need_delim) {
+                    printk(KERN_CONT ", ");
+                }
+                printk(KERN_CONT "VoE");
+                need_delim = 1;
+            }
+            printk(KERN_CONT ".\n");
+        }
+        if (slave->sii.mailbox_protocols & ~all) {
+            EC_SLAVE_DBG(slave, 1, "Slave announces to support unknown"
+                    " mailbox protocols 0x%04X.",
+                    slave->sii.mailbox_protocols & ~all);
+        }
+    }
+    else {
+        EC_SLAVE_DBG(slave, 1, "Slave announces to support no mailbox"
+                " protocols.");
+    }
+
+    if (slave->sii.boot_rx_mailbox_offset == 0xffff ||
+            slave->sii.boot_rx_mailbox_size == 0xffff ||
+            slave->sii.boot_tx_mailbox_offset == 0xffff ||
+            slave->sii.boot_tx_mailbox_size == 0xffff ||
+            slave->sii.std_rx_mailbox_offset == 0xffff ||
+            slave->sii.std_rx_mailbox_size == 0xffff ||
+            slave->sii.std_tx_mailbox_offset == 0xffff ||
+            slave->sii.std_tx_mailbox_size == 0xffff) {
+        slave->sii.mailbox_protocols = 0x0000;
+        EC_SLAVE_ERR(slave, "Invalid mailbox settings in SII."
+                " Disabling mailbox communication.");
+    }
+
+    if (slave->sii_page.word_count == EC_FIRST_SII_CATEGORY_OFFSET) {
+        // SII does not contain category data
+        return 0;
+    }
+
+    if (slave->sii_page.word_count < EC_FIRST_SII_CATEGORY_OFFSET + 1) {
+        EC_SLAVE_ERR(slave, "Unexpected end of SII data:"
+                " First category header missing.\n");
+        return -ENOENT;
+    }
+
+    // evaluate category data
+    cat_word = slave->sii_page.words + EC_FIRST_SII_CATEGORY_OFFSET;
+    while (EC_READ_U16(cat_word) != 0xFFFF) {
+
+        // type and size words must fit
+        if (cat_word + 2 - slave->sii_page.words
+                > slave->sii_page.word_count) {
+            EC_SLAVE_ERR(slave, "Unexpected end of SII data:"
+                    " Category header incomplete.\n");
+            return -ENOENT;
+        }
+
+        cat_type = EC_READ_U16(cat_word) & 0x7FFF;
+        cat_size = EC_READ_U16(cat_word + 1);
+        cat_word += 2;
+
+        if (cat_word + cat_size - slave->sii_page.words
+                > slave->sii_page.word_count) {
+            EC_SLAVE_WARN(slave, "Unexpected end of SII data:"
+                    " Category data incomplete.\n");
+            return -ENOENT;
+        }
+
+        switch (cat_type) {
+            case 0x000A:
+                ret = ec_slave_fetch_sii_strings(slave, (uint8_t *) cat_word,
+                            cat_size * 2);
+                if (ret) {
+                    return ret;
+                }
+                break;
+
+            case 0x001E:
+                ret = ec_slave_fetch_sii_general(slave, (uint8_t *) cat_word,
+                            cat_size * 2);
+                if (ret) {
+                    return ret;
+                }
+                break;
+
+            case 0x0028:
+                break;
+
+            case 0x0029:
+                ret = ec_slave_fetch_sii_syncs(slave, (uint8_t *) cat_word,
+                            cat_size * 2);
+                if (ret) {
+                    return ret;
+                }
+                break;
+
+            case 0x0032:
+                ret = ec_slave_fetch_sii_pdos(slave, (uint8_t *) cat_word,
+                            cat_size * 2, EC_DIR_INPUT); // TxPDO
+                if (ret) {
+                    return ret;
+                }
+                break;
+
+            case 0x0033:
+                ret = ec_slave_fetch_sii_pdos(slave, (uint8_t *) cat_word,
+                            cat_size * 2, EC_DIR_OUTPUT); // RxPDO
+                if (ret) {
+                    return ret;
+                }
+                break;
+
+            default:
+                EC_SLAVE_DBG(slave, 1, "Unknown category type 0x%04X.\n",
+                        cat_type);
+        }
+
+        cat_word += cat_size;
+        if (cat_word - slave->sii_page.words >= slave->sii_page.word_count) {
+            EC_SLAVE_WARN(slave, "Unexpected end of SII data:"
+                    " Next category header missing.\n");
+            return -ENOENT;
+        }
+    }
+
+    return 0;
 }
 
 /****************************************************************************/

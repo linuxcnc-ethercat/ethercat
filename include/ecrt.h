@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2024  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT master userspace library.
  *
@@ -31,6 +31,11 @@
  * request a master, to map process data, to communicate with slaves via CoE
  * and to configure and activate the bus.
  *
+ * Changes in version 1.7.0:
+ *
+ * - Added ecrt_master_sii_caching() to set the SII caching method and added
+ *   the feature flag EC_HAVE_SII_CACHING and the enum type
+ *   ec_sii_caching_fields_t.
  *
  * Changes in version 1.6.0:
  *
@@ -241,6 +246,11 @@
 /** Defined, if the method ecrt_slave_config_state_timeout() is available.
  */
 #define EC_HAVE_STATE_TIMEOUT
+
+/** Defined, if the method ecrt_master_sii_caching()  and the enum type
+ * ec_sii_caching_fields_t and its values are available.
+ */
+#define EC_HAVE_SII_CACHING
 
 /****************************************************************************/
 
@@ -618,6 +628,21 @@ typedef enum {
     EC_AL_STATE_SAFEOP = 4, /**< Safe-operational. */
     EC_AL_STATE_OP = 8, /**< Operational. */
 } ec_al_state_t;
+
+/****************************************************************************/
+
+/** Fields for SII caching.
+ *
+ * For use in the method ecrt_master_sii_caching().
+ */
+typedef enum {
+    EC_SII_DISABLE_CACHING = 0, /** Disable SII caching. */
+    EC_SII_VENDOR = 1, /** Use vendor ID. */
+    EC_SII_PRODUCT = 2, /** Use product code. */
+    EC_SII_REVISION = 4, /** Use revision number. */
+    EC_SII_SERIAL = 8, /** Use serial number. */
+    EC_SII_ALIAS = 16, /** Use alias address. */
+} ec_sii_caching_fields_t;
 
 /*****************************************************************************
  * Global functions
@@ -1333,6 +1358,44 @@ EC_PUBLIC_API uint32_t ecrt_master_sync_monitor_process(
  */
 EC_PUBLIC_API int ecrt_master_reset(
         ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Set the SII caching method.
+ *
+ * Via this method, the application can tell the master to either which fields
+ * to use for looking up cached SII content pages or to disable SII caching at
+ * all.
+ *
+ * The default when starting up is defined in the master configuration file.
+ * The caching method stays valid as long as the master is existing, so it
+ * could be set by a prior application.
+ *
+ * The allowed fields are defined in ec_sii_caching_fields_t. A typical setup
+ * could be:
+ *
+ * \code
+ * if (ecrt_master_sii_caching(master,
+ *     EC_SII_VENDOR | EC_SII_PRODUCT | EC_SII_REVISION)) {
+ *     fprintf(stderr, "Failed to set up SII caching method.\n");
+ * }
+ * \endcode
+ *
+ * A value of zero disables SII caching completely, thus the SII contents are
+ * completely loaded from every slave during scanning:
+ *
+ * \code
+ * if (ecrt_master_sii_caching(master, EC_SII_DISABLE_CACHING)) {
+ *     fprintf(stderr, "Failed to disable SII caching.\n");
+ * }
+ * \endcode
+ *
+ * \apiusage{master_op,rt_safe}
+ *
+ * \return 0 on success, otherwise negative error code.
+ */
+EC_PUBLIC_API int ecrt_master_sii_caching(
+        ec_master_t *master, /**< EtherCAT master. */
+        ec_sii_caching_fields_t fields /** Fields to use for cache lookup. */
         );
 
 /*****************************************************************************

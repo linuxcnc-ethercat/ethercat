@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -38,6 +38,7 @@
 #include "sync.h"
 #include "sdo.h"
 #include "fsm_slave.h"
+#include "sii_page.h"
 
 /****************************************************************************/
 
@@ -207,11 +208,12 @@ struct ec_slave
     uint32_t transmission_delay; /**< DC system time transmission delay
                                    (offset from reference clock). */
 
-    // SII
-    uint16_t *sii_words; /**< Complete SII image. */
-    size_t sii_nwords; /**< Size of the SII contents in words. */
-
-    // Slave information interface
+    // Slave information interface (SII)
+    ec_sii_page_t sii_page; /**< The SII contents, either fetched or taken
+                              from the cache. */
+    unsigned int sii_parallel_words; /**< How many SII words the slave can
+                                       read at once. Zero means that this
+                                       information is not available yet. */
     ec_sii_t sii; /**< Extracted SII data. */
 
     struct list_head sdo_dictionary; /**< SDO dictionary list */
@@ -239,12 +241,8 @@ void ec_slave_clear_sync_managers(ec_slave_t *);
 void ec_slave_request_state(ec_slave_t *, ec_slave_state_t);
 void ec_slave_set_state(ec_slave_t *, ec_slave_state_t);
 
-// SII categories
-int ec_slave_fetch_sii_strings(ec_slave_t *, const uint8_t *, size_t);
-int ec_slave_fetch_sii_general(ec_slave_t *, const uint8_t *, size_t);
-int ec_slave_fetch_sii_syncs(ec_slave_t *, const uint8_t *, size_t);
-int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
-        ec_direction_t);
+// SII
+int ec_slave_analyze_sii_data(ec_slave_t *);
 
 // misc.
 ec_sync_t *ec_slave_get_sync(ec_slave_t *, uint8_t);

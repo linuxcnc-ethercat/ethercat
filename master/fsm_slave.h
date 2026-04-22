@@ -42,6 +42,10 @@
 #ifdef EC_EOE
 #include "fsm_eoe.h"
 #endif
+#include "fsm_change.h"
+#include "fsm_pdo.h"
+#include "fsm_slave_config.h"
+#include "fsm_slave_scan.h"
 
 /****************************************************************************/
 
@@ -70,6 +74,16 @@ struct ec_fsm_slave {
 #ifdef EC_EOE
     ec_fsm_eoe_t fsm_eoe; /**< EoE state machine. */
 #endif
+
+    /* Per-slave copies of the configuration / scan FSMs. Before the
+     * parallel-slave refactor these lived on the master FSM and were
+     * serialised across all slaves; giving each slave its own instance
+     * lets the master drive several of them concurrently via the
+     * external datagram ring. */
+    ec_fsm_change_t fsm_change; /**< AL state change state machine. */
+    ec_fsm_pdo_t fsm_pdo; /**< PDO configuration state machine. */
+    ec_fsm_slave_config_t fsm_slave_config; /**< Slave configuration FSM. */
+    ec_fsm_slave_scan_t fsm_slave_scan; /**< Slave scanning FSM. */
 };
 
 /****************************************************************************/

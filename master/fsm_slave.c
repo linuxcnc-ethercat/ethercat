@@ -77,7 +77,18 @@ void ec_fsm_slave_init(
     ec_fsm_soe_init(&fsm->fsm_soe);
 #ifdef EC_EOE
     ec_fsm_eoe_init(&fsm->fsm_eoe);
+    ec_fsm_change_init(&fsm->fsm_change);
+    ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
+    ec_fsm_slave_config_init(&fsm->fsm_slave_config, &fsm->fsm_change,
+            &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo, &fsm->fsm_eoe);
+#else
+    ec_fsm_change_init(&fsm->fsm_change);
+    ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
+    ec_fsm_slave_config_init(&fsm->fsm_slave_config, &fsm->fsm_change,
+            &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo, NULL);
 #endif
+    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, &fsm->fsm_slave_config,
+            &fsm->fsm_pdo);
 }
 
 /****************************************************************************/
@@ -124,6 +135,10 @@ void ec_fsm_slave_clear(
 #ifdef EC_EOE
     ec_fsm_eoe_clear(&fsm->fsm_eoe);
 #endif
+    ec_fsm_change_clear(&fsm->fsm_change);
+    ec_fsm_pdo_clear(&fsm->fsm_pdo);
+    ec_fsm_slave_config_clear(&fsm->fsm_slave_config);
+    ec_fsm_slave_scan_clear(&fsm->fsm_slave_scan);
 }
 
 /****************************************************************************/

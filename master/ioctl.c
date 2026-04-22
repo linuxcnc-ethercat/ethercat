@@ -2027,10 +2027,19 @@ static ATTRIBUTES int ec_ioctl_deactivate(
         ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
         )
 {
+    int ret;
+
     if (unlikely(!ctx->requested))
         return -EPERM;
 
-    return ecrt_master_deactivate(master);
+    ret = ecrt_master_deactivate(master);
+
+    if (ctx->process_data_size && ctx->process_data != NULL) {
+        vfree(ctx->process_data);
+        ctx->process_data = NULL;
+        ctx->process_data_size = 0;
+    }
+    return ret;
 }
 
 /****************************************************************************/

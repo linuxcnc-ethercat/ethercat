@@ -237,7 +237,7 @@ void ec_fsm_slave_config_enter_init(
         )
 {
     ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
-    ec_fsm_change_exec(fsm->fsm_change);
+    ec_fsm_change_exec(fsm->fsm_change, fsm->datagram);
     fsm->state = ec_fsm_slave_config_state_init;
 }
 
@@ -252,7 +252,7 @@ void ec_fsm_slave_config_state_init(
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (ec_fsm_change_exec(fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(fsm->fsm_change, fsm->datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
         if (!fsm->fsm_change->spontaneous_change)
@@ -695,7 +695,7 @@ void ec_fsm_slave_config_enter_boot_preop(
                 fsm->slave, EC_SLAVE_STATE_BOOT);
     }
 
-    ec_fsm_change_exec(fsm->fsm_change); // execute immediately
+    ec_fsm_change_exec(fsm->fsm_change, fsm->datagram); // execute immediately
 }
 
 /****************************************************************************/
@@ -713,7 +713,7 @@ void ec_fsm_slave_config_state_boot_preop(
     ec_flag_t *flag;
 #endif
 
-    if (ec_fsm_change_exec(fsm->fsm_change)) {
+    if (ec_fsm_change_exec(fsm->fsm_change, fsm->datagram)) {
         return;
     }
 
@@ -1679,7 +1679,7 @@ void ec_fsm_slave_config_enter_safeop(
 {
     fsm->state = ec_fsm_slave_config_state_safeop;
     ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAFEOP);
-    ec_fsm_change_exec(fsm->fsm_change); // execute immediately
+    ec_fsm_change_exec(fsm->fsm_change, fsm->datagram); // execute immediately
 }
 
 /****************************************************************************/
@@ -1692,7 +1692,7 @@ void ec_fsm_slave_config_state_safeop(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_change_exec(fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(fsm->fsm_change, fsm->datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
         if (!fsm->fsm_change->spontaneous_change)
@@ -1803,7 +1803,7 @@ void ec_fsm_slave_config_enter_op(
     // set state to OP
     fsm->state = ec_fsm_slave_config_state_op;
     ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_OP);
-    ec_fsm_change_exec(fsm->fsm_change); // execute immediately
+    ec_fsm_change_exec(fsm->fsm_change, fsm->datagram); // execute immediately
 }
 
 /****************************************************************************/
@@ -1816,7 +1816,7 @@ void ec_fsm_slave_config_state_op(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_change_exec(fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(fsm->fsm_change, fsm->datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
         if (!fsm->fsm_change->spontaneous_change)

@@ -1,0 +1,22 @@
+#!/bin/sh
+set -e
+
+NAME=ethercat
+VERSION=$(dpkg-query -W -f='${Version}' ethercat-dkms 2>/dev/null | cut -d- -f1)
+SRC=/usr/src/${NAME}-${VERSION}
+
+case "$1" in
+    configure)
+        # substitute the version placeholder
+        sed -i "s/#MODULE_VERSION#/${VERSION}/" ${SRC}/dkms.conf || true
+
+        if command -v dkms >/dev/null; then
+            dkms add    -m ${NAME} -v ${VERSION} || true
+            dkms build  -m ${NAME} -v ${VERSION} || true
+            dkms install -m ${NAME} -v ${VERSION} || true
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+exit 0

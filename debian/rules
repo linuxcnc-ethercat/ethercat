@@ -1,0 +1,64 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+export DH_VERBOSE = 1
+
+DEB_VERSION := $(shell dpkg-parsechangelog -SVersion | cut -d- -f1)
+DKMS_SRC := $(CURDIR)/debian/ethercat-dkms/usr/src/ethercat-$(DEB_VERSION)
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	./bootstrap
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--with-systemdsystemunitdir=/lib/systemd/system \
+		--disable-kernel \
+		--disable-8139too \
+		--disable-update-modules \
+		--disable-update-rules
+
+override_dh_auto_build:
+	$(MAKE)
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+
+	# Stage a clean source tree for DKMS under the versioned directory
+	# it expects. Build artefacts, VCS metadata, repo-local helpers and
+	# the dev-only workflow files stay out.
+	install -d $(DKMS_SRC)
+	tar \
+	    --exclude=./debian --exclude=./.github \
+	    --exclude='.git' --exclude='.gitmodules' --exclude='.gitignore' \
+	    --exclude=./MERGE_CANDIDATES.md \
+	    --exclude=./.gitlab-ci.yml --exclude=./.clang-format \
+	    --exclude=./autom4te.cache --exclude=./test_dist \
+	    --exclude=./config.log --exclude=./config.status \
+	    --exclude=./stamp-h1 --exclude=./libtool \
+	    --exclude='./lib/.libs' --exclude='./lib/.deps' \
+	    --exclude='./tool/.deps' --exclude='./master/.tmp_*' \
+	    --exclude='.deps' \
+	    --exclude='*.o' --exclude='*.o.cmd' --exclude='*.o.d' \
+	    --exclude='*.lo' --exclude='*.la' \
+	    --exclude='*.ko' --exclude='*.ko.cmd' \
+	    --exclude='*.mod' --exclude='*.mod.c' --exclude='*.mod.cmd' \
+	    --exclude='Module.symvers' --exclude='.Module.symvers.cmd' \
+	    --exclude='modules.order' --exclude='*.order.cmd' \
+	    --exclude='.module-common.o' --exclude='.module-common.o.cmd' \
+	    -cf - . | tar -C $(DKMS_SRC) -xf -
+	install -m 0644 debian/dkms.conf $(DKMS_SRC)/dkms.conf
+
+override_dh_auto_clean:
+	$(MAKE) distclean || true
+	rm -rf autom4te.cache
+
+override_dh_installsystemd:
+	# Master systemd service ships as /usr/lib/systemd/system/ethercat.service
+	dh_installsystemd -p ethercat --name=ethercat ethercat.service
+
+override_dh_strip:
+	dh_strip --dbg-package=libethercat1-dbg || dh_strip

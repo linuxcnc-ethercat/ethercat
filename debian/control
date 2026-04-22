@@ -1,0 +1,61 @@
+Source: ethercat
+Section: net
+Priority: optional
+Maintainer: mika <mika-net@outlook.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ autoconf,
+ automake,
+ libtool,
+ pkg-config,
+ dkms
+Standards-Version: 4.6.2
+Homepage: https://etherlab.org/ethercat
+
+Package: ethercat
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ ethercat-dkms (= ${source:Version}),
+ iproute2,
+ kmod
+Description: IgH EtherCAT master — userspace tools and services
+ Command-line tool (ethercat), ethercatctl helper and systemd/sysvinit
+ units for managing the IgH EtherCAT master at runtime.
+
+Package: libethercat1
+Architecture: any
+Multi-Arch: same
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: IgH EtherCAT master — runtime shared library
+ Shared library (libethercat.so.1) used by realtime applications that
+ access the EtherCAT master through the ecrt.h API.
+
+Package: libethercat-dev
+Architecture: any
+Multi-Arch: same
+Section: libdevel
+Depends:
+ ${misc:Depends},
+ libethercat1 (= ${binary:Version}),
+ libc6-dev | libc-dev
+Description: IgH EtherCAT master — development files
+ Headers (ecrt.h, ectty.h), static archive, pkg-config and CMake
+ descriptors for building realtime applications against the
+ IgH EtherCAT master.
+
+Package: ethercat-dkms
+Architecture: all
+Section: kernel
+Depends:
+ ${misc:Depends},
+ dkms,
+ make,
+ gcc,
+ libc6-dev | libc-dev
+Recommends: linux-headers-generic | linux-headers-amd64 | linux-headers-arm64 | linux-headers
+Description: IgH EtherCAT master — kernel module source (DKMS)
+ Source tree for the EtherCAT master and included network-card drivers,
+ built against the running kernel by DKMS when the package is installed.

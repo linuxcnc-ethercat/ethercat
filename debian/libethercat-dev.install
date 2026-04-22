@@ -1,0 +1,7 @@
+usr/include/ecrt.h
+usr/include/ectty.h
+usr/lib/libethercat.so
+usr/lib/libethercat.a
+usr/lib/libethercat.la
+usr/lib/pkgconfig/libethercat.pc
+usr/lib/cmake/ethercat

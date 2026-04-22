@@ -1,0 +1,12 @@
+ethercat (1.6.9-1) unstable; urgency=medium
+
+  * Parallel slave configuration (multi-slave bus reaches OP in seconds).
+  * SDO information API and bus rescan in the realtime library.
+  * Numerous stability fixes (datagram index reuse, external-ring timing,
+    mailbox state machines, SDO dictionary gating, DC sync1 shift).
+  * SII timing relaxed for slow EEPROMs.
+  * New ethercat diag command, slave port bypass detection and upstream
+    port inference.
+  * FoE password support.
+
+ -- mika <mika-net@outlook.com>  Wed, 22 Apr 2026 00:00:00 +0000

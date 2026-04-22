@@ -49,3 +49,17 @@ device_drivers.md
 generated_table.md
 doxygen-output/
 MERGE_CANDIDATES.md
+
+# debhelper build scratch
+debian/.debhelper/
+debian/files
+debian/ethercat/
+debian/ethercat-dkms/
+debian/libethercat1/
+debian/libethercat-dev/
+debian/tmp/
+debian/*.substvars
+debian/*.log
+debian/debhelper-build-stamp
+debian/autoreconf.after
+debian/autoreconf.before

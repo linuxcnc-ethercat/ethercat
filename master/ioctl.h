@@ -47,7 +47,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 38
+#define EC_IOCTL_VERSION_MAGIC 39
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -253,6 +253,7 @@ typedef struct {
     uint32_t transmission_delay;
     uint8_t al_state;
     uint8_t error_flag;
+    uint8_t ready;
     uint8_t sync_count;
     uint16_t sdo_count;
     uint32_t sii_nwords;

@@ -1388,10 +1388,14 @@ int ecrt_slave_config_state(const ec_slave_config_t *sc,
             slave->current_state == EC_SLAVE_STATE_OP && !slave->force_config;
         state->al_state = slave->current_state;
         state->position = slave->ring_position;
+        state->error_flag = slave->error_flag ? 1 : 0;
+        state->ready = ec_fsm_slave_is_ready(&slave->fsm) ? 1 : 0;
     } else {
         state->operational = 0;
         state->al_state = EC_SLAVE_STATE_UNKNOWN;
         state->position = (uint16_t) -1;
+        state->error_flag = 0;
+        state->ready = 0;
     }
     return 0;
 }

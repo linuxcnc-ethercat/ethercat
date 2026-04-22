@@ -1808,6 +1808,16 @@ static int ec_master_eoe_thread(void *priv_data)
         // actual EoE processing
         sth_to_send = 0;
         list_for_each_entry(eoe, &master->eoe_handlers, list) {
+            // Only run EoE in states that actually service mailbox traffic.
+            // Doing it in BOOT (or any unknown state) wastes bandwidth and
+            // can block the mailbox buffer that a pending FoE transfer
+            // needs.
+            uint8_t s = eoe->slave->current_state;
+            if (s != EC_SLAVE_STATE_PREOP
+                    && s != EC_SLAVE_STATE_SAFEOP
+                    && s != EC_SLAVE_STATE_OP) {
+                continue;
+            }
             ec_eoe_run(eoe);
             if (eoe->queue_datagram) {
                 sth_to_send = 1;

@@ -171,12 +171,6 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
     ec_slave_config_t *sc;
     int ret;
 
-    sc = malloc(sizeof(ec_slave_config_t));
-    if (!sc) {
-        fprintf(stderr, "Failed to allocate memory.\n");
-        return 0;
-    }
-
     data.alias = alias;
     data.position = position;
     data.vendor_id = vendor_id;
@@ -186,7 +180,21 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
     if (EC_IOCTL_IS_ERROR(ret)) {
         fprintf(stderr, "Failed to create slave config: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
-        free(sc);
+        return 0;
+    }
+
+    /* Reuse existing slave config if it was already registered. Kernel
+     * side de-duplicates by (alias, position); mirror that here to avoid
+     * leaking malloc()s and appending duplicate nodes to master->first_config. */
+    for (sc = master->first_config; sc; sc = sc->next) {
+        if (sc->alias == alias && sc->position == position) {
+            return sc;
+        }
+    }
+
+    sc = malloc(sizeof(ec_slave_config_t));
+    if (!sc) {
+        fprintf(stderr, "Failed to allocate memory.\n");
         return 0;
     }
 

@@ -2444,6 +2444,9 @@ int ecrt_master_deactivate(ec_master_t *master)
 
     if (!master->active) {
         EC_MASTER_WARN(master, "%s: Master not active.\n", __func__);
+        // still drop any configuration that was staged via slave_config()
+        // before the failed activation, so the next activate() starts fresh.
+        ec_master_clear_config(master);
         return -EINVAL;
     }
 

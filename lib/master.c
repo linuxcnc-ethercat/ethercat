@@ -290,8 +290,9 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
 
     ret = ioctl(master->fd, EC_IOCTL_SLAVE, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get slave info: %s\n",
-                strerror(EC_IOCTL_ERRNO(ret)));
+        /* Error code is already returned to the caller; polling
+         * loops call this for non-existent positions on purpose, so
+         * logging every miss floods stderr and syslog. */
         return -EC_IOCTL_ERRNO(ret);
     }
 

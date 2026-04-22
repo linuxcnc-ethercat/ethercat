@@ -237,7 +237,9 @@ static ATTRIBUTES int ec_ioctl_slave(
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.position))) {
         up(&master->master_sem);
-        EC_MASTER_ERR(master, "Slave %u does not exist!\n", data.position);
+        /* The userspace library calls this ioctl to probe for the
+         * presence of a slave; keep the miss out of the regular log. */
+        EC_MASTER_DBG(master, 1, "Slave %u does not exist!\n", data.position);
         return -EINVAL;
     }
 

@@ -62,6 +62,8 @@ struct ec_fsm_sii
     uint8_t value[4]; /**< raw SII value (32bit) */
     unsigned long jiffies_start; /**< Start timestamp. */
     uint8_t check_once_more; /**< one more try after timeout */
+    uint8_t eeprom_load_retry; /**< set while waiting for the slave's EEPROM
+                                    to finish loading. */
 };
 
 /****************************************************************************/

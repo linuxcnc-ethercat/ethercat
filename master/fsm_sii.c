@@ -40,6 +40,9 @@
  */
 #define SII_TIMEOUT 30
 
+/** EEPROM load timeout [ms]. */
+#define SII_LOAD_TIMEOUT 500
+
 /** Time before evaluating answer at writing [ms].
  */
 #define SII_INHIBIT 10
@@ -217,6 +220,7 @@ void ec_fsm_sii_state_read_check(
 
     fsm->jiffies_start = datagram->jiffies_sent;
     fsm->check_once_more = 1;
+    fsm->eeprom_load_retry = 0;
 
     // issue check/fetch datagram
     switch (fsm->mode) {
@@ -273,6 +277,41 @@ void ec_fsm_sii_state_read_fetch(
         EC_SLAVE_ERR(fsm->slave, "Error on last command while"
                 " reading from SII word 0x%04x.\n", fsm->word_offset);
         fsm->state = ec_fsm_sii_state_error;
+        return;
+    }
+
+    // check "EEPROM loading" bit: the slave may still be reading the SII
+    // content from EEPROM; keep polling until it clears or times out.
+    if (EC_READ_U8(datagram->data + 1) & 0x10) {
+        unsigned long diff_ms;
+
+        if (!fsm->eeprom_load_retry) {
+            fsm->eeprom_load_retry = 1;
+            EC_SLAVE_WARN(fsm->slave,
+                    "SII read: EEPROM not loaded yet. Retrying...\n");
+        }
+
+        diff_ms = (datagram->jiffies_received - fsm->jiffies_start)
+                * 1000 / HZ;
+        if (diff_ms >= SII_LOAD_TIMEOUT) {
+            if (fsm->check_once_more) {
+                fsm->check_once_more = 0;
+            } else {
+                EC_SLAVE_ERR(fsm->slave,
+                        "SII read: Timeout waiting for EEPROM to load.\n");
+                fsm->state = ec_fsm_sii_state_error;
+                return;
+            }
+        }
+
+        // poll the status register again
+        fsm->retries = EC_FSM_RETRIES;
+        return;
+    } else if (fsm->eeprom_load_retry) {
+        fsm->eeprom_load_retry = 0;
+        EC_SLAVE_INFO(fsm->slave, "SII read: EEPROM loaded, continuing.\n");
+        // restart the read; the failed one will have consumed retries
+        fsm->state = ec_fsm_sii_state_start_reading;
         return;
     }
 

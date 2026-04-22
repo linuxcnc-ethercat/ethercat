@@ -1081,6 +1081,17 @@ EC_PUBLIC_API int ecrt_master_deactivate(
         ec_master_t *master /**< EtherCAT master. */
         );
 
+/** Trigger a bus rescan.
+ *
+ * Requests the master to restart slave scanning. Equivalent of the
+ * \c ethercat rescan tool command but callable from userspace applications.
+ *
+ * \return 0 on success, otherwise negative errno.
+ */
+EC_PUBLIC_API int ecrt_master_rescan(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
 /** Set interval between calls to ecrt_master_send().
  *
  * This information helps the master to decide, how much data can be appended

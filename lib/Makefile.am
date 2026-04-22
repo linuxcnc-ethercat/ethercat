@@ -72,8 +72,10 @@ libethercat_la_CFLAGS = \
 # 2:0:1
 #   SoE requests added
 # 3:0:2
+# 4:0:3
+#   ecrt_master_rescan() added.
 #
-libethercat_la_LDFLAGS = -version-info 3:0:2 \
+libethercat_la_LDFLAGS = -version-info 4:0:3 \
 	-Wl,--version-script=$(srcdir)/libethercat.map \
 	-fvisibility=hidden
 

@@ -635,6 +635,17 @@ int ecrt_master_deactivate(ec_master_t *master)
 
 /****************************************************************************/
 
+int ecrt_master_rescan(ec_master_t *master)
+{
+    int ret = ioctl(master->fd, EC_IOCTL_MASTER_RESCAN, NULL);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        return -EC_IOCTL_ERRNO(ret);
+    }
+    return 0;
+}
+
+/****************************************************************************/
+
 int ecrt_master_set_send_interval(ec_master_t *master,
         size_t send_interval_us)
 {

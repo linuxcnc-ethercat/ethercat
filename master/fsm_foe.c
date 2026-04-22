@@ -285,8 +285,10 @@ int ec_foe_prepare_wrq_send(
         return -1;
     }
 
-    EC_WRITE_U16( data, EC_FOE_OPCODE_WRQ); // fsm write request
-    EC_WRITE_U32( data + 2, fsm->tx_packet_no );
+    EC_WRITE_U16(data, EC_FOE_OPCODE_WRQ); // fsm write request
+    // The 4-byte field after the opcode is the FoE password on WRQ/RRQ
+    // (ETG.1000.6). Forward what the caller provided in the request.
+    EC_WRITE_U32(data + 2, fsm->request->password);
 
     memcpy(data + EC_FOE_HEADER_SIZE, fsm->tx_filename, current_size);
 
@@ -558,7 +560,7 @@ int ec_foe_prepare_rrq_send(
     }
 
     EC_WRITE_U16(data, EC_FOE_OPCODE_RRQ); // fsm read request
-    EC_WRITE_U32(data + 2, 0x00000000); // no passwd
+    EC_WRITE_U32(data + 2, fsm->request->password); // password
     memcpy(data + EC_FOE_HEADER_SIZE, fsm->rx_filename, current_size);
 
     if (fsm->slave->master->debug_level) {

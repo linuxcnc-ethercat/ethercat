@@ -1,0 +1,55 @@
+name: Sync All Branches from GitLab (Keep Custom Branches)
+
+# 触发条件：每小时定时同步 + 手动触发
+on:
+  schedule:
+    - cron: '0 * * * *'  # 每小时同步，可按需调整
+  workflow_dispatch:     # 支持手动触发
+
+jobs:
+  sync-all-official-branches:
+    runs-on: ubuntu-latest
+    steps:
+      # 步骤1：配置Git身份
+      - name: Configure Git User
+        run: |
+          git config --global user.name "你的GitHub用户名"
+          git config --global user.email "你的GitHub绑定邮箱"
+
+      # 步骤2：克隆GitHub目标仓库（含自定义分支）
+      - name: Clone GitHub Repo
+        run: |
+          git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/你的用户名/igh-ethercat-master.git igh-repo
+          cd igh-repo
+          # 添加GitLab原仓库作为远程源
+          git remote add gitlab-upstream https://gitlab.com/etherlab.org/ethercat.git
+          # 拉取GitLab所有分支/标签的最新数据（清理失效的远程追踪分支，但不删本地/自定义分支）
+          git fetch gitlab-upstream --prune
+
+      # 步骤3：自动识别并同步GitLab的所有分支
+      - name: Sync All GitLab Branches to GitHub
+        run: |
+          cd igh-repo
+          # 提取GitLab原仓库的所有分支名（过滤掉HEAD，仅保留实际分支）
+          gitlab_branches=$(git branch -r | grep 'gitlab-upstream/' | grep -v 'HEAD' | sed 's/gitlab-upstream\///g')
+          
+          # 遍历每个原仓库分支，逐个同步
+          for branch in $gitlab_branches; do
+            echo "=== 开始同步分支: $branch ==="
+            # 切换到该分支（本地不存在则创建）
+            git checkout -B "$branch"
+            # 强制拉取GitLab该分支的最新代码（覆盖本地冲突）
+            git pull gitlab-upstream "$branch" --force
+            # 推送到GitHub（强制覆盖，保证与原仓库一致）
+            git push origin "$branch" --force
+            echo "=== 分支 $branch 同步完成 ==="
+          done
+
+      # 步骤4：同步所有原仓库标签
+      - name: Sync All GitLab Tags
+        run: |
+          cd igh-repo
+          # 拉取GitLab所有标签
+          git fetch gitlab-upstream --tags
+          # 推送所有标签到GitHub（不删除现有标签）
+          git push origin --tags

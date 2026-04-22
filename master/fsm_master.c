@@ -612,13 +612,6 @@ void ec_fsm_master_action_idle(
         return;
     }
 
-    // enable processing of requests
-    for (slave = master->slaves;
-            slave < master->slaves + master->slave_count;
-            slave++) {
-        ec_fsm_slave_set_ready(&slave->fsm);
-    }
-
     // check, if slaves have an SDO dictionary to read out.
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
@@ -630,7 +623,19 @@ void ec_fsm_master_action_idle(
                 || slave->current_state == EC_SLAVE_STATE_INIT
                 || slave->current_state == EC_SLAVE_STATE_UNKNOWN
                 || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
-                ) continue;
+                ) {
+            /* Dictionary fetch is not going to happen (not supported,
+             * already done, or the slave is still coming up). Enable
+             * external request processing now so applications do not wait
+             * forever on a slave whose dictionary we will never read. */
+            if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
+                    || (slave->sii.has_general
+                        && !slave->sii.coe_details.enable_sdo_info)
+                    || slave->sdo_dictionary_fetched) {
+                ec_fsm_slave_set_ready(&slave->fsm);
+            }
+            continue;
+        }
 
         EC_SLAVE_DBG(slave, 1, "Fetching SDO dictionary.\n");
 
@@ -1462,6 +1467,9 @@ void ec_fsm_master_state_sdo_dictionary(
 
     // attach pdo names from dictionary
     ec_slave_attach_pdo_names(slave);
+
+    // dictionary is now complete; accept external requests for this slave.
+    ec_fsm_slave_set_ready(&slave->fsm);
 
     ec_fsm_master_restart(fsm);
 }

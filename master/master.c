@@ -1324,6 +1324,12 @@ void ec_master_receive_datagrams(
 void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 {
     if (unlikely(jiffies - master->stats.output_jiffies >= HZ)) {
+        /* UNMATCHED/TIMED OUT datagrams are expected during a bus rescan
+         * because addresses are cleared mid-flight. Silence the syslog
+         * spam unless the user turned on debug output. */
+        if (master->scan_busy && master->debug_level == 0) {
+            return;
+        }
         master->stats.output_jiffies = jiffies;
 
         if (master->stats.timeouts) {

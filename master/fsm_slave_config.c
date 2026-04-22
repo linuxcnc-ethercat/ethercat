@@ -1447,6 +1447,7 @@ void ec_fsm_slave_config_state_dc_sync_check(
     ec_master_t *master = slave->master;
     ec_slave_config_t *config = slave->config;
     uint32_t abs_sync_diff;
+    int negative;
     unsigned long diff_ms;
     ec_sync_signal_t *sync0 = &config->dc_sync[0];
     ec_sync_signal_t *sync1 = &config->dc_sync[1];
@@ -1476,6 +1477,7 @@ void ec_fsm_slave_config_state_dc_sync_check(
     }
 
     abs_sync_diff = EC_READ_U32(datagram->data) & 0x7fffffff;
+    negative = (EC_READ_U32(datagram->data) & 0x80000000) != 0;
     diff_ms = (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
 
     if (abs_sync_diff > EC_DC_MAX_SYNC_DIFF_NS) {
@@ -1484,8 +1486,9 @@ void ec_fsm_slave_config_state_dc_sync_check(
             EC_SLAVE_WARN(slave, "Slave did not sync after %lu ms.\n",
                     diff_ms);
         } else {
-            EC_SLAVE_DBG(slave, 1, "Sync after %4lu ms: %10u ns\n",
-                    diff_ms, abs_sync_diff);
+            EC_SLAVE_DBG(slave, 1, "Sync after %4lu ms: %10d ns\n",
+                    diff_ms,
+                    negative ? -(int32_t)abs_sync_diff : (int32_t)abs_sync_diff);
 
             // check synchrony again
             ec_datagram_fprd(datagram, slave->station_address, 0x092c, 4);
@@ -1493,8 +1496,9 @@ void ec_fsm_slave_config_state_dc_sync_check(
             return;
         }
     } else {
-        EC_SLAVE_DBG(slave, 1, "%u ns difference after %lu ms.\n",
-                abs_sync_diff, diff_ms);
+        EC_SLAVE_DBG(slave, 1, "%d ns difference after %lu ms.\n",
+                negative ? -(int32_t)abs_sync_diff : (int32_t)abs_sync_diff,
+                diff_ms);
     }
 
     // set DC start time (roughly in the future, not in-phase)

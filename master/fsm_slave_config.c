@@ -1376,10 +1376,13 @@ void ec_fsm_slave_config_enter_dc_cycle(
         EC_SLAVE_DBG(slave, 1, "Setting DC cycle times to %u / %u.\n",
                 config->dc_sync[0].cycle_time, config->dc_sync[1].cycle_time);
 
-        // set DC cycle times
+        // set DC cycle times. The SYNC1 register at 0x09A4 is the offset
+        // from SYNC0 to SYNC1, so include the caller-supplied shift.
         ec_datagram_fpwr(datagram, slave->station_address, 0x09A0, 8);
         EC_WRITE_U32(datagram->data, config->dc_sync[0].cycle_time);
-        EC_WRITE_U32(datagram->data + 4, config->dc_sync[1].cycle_time);
+        EC_WRITE_U32(datagram->data + 4,
+                config->dc_sync[1].cycle_time +
+                config->dc_sync[1].shift_time);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_slave_config_state_dc_cycle;
     } else {

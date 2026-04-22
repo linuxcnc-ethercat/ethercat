@@ -105,6 +105,9 @@ class Command
         void setForce(bool);
         bool getForce() const;
 
+        void setReset(bool);
+        bool getReset() const;
+
         void setOutputFile(const string &);
         const string &getOutputFile() const;
 
@@ -150,6 +153,7 @@ class Command
         string dataType;
         bool emergency;
         bool force;
+        bool reset;
         string outputFile;
         string skin;
 
@@ -196,6 +200,13 @@ inline bool Command::getEmergency() const
 inline bool Command::getForce() const
 {
     return force;
+}
+
+/****************************************************************************/
+
+inline bool Command::getReset() const
+{
+    return reset;
 }
 
 /****************************************************************************/

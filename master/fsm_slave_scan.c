@@ -414,7 +414,15 @@ void ec_fsm_slave_scan_state_dc_times(
     }
 
     for (i = 0; i < EC_MAX_PORTS; i++) {
-        slave->ports[i].receive_time = EC_READ_U32(datagram->data + 4 * i);
+        u32 new_time = EC_READ_U32(datagram->data + 4 * i);
+        /* The previous reading happened before the master broadcast timing
+         * datagram. If this port's timestamp is unchanged, the port was not
+         * reached by the broadcast and packets are bypassing it. This can
+         * also be the case on a closed port and is not decisive on its own. */
+        if (new_time == slave->ports[i].receive_time) {
+            slave->ports[i].link.bypassed = 1;
+        }
+        slave->ports[i].receive_time = new_time;
     }
 
     ec_fsm_slave_scan_enter_datalink(fsm);

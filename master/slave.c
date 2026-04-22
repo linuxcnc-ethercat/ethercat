@@ -95,6 +95,7 @@ void ec_slave_init(
         slave->ports[i].link.link_up = 0;
         slave->ports[i].link.loop_closed = 0;
         slave->ports[i].link.signal_detected = 0;
+        slave->ports[i].link.bypassed = 0;
         slave->sii.physical_layer[i] = 0xFF;
 
         slave->ports[i].receive_time = 0U;

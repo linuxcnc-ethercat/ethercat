@@ -72,6 +72,8 @@ void ec_fsm_master_state_sdo_dictionary(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
 void ec_fsm_master_state_soe_request(ec_fsm_master_t *);
 
+void ec_fsm_master_enter_dc_read_old_times(ec_fsm_master_t *);
+void ec_fsm_master_state_dc_read_old_times(ec_fsm_master_t *);
 void ec_fsm_master_enter_clear_addresses(ec_fsm_master_t *);
 void ec_fsm_master_enter_write_system_times(ec_fsm_master_t *);
 
@@ -416,14 +418,7 @@ void ec_fsm_master_state_broadcast(
             master->slave_count = count;
             master->fsm_slave = master->slaves;
 
-            /* start with first device with slaves responding; at least one
-             * has responding slaves, otherwise count would be zero. */
-            fsm->dev_idx = EC_DEVICE_MAIN;
-            while (!fsm->slaves_responding[fsm->dev_idx]) {
-                fsm->dev_idx++;
-            }
-
-            ec_fsm_master_enter_clear_addresses(fsm);
+            ec_fsm_master_enter_dc_read_old_times(fsm);
             return;
         }
     }
@@ -819,6 +814,93 @@ void ec_fsm_master_state_acknowledge(
     }
 
     ec_fsm_master_action_configure(fsm);
+}
+
+/****************************************************************************/
+
+/** Start reading the DC port receive counters before clearing addresses.
+ *
+ * Gives ec_fsm_slave_scan_state_dc_times() a baseline to compare against
+ * so it can flag ports whose timestamp did not change during the
+ * subsequent broadcast as bypassed.
+ */
+void ec_fsm_master_enter_dc_read_old_times(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_master_t *master = fsm->master;
+
+    if (!master->slave_count) {
+        // nothing to read
+        fsm->dev_idx = EC_DEVICE_MAIN;
+        while (!fsm->slaves_responding[fsm->dev_idx]) {
+            fsm->dev_idx++;
+        }
+        ec_fsm_master_enter_clear_addresses(fsm);
+        return;
+    }
+
+    EC_MASTER_DBG(master, 1, "Reading old port receive times...\n");
+
+    fsm->slave = master->slaves;
+    // station addresses not assigned yet, use APRD
+    ec_datagram_aprd(fsm->datagram, fsm->slave->ring_position, 0x0900, 16);
+    ec_datagram_zero(fsm->datagram);
+    fsm->datagram->device_index = fsm->slave->device_index;
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_master_state_dc_read_old_times;
+}
+
+/****************************************************************************/
+
+/** Master state: DC_READ_OLD_TIMES.
+ */
+void ec_fsm_master_state_dc_read_old_times(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_master_t *master = fsm->master;
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = fsm->datagram;
+    int i;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        EC_SLAVE_ERR(slave,
+                "Failed to receive DC receive-times datagram: ");
+        ec_datagram_print_state(datagram);
+        // fall through, keep zeros
+    } else if (datagram->working_counter != 1) {
+        // slave may not support these registers; not fatal
+        EC_SLAVE_DBG(slave, 1,
+                "DC receive-times read returned wc %u.\n",
+                datagram->working_counter);
+    } else {
+        for (i = 0; i < EC_MAX_PORTS; i++) {
+            slave->ports[i].receive_time =
+                EC_READ_U32(datagram->data + 4 * i);
+        }
+    }
+
+    ++fsm->slave;
+    if (fsm->slave < master->slaves + master->slave_count) {
+        ec_datagram_aprd(datagram, fsm->slave->ring_position, 0x0900, 16);
+        ec_datagram_zero(datagram);
+        datagram->device_index = fsm->slave->device_index;
+        fsm->retries = EC_FSM_RETRIES;
+        return;
+    }
+
+    // all slaves read, proceed to clear addresses
+    fsm->dev_idx = EC_DEVICE_MAIN;
+    while (!fsm->slaves_responding[fsm->dev_idx]) {
+        fsm->dev_idx++;
+    }
+    fsm->slave = master->slaves;
+    ec_fsm_master_enter_clear_addresses(fsm);
 }
 
 /****************************************************************************/

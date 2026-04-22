@@ -311,7 +311,8 @@ void CommandSlaves::showSlaves(
             cout << "  " << setw(4)
                 << (si->ports[i].link.link_up ? "up" : "down")
                 << "  " << setw(6)
-                << (si->ports[i].link.loop_closed ? "closed" : "open")
+                << (si->ports[i].link.loop_closed ? "closed" :
+                        (si->ports[i].link.bypassed ? "bypass" : "open"))
                 << "  " << setw(6)
                 << (si->ports[i].link.signal_detected ? "yes" : "no")
                 << "  " << setw(9) << right;
@@ -323,14 +324,17 @@ void CommandSlaves::showSlaves(
             }
 
             if (si->dc_supported) {
+                bool has_dc = !si->ports[i].link.loop_closed &&
+                        !si->ports[i].link.bypassed;
+
                 cout << "  " << setw(11) << right;
-                if (!si->ports[i].link.loop_closed) {
+                if (has_dc) {
                     cout << dec << si->ports[i].receive_time;
                 } else {
                     cout << "-";
                 }
                 cout << "  " << setw(10);
-                if (!si->ports[i].link.loop_closed) {
+                if (has_dc) {
                     cout << si->ports[i].receive_time -
                         si->ports[0].receive_time;
                 } else {

@@ -294,6 +294,10 @@
 
 /** Size of the per-AL-state access rights array in ec_sdo_info_entry_t.
  *
+ * Same value as the kernel-internal enum EC_SDO_ENTRY_ACCESS_COUNT in
+ * master/globals.h; a separate name is used here so that translation
+ * units that pull in both headers do not collide a macro with the enum.
+ *
  * \see ecrt_sdo_get_info_entry().
  */
 #define EC_SDO_ENTRY_ACCESS_COUNTER 3
@@ -649,9 +653,9 @@ typedef struct {
     uint16_t data_type;                           /**< Data type. */
     uint16_t bit_length;                          /**< Width in bits. */
     uint8_t  read_access[EC_SDO_ENTRY_ACCESS_COUNTER];  /**< Read permission
-                                                          per AL state. */
+                                                            per AL state. */
     uint8_t  write_access[EC_SDO_ENTRY_ACCESS_COUNTER]; /**< Write permission
-                                                          per AL state. */
+                                                            per AL state. */
     char     description[EC_MAX_STRING_LENGTH];   /**< Entry description. */
 } ec_sdo_info_entry_t;
 

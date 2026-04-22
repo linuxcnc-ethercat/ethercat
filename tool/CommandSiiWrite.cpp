@@ -117,6 +117,58 @@ void CommandSiiWrite::execute(const StringVector &args)
     }
     data.slave_position = slaves.front().position;
 
+    // Make sure ECAT owns the EEPROM before the master-side SII engine
+    // starts writing. Without this step the transfer fails silently on
+    // slaves whose local PDI holds the EEPROM at boot.
+    {
+        ec_ioctl_slave_reg_t reg_data;
+        uint8_t reg_value = 0;
+        const uint16_t reg_eeprom_config = 0x0500;
+        const uint16_t reg_eeprom_pdi_access = 0x0501;
+
+        reg_data.slave_position = data.slave_position;
+        reg_data.data = &reg_value;
+        reg_data.size = 1;
+
+        if (getForce()) {
+            reg_data.address = reg_eeprom_config;
+            reg_value = 0x02;
+            if (getVerbosity() == Verbose) {
+                cerr << "Force EEPROM control." << endl;
+            }
+            try {
+                m.writeReg(&reg_data);
+            } catch (MasterDeviceException &e) {
+                delete [] data.words;
+                throw e;
+            }
+        } else {
+            reg_data.address = reg_eeprom_pdi_access;
+            try {
+                m.readReg(&reg_data);
+            } catch (MasterDeviceException &e) {
+                delete [] data.words;
+                throw e;
+            }
+            if (reg_value == 0x01) {
+                delete [] data.words;
+                if (getVerbosity() == Verbose) {
+                    cerr << "EEPROM locked by PDI. Use --force to override."
+                        << endl;
+                }
+                return;
+            }
+            reg_data.address = reg_eeprom_config;
+            reg_value = 0x00;
+            try {
+                m.writeReg(&reg_data);
+            } catch (MasterDeviceException &e) {
+                delete [] data.words;
+                throw e;
+            }
+        }
+    }
+
     // send data to master
     data.offset = 0;
     try {

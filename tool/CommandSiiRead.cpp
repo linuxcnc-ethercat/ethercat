@@ -82,7 +82,7 @@ void CommandSiiRead::execute(const StringVector &args)
     }
 
     MasterDevice m(getSingleMasterIndex());
-    m.open(MasterDevice::Read);
+    m.open(MasterDevice::ReadWrite);
     slaves = selectedSlaves(m);
 
     if (slaves.size() != 1) {
@@ -90,6 +90,45 @@ void CommandSiiRead::execute(const StringVector &args)
     }
     slave = &slaves.front();
     data.slave_position = slave->position;
+
+    // Make sure ECAT owns the EEPROM before the master-side SII engine
+    // starts a read. Without this step the access fails silently on
+    // slaves whose local PDI holds the EEPROM at boot (e.g. drives that
+    // re-read calibration data on their own).
+    {
+        ec_ioctl_slave_reg_t reg_data;
+        uint8_t reg_value = 0;
+        const uint16_t reg_eeprom_config = 0x0500;
+        const uint16_t reg_eeprom_pdi_access = 0x0501;
+
+        reg_data.slave_position = data.slave_position;
+        reg_data.data = &reg_value;
+        reg_data.size = 1;
+
+        if (getForce()) {
+            // forcibly reclaim control from the PDI
+            reg_data.address = reg_eeprom_config;
+            reg_value = 0x02;
+            if (getVerbosity() == Verbose) {
+                cerr << "Force EEPROM control." << endl;
+            }
+            m.writeReg(&reg_data);
+        } else {
+            // only proceed if the PDI is not holding the EEPROM
+            reg_data.address = reg_eeprom_pdi_access;
+            m.readReg(&reg_data);
+            if (reg_value == 0x01) {
+                if (getVerbosity() == Verbose) {
+                    cerr << "EEPROM locked by PDI. Use --force to override."
+                        << endl;
+                }
+                return;
+            }
+            reg_data.address = reg_eeprom_config;
+            reg_value = 0x00;
+            m.writeReg(&reg_data);
+        }
+    }
 
     if (!slave->sii_nwords)
         return;

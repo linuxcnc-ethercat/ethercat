@@ -45,7 +45,8 @@ typedef struct ec_fsm_slave_config ec_fsm_slave_config_t;
  */
 struct ec_fsm_slave_config
 {
-    ec_datagram_t *datagram; /**< Datagram used in the state machine. */
+    ec_datagram_t *datagram; /**< Previously sent datagram whose reply is
+                                  still being awaited; NULL when idle. */
     ec_fsm_change_t *fsm_change; /**< State change state machine. */
     ec_fsm_coe_t *fsm_coe; /**< CoE state machine. */
     ec_fsm_soe_t *fsm_soe; /**< SoE state machine. */
@@ -53,7 +54,7 @@ struct ec_fsm_slave_config
     ec_fsm_eoe_t *fsm_eoe; /**< EoE state machine. */
 
     ec_slave_t *slave; /**< Slave the FSM runs on. */
-    void (*state)(ec_fsm_slave_config_t *); /**< State function. */
+    void (*state)(ec_fsm_slave_config_t *, ec_datagram_t *); /**< State function. */
     unsigned int retries; /**< Retries on datagram timeout. */
     ec_sdo_request_t *request; /**< SDO request for SDO configuration. */
     ec_sdo_request_t request_copy; /**< Copied SDO request. */
@@ -66,14 +67,14 @@ struct ec_fsm_slave_config
 
 /****************************************************************************/
 
-void ec_fsm_slave_config_init(ec_fsm_slave_config_t *, ec_datagram_t *,
+void ec_fsm_slave_config_init(ec_fsm_slave_config_t *,
         ec_fsm_change_t *, ec_fsm_coe_t *, ec_fsm_soe_t *, ec_fsm_pdo_t *,
         ec_fsm_eoe_t *);
 void ec_fsm_slave_config_clear(ec_fsm_slave_config_t *);
 
 void ec_fsm_slave_config_start(ec_fsm_slave_config_t *, ec_slave_t *);
 
-int ec_fsm_slave_config_exec(ec_fsm_slave_config_t *);
+int ec_fsm_slave_config_exec(ec_fsm_slave_config_t *, ec_datagram_t *);
 int ec_fsm_slave_config_success(const ec_fsm_slave_config_t *);
 
 /****************************************************************************/

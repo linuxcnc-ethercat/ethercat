@@ -119,4 +119,6 @@ LIBETHERCAT_1.6 {
 LIBETHERCAT_1.6.10 {
 	global:
 		ecrt_master_rescan;
+		ecrt_sdo_info_get;
+		ecrt_sdo_get_info_entry;
 } LIBETHERCAT_1.6;

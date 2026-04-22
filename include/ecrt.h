@@ -292,6 +292,12 @@
  */
 #define EC_COE_EMERGENCY_MSG_SIZE 8
 
+/** Size of the per-AL-state access rights array in ec_sdo_info_entry_t.
+ *
+ * \see ecrt_sdo_get_info_entry().
+ */
+#define EC_SDO_ENTRY_ACCESS_COUNTER 3
+
 /*****************************************************************************
  * Data types
  ****************************************************************************/
@@ -618,6 +624,36 @@ typedef enum {
     EC_AL_STATE_SAFEOP = 4, /**< Safe-operational. */
     EC_AL_STATE_OP = 8, /**< Operational. */
 } ec_al_state_t;
+
+/****************************************************************************/
+
+/** Application-layer SDO information (object).
+ *
+ * Returned by ecrt_sdo_info_get(). Describes a dictionary object.
+ */
+typedef struct {
+    uint16_t index;                       /**< Object index. */
+    uint8_t  maxindex;                    /**< Highest subindex. */
+    uint8_t  object_code;                 /**< CiA 301 object code
+                                               (VAR, ARRAY, RECORD, ...). */
+    char     name[EC_MAX_STRING_LENGTH];  /**< Object name. */
+} ec_sdo_info_t;
+
+/****************************************************************************/
+
+/** Application-layer SDO information (entry).
+ *
+ * Returned by ecrt_sdo_get_info_entry(). Describes a single sub-entry.
+ */
+typedef struct {
+    uint16_t data_type;                           /**< Data type. */
+    uint16_t bit_length;                          /**< Width in bits. */
+    uint8_t  read_access[EC_SDO_ENTRY_ACCESS_COUNTER];  /**< Read permission
+                                                          per AL state. */
+    uint8_t  write_access[EC_SDO_ENTRY_ACCESS_COUNTER]; /**< Write permission
+                                                          per AL state. */
+    char     description[EC_MAX_STRING_LENGTH];   /**< Entry description. */
+} ec_sdo_info_entry_t;
 
 /*****************************************************************************
  * Global functions
@@ -1090,6 +1126,35 @@ EC_PUBLIC_API int ecrt_master_deactivate(
  */
 EC_PUBLIC_API int ecrt_master_rescan(
         ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Read SDO information (object) from the slave dictionary.
+ *
+ * Reads one dictionary object at the given position. The dictionary must
+ * have been fetched by the master (either automatically or via
+ * ecrt_master_rescan()).
+ *
+ * \return 0 on success, otherwise a negative error code.
+ */
+EC_PUBLIC_API int ecrt_sdo_info_get(
+        ec_master_t *master,      /**< EtherCAT master. */
+        uint16_t slave_position,  /**< Slave position in the bus. */
+        uint16_t sdo_position,    /**< Position in the slave's dictionary. */
+        ec_sdo_info_t *sdo        /**< Output structure. */
+        );
+
+/** Read SDO information (entry) from the slave dictionary.
+ *
+ * Reads one sub-entry of a dictionary object.
+ *
+ * \return 0 on success, otherwise a negative error code.
+ */
+EC_PUBLIC_API int ecrt_sdo_get_info_entry(
+        ec_master_t *master,          /**< EtherCAT master. */
+        uint16_t slave_position,      /**< Slave position in the bus. */
+        uint16_t index,               /**< Object index. */
+        uint8_t subindex,             /**< Sub-index. */
+        ec_sdo_info_entry_t *entry    /**< Output structure. */
         );
 
 /** Set interval between calls to ecrt_master_send().

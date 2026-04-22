@@ -174,3 +174,53 @@ int ecrt_sdo_request_write(ec_sdo_request_t *req)
 }
 
 /****************************************************************************/
+
+int ecrt_sdo_info_get(ec_master_t *master, uint16_t slave_position,
+        uint16_t sdo_position, ec_sdo_info_t *sdo)
+{
+    ec_ioctl_slave_sdo_t data;
+    int ret;
+
+    data.slave_position = slave_position;
+    data.sdo_position = sdo_position;
+
+    ret = ioctl(master->fd, EC_IOCTL_SLAVE_SDO, &data);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        return -EC_IOCTL_ERRNO(ret);
+    }
+
+    sdo->index = data.sdo_index;
+    sdo->maxindex = data.max_subindex;
+    sdo->object_code = data.object_code;
+    memcpy(sdo->name, data.name, EC_MAX_STRING_LENGTH);
+
+    return 0;
+}
+
+/****************************************************************************/
+
+int ecrt_sdo_get_info_entry(ec_master_t *master, uint16_t slave_position,
+        uint16_t index, uint8_t subindex, ec_sdo_info_entry_t *entry)
+{
+    ec_ioctl_slave_sdo_entry_t data;
+    int ret;
+
+    data.slave_position = slave_position;
+    data.sdo_spec = (int)index;
+    data.sdo_entry_subindex = subindex;
+
+    ret = ioctl(master->fd, EC_IOCTL_SLAVE_SDO_ENTRY, &data);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        return -EC_IOCTL_ERRNO(ret);
+    }
+
+    entry->data_type = data.data_type;
+    entry->bit_length = data.bit_length;
+    memcpy(entry->read_access, data.read_access, EC_SDO_ENTRY_ACCESS_COUNT);
+    memcpy(entry->write_access, data.write_access, EC_SDO_ENTRY_ACCESS_COUNT);
+    memcpy(entry->description, data.description, EC_MAX_STRING_LENGTH);
+
+    return 0;
+}
+
+/****************************************************************************/

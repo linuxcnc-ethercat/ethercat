@@ -1531,13 +1531,19 @@ void ec_master_exec_slave_fsms(
                 fsm->slave->ring_position);
 #endif
         if (ec_fsm_slave_exec(fsm, datagram)) {
-            // FSM consumed datagram
+            // FSM is still in progress; advance the ring index only if
+            // it actually consumed the slot. When the FSM was still
+            // waiting for a previously sent datagram, it marks the
+            // handed-out slot as invalid so it can be recycled without
+            // being mixed up with the in-flight one.
+            if (datagram->state != EC_DATAGRAM_INVALID) {
 #if DEBUG_INJECT
-            EC_MASTER_DBG(master, 1, "FSM consumed datagram %s\n",
-                    datagram->name);
+                EC_MASTER_DBG(master, 1, "FSM consumed datagram %s\n",
+                        datagram->name);
 #endif
-            master->ext_ring_idx_fsm =
-                (master->ext_ring_idx_fsm + 1) % EC_EXT_RING_SIZE;
+                master->ext_ring_idx_fsm =
+                    (master->ext_ring_idx_fsm + 1) % EC_EXT_RING_SIZE;
+            }
         }
         else {
             // FSM finished
@@ -1557,8 +1563,12 @@ void ec_master_exec_slave_fsms(
             datagram = ec_master_get_external_datagram(master);
 
             if (ec_fsm_slave_exec(&master->fsm_slave->fsm, datagram)) {
-                master->ext_ring_idx_fsm =
-                    (master->ext_ring_idx_fsm + 1) % EC_EXT_RING_SIZE;
+                // same guard: do not advance past a slot the FSM did not
+                // actually consume (mailbox FSM was still awaiting a reply).
+                if (datagram->state != EC_DATAGRAM_INVALID) {
+                    master->ext_ring_idx_fsm =
+                        (master->ext_ring_idx_fsm + 1) % EC_EXT_RING_SIZE;
+                }
                 list_add_tail(&master->fsm_slave->fsm.list,
                         &master->fsm_exec_list);
                 master->fsm_exec_count++;

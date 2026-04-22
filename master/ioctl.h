@@ -47,7 +47,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 37
+#define EC_IOCTL_VERSION_MAGIC 38
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -364,6 +364,7 @@ typedef struct {
     // outputs
     uint16_t sdo_index;
     uint8_t max_subindex;
+    uint8_t object_code;
     int8_t name[EC_IOCTL_STRING_SIZE];
 } ec_ioctl_slave_sdo_t;
 

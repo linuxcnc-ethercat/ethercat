@@ -487,6 +487,10 @@ typedef struct {
                                port.  */
         uint32_t delay_to_next_dc; /**< Delay [ns] to next DC slave. */
     } ports[EC_MAX_PORTS]; /**< Port information. */
+    uint8_t upstream_port; /**< Index of the port that faces the master
+                                (upstream). 0 for a normal daisy-chain; can
+                                be non-zero if the slave is wired unusually
+                                or if port 0 is bypassed. */
     uint8_t al_state; /**< Current state of the slave. */
     uint8_t error_flag; /**< Error flag for that slave. */
     uint8_t ready; /**< Non-zero if the slave is ready for external requests. */

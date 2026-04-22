@@ -47,7 +47,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 40
+#define EC_IOCTL_VERSION_MAGIC 41
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -246,6 +246,7 @@ typedef struct {
         uint16_t next_slave;
         uint32_t delay_to_next_dc;
     } ports[EC_MAX_PORTS];
+    uint8_t upstream_port;
     uint8_t fmmu_bit;
     uint8_t dc_supported;
     ec_slave_dc_range_t dc_range;

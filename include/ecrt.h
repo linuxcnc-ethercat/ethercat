@@ -1132,6 +1132,24 @@ EC_PUBLIC_API int ecrt_master_rescan(
         ec_master_t *master /**< EtherCAT master. */
         );
 
+/** Request an individual slave to transition to an AL state.
+ *
+ * Bypasses the automatic slave state handling of the master FSM and
+ * asks a single slave to move to the given application-layer state
+ * (INIT, PREOP, SAFEOP, OP). The request is forwarded to the master
+ * which schedules the state change; the call itself is non-blocking.
+ *
+ * This is typically used to recover a slave that is stuck in SAFEOP
+ * by forcing it back to INIT.
+ *
+ * \return 0 on success, otherwise a negative error code.
+ */
+EC_PUBLIC_API int ecrt_master_request_slave_state(
+        ec_master_t *master,       /**< EtherCAT master. */
+        uint16_t slave_position,   /**< Slave ring position. */
+        uint8_t state              /**< Target AL state. */
+        );
+
 /** Read SDO information (object) from the slave dictionary.
  *
  * Reads one dictionary object at the given position. The dictionary must

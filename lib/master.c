@@ -646,6 +646,24 @@ int ecrt_master_rescan(ec_master_t *master)
 
 /****************************************************************************/
 
+int ecrt_master_request_slave_state(ec_master_t *master,
+        uint16_t slave_position, uint8_t state)
+{
+    ec_ioctl_slave_state_t data;
+    int ret;
+
+    data.slave_position = slave_position;
+    data.al_state = state;
+
+    ret = ioctl(master->fd, EC_IOCTL_SLAVE_STATE, &data);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        return -EC_IOCTL_ERRNO(ret);
+    }
+    return 0;
+}
+
+/****************************************************************************/
+
 int ecrt_master_set_send_interval(ec_master_t *master,
         size_t send_interval_us)
 {

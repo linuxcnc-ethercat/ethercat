@@ -395,6 +395,9 @@ typedef struct  {
 
                                  Note that each state is coded in a different
                                  bit! */
+    uint16_t position;         /**< Ring position of the slave. 0xFFFF if the
+                                 configuration is not currently attached to a
+                                 slave on the bus. */
 } ec_slave_config_state_t;
 
 /****************************************************************************/

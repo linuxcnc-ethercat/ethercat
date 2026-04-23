@@ -13,13 +13,13 @@ jobs:
       # 步骤1：配置Git身份
       - name: Configure Git User
         run: |
-          git config --global user.name "你的GitHub用户名"
-          git config --global user.email "你的GitHub绑定邮箱"
+          git config --global user.name "mika"
+          git config --global user.email "mika-net@outlook.com"
 
       # 步骤2：克隆GitHub目标仓库（含自定义分支）
       - name: Clone GitHub Repo
         run: |
-          git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/你的用户名/igh-ethercat-master.git igh-repo
+          git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/mika4128/ethercat.git igh-repo
           cd igh-repo
           # 添加GitLab原仓库作为远程源
           git remote add gitlab-upstream https://gitlab.com/etherlab.org/ethercat.git

@@ -43,4 +43,4 @@ dpkg-buildpackage -us -uc -b -d
 echo
 echo "Packages written next to the source tree:"
 ls -1 ../ethercat_*_*.deb ../ethercat-dkms_*_all.deb \
-      ../libethercat1_*_*.deb ../libethercat-dev_*_*.deb 2>/dev/null
+      ../libethercat_*_*.deb ../libethercat-dev_*_*.deb 2>/dev/null

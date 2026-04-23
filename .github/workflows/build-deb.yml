@@ -62,7 +62,7 @@ jobs:
           mkdir -p artifacts/${{ matrix.distro }}
           cp ../ethercat_*_*.deb \
              ../ethercat-dkms_*_all.deb \
-             ../libethercat1_*_*.deb \
+             ../libethercat_*_*.deb \
              ../libethercat-dev_*_*.deb \
              artifacts/${{ matrix.distro }}/
 

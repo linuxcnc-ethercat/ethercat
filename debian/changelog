@@ -1,4 +1,4 @@
-ethercat (1.6.9-1) unstable; urgency=medium
+ethercat (1.6.9) unstable; urgency=medium
 
   * Parallel slave configuration (multi-slave bus reaches OP in seconds).
   * SDO information API and bus rescan in the realtime library.

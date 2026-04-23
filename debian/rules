@@ -11,6 +11,16 @@ DKMS_SRC := $(CURDIR)/debian/ethercat-dkms/usr/src/ethercat-$(DEB_VERSION)
 
 override_dh_auto_configure:
 	./bootstrap
+	# Feature set chosen to match .buildconfig in the reference build
+	# (drivers: generic + igc, no EoE, cycles + hrtimer on, sii-assign
+	# and rt-syslog on, no RTDM/TTY/wildcards/ccat/regalias).
+	# --disable-kernel builds only the userspace parts here; the kernel
+	# modules are rebuilt from the DKMS source at install time with the
+	# same flags (see debian/dkms.conf).
+	# Userspace-only configure: library and tool. Driver selection lives
+	# in debian/dkms.conf (re-runs configure at install time against the
+	# running kernel). Feature flags here must match so the exported
+	# ecrt.h matches what the kernel module exposes.
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -18,8 +28,17 @@ override_dh_auto_configure:
 		--with-systemdsystemunitdir=/lib/systemd/system \
 		--disable-kernel \
 		--disable-8139too \
-		--disable-update-modules \
-		--disable-update-rules
+		--disable-eoe \
+		--enable-cycles \
+		--enable-hrtimer \
+		--disable-rtdm \
+		--disable-debug-if \
+		--disable-debug-ring \
+		--disable-regalias \
+		--disable-tty \
+		--disable-wildcards \
+		--enable-sii-assign \
+		--enable-rt-syslog
 
 override_dh_auto_build:
 	$(MAKE)

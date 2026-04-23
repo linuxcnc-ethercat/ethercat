@@ -1559,7 +1559,13 @@ void ec_master_exec_slave_fsms(
     while (master->fsm_exec_count < EC_EXT_RING_SIZE / 2
             && count < master->slave_count) {
 
-        if (ec_fsm_slave_has_work(&master->fsm_slave->fsm)) {
+        /* Only schedule slaves that have work AND are not already being
+         * driven from the exec list; otherwise a slave whose state stays
+         * "busy" across ticks (state_config, state_sdo_request, ...) would
+         * be list_add()'d a second time, triggering a list_debug BUG at
+         * lib/list_debug.c:35. */
+        if (ec_fsm_slave_has_work(&master->fsm_slave->fsm)
+                && list_empty(&master->fsm_slave->fsm.list)) {
             datagram = ec_master_get_external_datagram(master);
 
             if (ec_fsm_slave_exec(&master->fsm_slave->fsm, datagram)) {

@@ -535,12 +535,6 @@ int ec_fsm_master_action_process_int_request(
             continue;
         }
 
-        /* Same race guard as the dictionary fetch: skip a slave whose
-         * per-slave configuration FSM is still driving its CoE mailbox. */
-        if (ec_fsm_slave_config_running(&slave->fsm.fsm_slave_config)) {
-            continue;
-        }
-
         list_for_each_entry(sdo_req, &slave->config->sdo_requests, list) {
             if (sdo_req->state == EC_INT_REQUEST_QUEUED) {
 
@@ -645,15 +639,6 @@ void ec_fsm_master_action_idle(
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
-        /* With parallel slave configuration the per-slave FSM may
-         * still be talking to the slave's CoE mailbox. Starting the
-         * master-side dictionary fetch at the same time would issue
-         * a second CoE request to the same mailbox, racing with the
-         * configuration traffic. Skip this slave until its config
-         * has finished. */
-        if (ec_fsm_slave_config_running(&slave->fsm.fsm_slave_config)) {
-            continue;
-        }
         if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
                 || (slave->sii.has_general
                     && !slave->sii.coe_details.enable_sdo_info)

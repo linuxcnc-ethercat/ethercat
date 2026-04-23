@@ -36,7 +36,6 @@
 
 void ec_fsm_slave_state_idle(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_ready(ec_fsm_slave_t *, ec_datagram_t *);
-void ec_fsm_slave_state_config(ec_fsm_slave_t *, ec_datagram_t *);
 int ec_fsm_slave_action_process_sdo(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_sdo_request(ec_fsm_slave_t *, ec_datagram_t *);
 int ec_fsm_slave_action_process_reg(ec_fsm_slave_t *, ec_datagram_t *);
@@ -161,12 +160,7 @@ int ec_fsm_slave_exec(
         fsm->state != ec_fsm_slave_state_ready;
 
     if (datagram_used) {
-        /* state_config bookkeeps its own fsm->datagram via
-         * ec_fsm_slave_config_exec(); only record the ring slot here
-         * if the child FSM actually consumed it. */
-        if (datagram->state != EC_DATAGRAM_INVALID) {
-            fsm->datagram = datagram;
-        }
+        fsm->datagram = datagram;
     } else {
         fsm->datagram = NULL;
     }
@@ -199,61 +193,6 @@ int ec_fsm_slave_is_ready(
         )
 {
     return fsm->state == ec_fsm_slave_state_ready;
-}
-
-/****************************************************************************/
-
-/** Returns non-zero when the FSM has something to do (request, config or
- * is actively running a sub-FSM) and therefore wants a ring slot.
- */
-int ec_fsm_slave_has_work(
-        const ec_fsm_slave_t *fsm /**< Slave state machine. */
-        )
-{
-    return fsm->state != ec_fsm_slave_state_idle;
-}
-
-/****************************************************************************/
-
-/** Kick the per-slave configuration FSM into motion.
- *
- * Called by the master-side FSM when it detects a slave whose current
- * state diverges from the requested one. The actual configuration then
- * runs in parallel with other slaves on the external-datagram ring.
- */
-void ec_fsm_slave_start_config(
-        ec_fsm_slave_t *fsm /**< Slave state machine. */
-        )
-{
-    if (fsm->state == ec_fsm_slave_state_config) {
-        return; // already running
-    }
-    ec_fsm_slave_config_start(&fsm->fsm_slave_config, fsm->slave);
-    fsm->state = ec_fsm_slave_state_config;
-    fsm->datagram = NULL;
-}
-
-/****************************************************************************/
-
-/** Slave state: CONFIG.
- *
- * Drives the per-slave configuration FSM until it terminates, then drops
- * back to state_ready so application requests can be serviced.
- */
-void ec_fsm_slave_state_config(
-        ec_fsm_slave_t *fsm, /**< Slave state machine. */
-        ec_datagram_t *datagram /**< Datagram to use. */
-        )
-{
-    if (ec_fsm_slave_config_exec(&fsm->fsm_slave_config, datagram)) {
-        return;
-    }
-
-    if (!ec_fsm_slave_config_success(&fsm->fsm_slave_config)) {
-        fsm->slave->error_flag = 1;
-    }
-    fsm->slave->force_config = 0;
-    fsm->state = ec_fsm_slave_state_ready;
 }
 
 /*****************************************************************************

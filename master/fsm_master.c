@@ -607,29 +607,6 @@ void ec_fsm_master_action_idle(
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
 
-    /* With per-slave parallel configuration the master FSM no longer
-     * owns a single "configuring" phase - config_busy stays raised while
-     * any slave's fsm is in state_config. Clear it here once every
-     * slave has dropped back out of state_config so blocked callers
-     * (e.g. ecrt_master_activate waiting on config_queue) get woken up. */
-    if (master->config_busy) {
-        int still_configuring = 0;
-        ec_slave_t *s;
-        for (s = master->slaves;
-                s < master->slaves + master->slave_count; s++) {
-            if (ec_fsm_slave_config_running(&s->fsm.fsm_slave_config)) {
-                still_configuring = 1;
-                break;
-            }
-        }
-        if (!still_configuring) {
-            down(&master->config_sem);
-            master->config_busy = 0;
-            up(&master->config_sem);
-            wake_up_interruptible(&master->config_queue);
-        }
-    }
-
     // Check for pending internal SDO or SoE requests
     if (ec_fsm_master_action_process_int_request(fsm)) {
         return;
@@ -739,10 +716,7 @@ void ec_fsm_master_action_configure(
     if ((slave->current_state != slave->requested_state
                 || slave->force_config) && !slave->error_flag) {
 
-        // Handle off to the per-slave FSM so configurations run in parallel
-        // on the external-datagram ring instead of being serialised through
-        // the master FSM. We only kick it here; the slave scheduler in
-        // ec_master_exec_slave_fsms() picks it up and drives it to OP.
+        // Start slave configuration
         down(&master->config_sem);
         master->config_busy = 1;
         up(&master->config_sem);
@@ -757,7 +731,12 @@ void ec_fsm_master_action_configure(
                     slave->force_config ? " (forced)" : "");
         }
 
-        ec_fsm_slave_start_config(&slave->fsm);
+        fsm->idle = 0;
+        fsm->state = ec_fsm_master_state_configure_slave;
+        ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
+        fsm->state(fsm); // execute immediately
+        fsm->datagram->device_index = fsm->slave->device_index;
+        return;
     }
 
     // process next slave

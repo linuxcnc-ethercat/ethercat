@@ -279,6 +279,20 @@ void ec_fsm_slave_state_ready(
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
+    ec_slave_t *slave = fsm->slave;
+
+    /* Detect a pending (re-)configuration and drive it from here so that
+     * the master FSM does not have to visit every slave sequentially to
+     * kick the configs - any fsm_slave that reaches state_ready picks up
+     * its own work immediately and runs it in parallel with the others. */
+    if ((slave->current_state != slave->requested_state
+                || slave->force_config) && !slave->error_flag) {
+        ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
+        fsm->state = ec_fsm_slave_state_config;
+        fsm->datagram = NULL;
+        return;
+    }
+
     // Check for pending external SDO requests
     if (ec_fsm_slave_action_process_sdo(fsm, datagram)) {
         return;

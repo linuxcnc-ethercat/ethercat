@@ -2327,17 +2327,34 @@ void ec_master_request_op(
 
     EC_MASTER_DBG(master, 1, "Requesting OP...\n");
 
-    // request OP for all configured slaves
+    /* Fire configuration for every slave in one batch instead of waiting
+     * for the master FSM to visit them one at a time. The master still
+     * drives state_read_state on its own cadence, but it no longer gates
+     * the start of per-slave configuration - all slave FSMs enter
+     * state_config together, so the external-datagram ring is saturated
+     * from the first tick. */
     for (i = 0; i < master->slave_count; i++) {
         slave = master->slaves + i;
         if (slave->config) {
             ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
+            if (!slave->error_flag) {
+                ec_fsm_slave_start_config(&slave->fsm);
+                down(&master->config_sem);
+                master->config_busy = 1;
+                up(&master->config_sem);
+            }
         }
     }
 
     // always set DC reference clock to OP
     if (master->dc_ref_clock) {
         ec_slave_request_state(master->dc_ref_clock, EC_SLAVE_STATE_OP);
+        if (!master->dc_ref_clock->error_flag) {
+            ec_fsm_slave_start_config(&master->dc_ref_clock->fsm);
+            down(&master->config_sem);
+            master->config_busy = 1;
+            up(&master->config_sem);
+        }
     }
 }
 

@@ -1507,15 +1507,21 @@ void ec_master_exec_slave_fsms(
                     "This is a bug!\n", fsm->slave->ring_position);
             list_del_init(&fsm->list);
             master->fsm_exec_count--;
-            return;
+            /* One broken FSM must not stall the rest of the list; without
+             * this other slaves never progress when parallel configuration
+             * puts many FSMs on the exec list. */
+            continue;
         }
 
         if (fsm->datagram->state == EC_DATAGRAM_INIT ||
                 fsm->datagram->state == EC_DATAGRAM_QUEUED ||
                 fsm->datagram->state == EC_DATAGRAM_SENT) {
-            // previous datagram was not sent or received yet.
-            // wait until next thread execution
-            return;
+            /* This FSM is still waiting for its own previous reply.
+             * Skip it this tick but keep servicing the rest of the list,
+             * otherwise a single slow slave serialises the whole bus and
+             * parallel configuration collapses back to 1.6's original
+             * sequential speed. */
+            continue;
         }
 
         datagram = ec_master_get_external_datagram(master);

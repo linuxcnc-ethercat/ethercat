@@ -149,6 +149,20 @@ int ec_fsm_change_exec(
         return 0;
     }
 
+    /* Previously queued datagram still in flight: keep the slot idle
+     * until the reply lands so state functions do not read a junk
+     * EC_DATAGRAM_INIT/QUEUED/SENT status as if it were a valid reply.
+     */
+    if (fsm->datagram &&
+            (fsm->datagram->state == EC_DATAGRAM_INIT ||
+             fsm->datagram->state == EC_DATAGRAM_QUEUED ||
+             fsm->datagram->state == EC_DATAGRAM_SENT)) {
+        if (datagram != fsm->datagram) {
+            datagram->state = EC_DATAGRAM_INVALID;
+        }
+        return 1;
+    }
+
     fsm->state(fsm, datagram);
 
     if (fsm->state == ec_fsm_change_state_end
@@ -499,6 +513,16 @@ void ec_fsm_change_state_ack(
         )
 {
     ec_slave_t *slave = fsm->slave;
+
+    /* ec_fsm_change_ack() drops straight into this state without ever
+     * queueing a datagram first, so on the initial entry there is no
+     * previous reply to inspect. Send the ack-write now and fall back
+     * to the regular reply/timeout handling on subsequent ticks. */
+    if (!fsm->datagram) {
+        ec_fsm_change_prepare_write_current(fsm, datagram);
+        fsm->retries = EC_FSM_RETRIES;
+        return;
+    }
 
     if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
         ec_fsm_change_prepare_write_current(fsm, datagram);

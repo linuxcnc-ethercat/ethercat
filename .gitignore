@@ -55,11 +55,12 @@ debian/.debhelper/
 debian/files
 debian/ethercat/
 debian/ethercat-dkms/
-debian/libethercat1/
+debian/libethercat/
 debian/libethercat-dev/
 debian/tmp/
 debian/*.substvars
 debian/*.log
+debian/*.debhelper
 debian/debhelper-build-stamp
 debian/autoreconf.after
 debian/autoreconf.before

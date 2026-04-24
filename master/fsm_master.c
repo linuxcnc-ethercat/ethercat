@@ -772,7 +772,14 @@ void ec_fsm_master_action_configure(
                     slave->force_config ? " (forced)" : "");
         }
 
-        ec_fsm_slave_start_config(&slave->fsm);
+        if (!slave->force_config
+                && slave->current_state == EC_SLAVE_STATE_SAFEOP
+                && slave->requested_state == EC_SLAVE_STATE_OP
+                && slave->last_al_error == 0x001B) {
+            ec_fsm_slave_start_quick_config(&slave->fsm);
+        } else {
+            ec_fsm_slave_start_config(&slave->fsm);
+        }
     }
 
     // process next slave

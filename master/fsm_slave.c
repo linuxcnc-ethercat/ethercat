@@ -235,6 +235,22 @@ void ec_fsm_slave_start_config(
 
 /****************************************************************************/
 
+/** Kick the per-slave configuration FSM into the shortened SAFEOP -> OP path.
+ */
+void ec_fsm_slave_start_quick_config(
+        ec_fsm_slave_t *fsm /**< Slave state machine. */
+        )
+{
+    if (fsm->state == ec_fsm_slave_state_config) {
+        return; // already running
+    }
+    ec_fsm_slave_config_quick_start(&fsm->fsm_slave_config, fsm->slave);
+    fsm->state = ec_fsm_slave_state_config;
+    fsm->datagram = NULL;
+}
+
+/****************************************************************************/
+
 /** Slave state: CONFIG.
  *
  * Drives the per-slave configuration FSM until it terminates, then drops
@@ -287,7 +303,19 @@ void ec_fsm_slave_state_ready(
      * its own work immediately and runs it in parallel with the others. */
     if ((slave->current_state != slave->requested_state
                 || slave->force_config) && !slave->error_flag) {
-        ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
+        /* If the slave just dropped to SAFEOP after a sync manager
+         * watchdog timeout (AL code 0x001B) and the application still
+         * wants OP, the existing configuration is presumed valid and
+         * we take the SAFEOP -> OP short cut instead of re-running
+         * init / SM / PDO / DC setup. */
+        if (!slave->force_config
+                && slave->current_state == EC_SLAVE_STATE_SAFEOP
+                && slave->requested_state == EC_SLAVE_STATE_OP
+                && slave->last_al_error == 0x001B) {
+            ec_fsm_slave_config_quick_start(&fsm->fsm_slave_config, slave);
+        } else {
+            ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
+        }
         fsm->state = ec_fsm_slave_state_config;
         fsm->datagram = NULL;
         return;

@@ -58,6 +58,7 @@ int ec_fsm_slave_config_running(const ec_fsm_slave_config_t *);
 /****************************************************************************/
 
 void ec_fsm_slave_config_state_start(ec_fsm_slave_config_t *, ec_datagram_t *);
+void ec_fsm_slave_config_state_quick_start(ec_fsm_slave_config_t *, ec_datagram_t *);
 void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *, ec_datagram_t *);
 void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *, ec_datagram_t *);
 void ec_fsm_slave_config_state_clear_sync(ec_fsm_slave_config_t *, ec_datagram_t *);
@@ -167,6 +168,21 @@ void ec_fsm_slave_config_start(
 
 /****************************************************************************/
 
+/** Start a shortened SAFEOP->OP recovery without re-running the full
+ * configuration. Used after a sync manager watchdog drop where the existing
+ * PDO / FMMU / DC configuration is still valid.
+ */
+void ec_fsm_slave_config_quick_start(
+        ec_fsm_slave_config_t *fsm, /**< slave state machine */
+        ec_slave_t *slave /**< slave to configure */
+        )
+{
+    fsm->slave = slave;
+    fsm->state = ec_fsm_slave_config_state_quick_start;
+}
+
+/****************************************************************************/
+
 /**
  * \return false, if state machine has terminated
  */
@@ -243,6 +259,22 @@ void ec_fsm_slave_config_state_start(
 {
     EC_SLAVE_DBG(fsm->slave, 1, "Configuring...\n");
     ec_fsm_slave_config_enter_init(fsm, datagram);
+}
+
+/****************************************************************************/
+
+/** Slave configuration state: QUICK START.
+ *
+ * Skips re-initialisation and re-writing of SM/FMMU/PDO/DC; just reapplies
+ * the SOE settings and drives SAFEOP -> OP.
+ */
+void ec_fsm_slave_config_state_quick_start(
+        ec_fsm_slave_config_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    EC_SLAVE_DBG(fsm->slave, 1, "Configuring (quick)...\n");
+    ec_fsm_slave_config_enter_soe_conf_safeop(fsm, datagram);
 }
 
 /****************************************************************************/

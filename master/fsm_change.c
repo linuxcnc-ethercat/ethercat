@@ -481,8 +481,10 @@ void ec_fsm_change_state_code(
         EC_SLAVE_WARN(fsm->slave, "Reception of AL status code"
                 " datagram failed: ");
         ec_datagram_print_wc_error(fsm->datagram);
+        fsm->slave->last_al_error = 0;
     } else {
         code = EC_READ_U16(fsm->datagram->data);
+        fsm->slave->last_al_error = code;
         for (al_msg = al_status_messages; al_msg->code != 0xffff; al_msg++) {
             if (al_msg->code != code) {
                 continue;

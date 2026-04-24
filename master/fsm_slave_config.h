@@ -73,6 +73,7 @@ void ec_fsm_slave_config_init(ec_fsm_slave_config_t *,
 void ec_fsm_slave_config_clear(ec_fsm_slave_config_t *);
 
 void ec_fsm_slave_config_start(ec_fsm_slave_config_t *, ec_slave_t *);
+void ec_fsm_slave_config_quick_start(ec_fsm_slave_config_t *, ec_slave_t *);
 
 int ec_fsm_slave_config_exec(ec_fsm_slave_config_t *, ec_datagram_t *);
 int ec_fsm_slave_config_running(const ec_fsm_slave_config_t *);

@@ -95,6 +95,7 @@ int ec_fsm_slave_exec(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_set_ready(ec_fsm_slave_t *);
 int ec_fsm_slave_is_ready(const ec_fsm_slave_t *);
 void ec_fsm_slave_start_config(ec_fsm_slave_t *);
+void ec_fsm_slave_start_quick_config(ec_fsm_slave_t *);
 int ec_fsm_slave_has_work(const ec_fsm_slave_t *);
 
 /****************************************************************************/

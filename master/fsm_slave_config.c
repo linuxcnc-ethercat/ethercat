@@ -258,6 +258,12 @@ void ec_fsm_slave_config_state_start(
         )
 {
     EC_SLAVE_DBG(fsm->slave, 1, "Configuring...\n");
+    /* A full reconfigure re-writes SM / FMMU / PDO / DC / watchdog
+     * from scratch, so any 0x001B recorded by an earlier run no
+     * longer reflects reality. Clearing it here prevents state_ready
+     * from picking the SAFEOP->OP short cut on the next retry after
+     * a full configuration has already been performed. */
+    fsm->slave->last_al_error = 0;
     ec_fsm_slave_config_enter_init(fsm, datagram);
 }
 

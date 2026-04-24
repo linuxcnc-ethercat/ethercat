@@ -2328,28 +2328,38 @@ void ec_master_request_op(
     EC_MASTER_DBG(master, 1, "Requesting OP...\n");
 
     /* Fire configuration for every slave in one batch instead of waiting
-     * for the master FSM to visit them one at a time. The master still
-     * drives state_read_state on its own cadence, but it no longer gates
-     * the start of per-slave configuration - all slave FSMs enter
-     * state_config together, so the external-datagram ring is saturated
-     * from the first tick. */
+     * for the master FSM to visit them one at a time. All slave FSMs
+     * enter state_config together, so the external-datagram ring is
+     * saturated from the first tick.
+     *
+     * Slaves still wearing an ACK_ERR bit from a previous OP phase are
+     * the exception: starting their config FSM now would write INIT
+     * while the slave is still sitting in <state>+E, and the first
+     * SAFEOP transition gets rejected with AL code 0x001E. For those,
+     * only set requested_state and let the master FSM's state_read_state
+     * path acknowledge the error first; action_configure will kick
+     * ec_fsm_slave_start_config() a few cycles later against a clean
+     * slave. */
     for (i = 0; i < master->slave_count; i++) {
         slave = master->slaves + i;
-        if (slave->config) {
-            ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
-            if (!slave->error_flag) {
-                ec_fsm_slave_start_config(&slave->fsm);
-                down(&master->config_sem);
-                master->config_busy = 1;
-                up(&master->config_sem);
-            }
+        if (!slave->config) {
+            continue;
         }
+        ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
+        if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+            continue;
+        }
+        ec_fsm_slave_start_config(&slave->fsm);
+        down(&master->config_sem);
+        master->config_busy = 1;
+        up(&master->config_sem);
     }
 
     // always set DC reference clock to OP
     if (master->dc_ref_clock) {
         ec_slave_request_state(master->dc_ref_clock, EC_SLAVE_STATE_OP);
-        if (!master->dc_ref_clock->error_flag) {
+        if (!(master->dc_ref_clock->current_state
+                    & EC_SLAVE_STATE_ACK_ERR)) {
             ec_fsm_slave_start_config(&master->dc_ref_clock->fsm);
             down(&master->config_sem);
             master->config_busy = 1;

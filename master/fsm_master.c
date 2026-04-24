@@ -816,16 +816,22 @@ void ec_fsm_master_state_read_state(
     // A single slave responded
     ec_slave_set_state(slave, EC_READ_U8(datagram->data));
 
-    if (!slave->error_flag) {
-        // Check, if new slave state has to be acknowledged
-        if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-            fsm->idle = 0;
-            fsm->state = ec_fsm_master_state_acknowledge;
-            ec_fsm_change_ack(&fsm->fsm_change, slave);
-            fsm->state(fsm); // execute immediately
-            return;
-        }
+    // Acknowledge a pending AL error regardless of error_flag. A previous
+    // configuration attempt may have set error_flag after the slave
+    // refused a state change; if we never ack the error the slave keeps
+    // the ERR bit and stays stuck in <state>+E for good. Clearing the
+    // flag here gives the following cycles a chance to retry the
+    // transition once the slave has been cleaned up.
+    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+        slave->error_flag = 0;
+        fsm->idle = 0;
+        fsm->state = ec_fsm_master_state_acknowledge;
+        ec_fsm_change_ack(&fsm->fsm_change, slave);
+        fsm->state(fsm); // execute immediately
+        return;
+    }
 
+    if (!slave->error_flag) {
         // No acknowlegde necessary; check for configuration
         ec_fsm_master_action_configure(fsm);
         return;

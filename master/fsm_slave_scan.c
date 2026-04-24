@@ -35,6 +35,17 @@
 
 /****************************************************************************/
 
+/** Time to wait before slave scan retry [ms].
+ *
+ * Used to calculate time based on the jiffies counter.
+ *
+ * \attention Must be more than 10 to avoid problems on kernels that run with
+ * a timer interrupt frequency of 100 Hz.
+ */
+#define SCAN_RETRY_TIME 100
+
+/****************************************************************************/
+
 // prototypes for private methods
 int ec_fsm_slave_scan_running(const ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_enter_sii_size(ec_fsm_slave_scan_t *, ec_datagram_t *);
@@ -69,6 +80,8 @@ void ec_fsm_slave_scan_state_pdos(ec_fsm_slave_scan_t *, ec_datagram_t *);
 
 void ec_fsm_slave_scan_state_end(ec_fsm_slave_scan_t *, ec_datagram_t *);
 void ec_fsm_slave_scan_state_error(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_retry(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_retry_wait(ec_fsm_slave_scan_t *, ec_datagram_t *);
 
 /****************************************************************************/
 
@@ -111,6 +124,7 @@ void ec_fsm_slave_scan_start(
         )
 {
     fsm->slave = slave;
+    fsm->scan_retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_start;
 }
 
@@ -616,6 +630,12 @@ void ec_fsm_slave_scan_state_sii_size(
         return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
+        if (fsm->scan_retries--) {
+            EC_SLAVE_ERR(slave, "Failed to determine SII content size."
+                    " Retrying.\n");
+            fsm->state = ec_fsm_slave_scan_state_retry;
+            return;
+        }
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(slave, "Failed to determine SII content size:"
@@ -692,9 +712,13 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm
     if (ec_fsm_sii_exec(&fsm->fsm_sii, datagram)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
-        fsm->slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(slave, "Failed to fetch SII contents.\n");
+        if (fsm->scan_retries--) {
+            fsm->state = ec_fsm_slave_scan_state_retry;
+        } else {
+            fsm->slave->error_flag = 1;
+            fsm->state = ec_fsm_slave_scan_state_error;
+        }
         return;
     }
 
@@ -730,6 +754,18 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm
         EC_READ_U32(slave->sii_words + 0x000C);
     slave->sii.serial_number =
         EC_READ_U32(slave->sii_words + 0x000E);
+
+    if (slave->sii.vendor_id == 0 || slave->sii.product_code == 0) {
+        EC_SLAVE_ERR(slave, "SII returned a zero vendor id or"
+                " product code.\n");
+        if (fsm->scan_retries--) {
+            fsm->state = ec_fsm_slave_scan_state_retry;
+        } else {
+            fsm->slave->error_flag = 1;
+            fsm->state = ec_fsm_slave_scan_state_error;
+        }
+        return;
+    }
     slave->sii.boot_rx_mailbox_offset =
         EC_READ_U16(slave->sii_words + 0x0014);
     slave->sii.boot_rx_mailbox_size =
@@ -1127,6 +1163,41 @@ void ec_fsm_slave_scan_state_pdos(
 
     // reading PDO configuration finished
     fsm->state = ec_fsm_slave_scan_state_end;
+}
+
+/****************************************************************************/
+
+/** Slave scan state: scan retry.
+ *
+ * Kick the retry timer so the next poll can transition into state_start.
+ */
+void ec_fsm_slave_scan_state_retry(
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    fsm->scan_jiffies_start = jiffies;
+    fsm->state = ec_fsm_slave_scan_state_retry_wait;
+    EC_SLAVE_WARN(fsm->slave, "Retrying slave scan.\n");
+}
+
+/****************************************************************************/
+
+/** Slave scan state: scan retry wait.
+ *
+ * Hold the slave in a wait state until SCAN_RETRY_TIME has elapsed.
+ */
+void ec_fsm_slave_scan_state_retry_wait(
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    unsigned long diff_ms =
+        (jiffies - fsm->scan_jiffies_start) * 1000 / HZ;
+
+    if (diff_ms >= SCAN_RETRY_TIME) {
+        fsm->state = ec_fsm_slave_scan_state_start;
+    }
 }
 
 /*****************************************************************************

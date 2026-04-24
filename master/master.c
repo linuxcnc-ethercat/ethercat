@@ -2327,19 +2327,15 @@ void ec_master_request_op(
 
     EC_MASTER_DBG(master, 1, "Requesting OP...\n");
 
-    /* Fire configuration for every slave in one batch so the external
-     * datagram ring is saturated from the first tick instead of waiting
-     * for the master FSM to visit slaves one at a time.
-     *
-     * ec_fsm_slave_start_config() routes slaves carrying an ACK_ERR bit
-     * through state_ready so the per-slave fsm_change can acknowledge
-     * the error before the first state change is issued; a plain
-     * kick still lands on clean slaves. */
+    /* Request OP for every configured slave and make sure its
+     * per-slave fsm_slave is out of state_idle so the next scheduler
+     * tick runs state_ready -> action_config. The per-slave FSM
+     * handles scan, ACK and the full or quick configuration itself. */
     for (i = 0; i < master->slave_count; i++) {
         slave = master->slaves + i;
         if (slave->config) {
             ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
-            ec_fsm_slave_start_config(&slave->fsm);
+            ec_fsm_slave_set_ready(&slave->fsm);
             down(&master->config_sem);
             master->config_busy = 1;
             up(&master->config_sem);
@@ -2349,7 +2345,7 @@ void ec_master_request_op(
     // always set DC reference clock to OP
     if (master->dc_ref_clock) {
         ec_slave_request_state(master->dc_ref_clock, EC_SLAVE_STATE_OP);
-        ec_fsm_slave_start_config(&master->dc_ref_clock->fsm);
+        ec_fsm_slave_set_ready(&master->dc_ref_clock->fsm);
         down(&master->config_sem);
         master->config_busy = 1;
         up(&master->config_sem);

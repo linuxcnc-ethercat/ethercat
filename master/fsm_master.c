@@ -59,8 +59,8 @@ u64 ec_fsm_master_dc_offset64(ec_fsm_master_t *, u64, u64, unsigned long);
 void ec_fsm_master_state_start(ec_fsm_master_t *);
 void ec_fsm_master_state_broadcast(ec_fsm_master_t *);
 void ec_fsm_master_state_read_state(ec_fsm_master_t *);
-void ec_fsm_master_state_acknowledge(ec_fsm_master_t *);
-void ec_fsm_master_state_configure_slave(ec_fsm_master_t *);
+/* state_acknowledge and state_configure_slave have moved into the
+ * per-slave fsm_slave in sync with fsm_slave_scan / fsm_slave_config. */
 void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
 void ec_fsm_master_state_dc_measure_delays(ec_fsm_master_t *);
 void ec_fsm_master_state_scan_slave(ec_fsm_master_t *);
@@ -110,11 +110,8 @@ void ec_fsm_master_init(
     ec_fsm_eoe_init(&fsm->fsm_eoe);
 #endif
     ec_fsm_change_init(&fsm->fsm_change);
-    ec_fsm_slave_config_init(&fsm->fsm_slave_config,
-            &fsm->fsm_change, &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo,
-            &fsm->fsm_eoe);
-    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan,
-            &fsm->fsm_slave_config, &fsm->fsm_pdo);
+    /* Per-slave fsm_slave now carries its own fsm_slave_scan /
+     * fsm_slave_config, so the master FSM no longer needs them. */
     ec_fsm_sii_init(&fsm->fsm_sii);
 }
 
@@ -134,8 +131,6 @@ void ec_fsm_master_clear(
     ec_fsm_eoe_clear(&fsm->fsm_eoe);
 #endif
     ec_fsm_change_clear(&fsm->fsm_change);
-    ec_fsm_slave_config_clear(&fsm->fsm_slave_config);
-    ec_fsm_slave_scan_clear(&fsm->fsm_slave_scan);
     ec_fsm_sii_clear(&fsm->fsm_sii);
 }
 
@@ -750,37 +745,11 @@ void ec_fsm_master_action_configure(
         return;
     }
 
-    // Does the slave have to be configured?
-    if ((slave->current_state != slave->requested_state
-                || slave->force_config) && !slave->error_flag) {
-
-        // Handle off to the per-slave FSM so configurations run in parallel
-        // on the external-datagram ring instead of being serialised through
-        // the master FSM. We only kick it here; the slave scheduler in
-        // ec_master_exec_slave_fsms() picks it up and drives it to OP.
-        down(&master->config_sem);
-        master->config_busy = 1;
-        up(&master->config_sem);
-
-        if (master->debug_level) {
-            char old_state[EC_STATE_STRING_SIZE],
-                 new_state[EC_STATE_STRING_SIZE];
-            ec_state_string(slave->current_state, old_state, 0);
-            ec_state_string(slave->requested_state, new_state, 0);
-            EC_SLAVE_DBG(slave, 1, "Changing state from %s to %s%s.\n",
-                    old_state, new_state,
-                    slave->force_config ? " (forced)" : "");
-        }
-
-        if (!slave->force_config
-                && slave->current_state == EC_SLAVE_STATE_SAFEOP
-                && slave->requested_state == EC_SLAVE_STATE_OP
-                && slave->last_al_error == 0x001B) {
-            ec_fsm_slave_start_quick_config(&slave->fsm);
-        } else {
-            ec_fsm_slave_start_config(&slave->fsm);
-        }
-    }
+    /* The per-slave fsm_slave now owns scan, ACK and configuration.
+     * All we need to do here is make sure the slave FSM is out of
+     * state_idle so that state_ready's action_config gets a chance
+     * to run on the next tick. */
+    ec_fsm_slave_set_ready(&slave->fsm);
 
     // process next slave
     ec_fsm_master_action_next_slave_state(fsm);
@@ -835,28 +804,6 @@ void ec_fsm_master_state_read_state(
 
     // slave has error flag set; process next one
     ec_fsm_master_action_next_slave_state(fsm);
-}
-
-/****************************************************************************/
-
-/** Master state: ACKNOWLEDGE.
- */
-void ec_fsm_master_state_acknowledge(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-
-    if (ec_fsm_change_exec(&fsm->fsm_change, fsm->datagram)) {
-        return;
-    }
-
-    if (!ec_fsm_change_success(&fsm->fsm_change)) {
-        fsm->slave->error_flag = 1;
-        EC_SLAVE_ERR(slave, "Failed to acknowledge state change.\n");
-    }
-
-    ec_fsm_master_action_configure(fsm);
 }
 
 /****************************************************************************/
@@ -1048,63 +995,45 @@ void ec_fsm_master_state_dc_measure_delays(
 
     EC_MASTER_INFO(master, "Scanning bus.\n");
 
-    // begin scanning of slaves
-    fsm->slave = master->slaves;
+    // Hand scanning over to the per-slave FSMs. Each slave's
+    // fsm_slave picks up its scan_required flag on its next tick
+    // and drives fsm_slave_scan on the external datagram ring, so
+    // all scans now run in parallel.
+    {
+        ec_slave_t *slave;
+        for (slave = master->slaves;
+                slave < master->slaves + master->slave_count;
+                slave++) {
+            ec_fsm_slave_set_ready(&slave->fsm);
+        }
+    }
     master->scan_index = 0;
-    EC_MASTER_DBG(master, 1, "Scanning slave %u on %s link.\n",
-            fsm->slave->ring_position,
-            ec_device_names[fsm->slave->device_index != 0]);
     fsm->state = ec_fsm_master_state_scan_slave;
-    ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
-    ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, fsm->datagram); // execute immediately
-    fsm->datagram->device_index = fsm->slave->device_index;
+    fsm->datagram->state = EC_DATAGRAM_INVALID; // nothing to send
+    fsm->state(fsm); // execute immediately
 }
 
 /****************************************************************************/
 
 /** Master state: SCAN SLAVE.
  *
- * Executes the sub-statemachine for the scanning of a slave.
+ * Waits until every per-slave fsm_slave has cleared its scan_required
+ * flag (or the slave got flagged as broken).
  */
 void ec_fsm_master_state_scan_slave(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     ec_master_t *master = fsm->master;
-#ifdef EC_EOE
-    ec_slave_t *slave = fsm->slave;
-#endif
+    ec_slave_t *slave;
 
-    if (ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, fsm->datagram)) {
-        return;
-    }
-
-#ifdef EC_EOE
-    if (slave->sii.mailbox_protocols & EC_MBOX_EOE) {
-        // create EoE handler for this slave
-        ec_eoe_t *eoe;
-        if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
-            EC_SLAVE_ERR(slave, "Failed to allocate EoE handler memory!\n");
-        } else if (ec_eoe_init(eoe, slave)) {
-            EC_SLAVE_ERR(slave, "Failed to init EoE handler!\n");
-            kfree(eoe);
-        } else {
-            list_add_tail(&eoe->list, &master->eoe_handlers);
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
+        if (slave->scan_required && !slave->error_flag) {
+            // still in progress
+            return;
         }
-    }
-#endif
-
-    // another slave to fetch?
-    fsm->slave++;
-    master->scan_index++;
-    if (fsm->slave < master->slaves + master->slave_count) {
-        EC_MASTER_DBG(master, 1, "Scanning slave %u on %s link.\n",
-                fsm->slave->ring_position,
-                ec_device_names[fsm->slave->device_index != 0]);
-        ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
-        ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, fsm->datagram); // execute immediately
-        fsm->datagram->device_index = fsm->slave->device_index;
-        return;
     }
 
     EC_MASTER_INFO(master, "Bus scanning completed in %lu ms.\n",
@@ -1133,36 +1062,6 @@ void ec_fsm_master_state_scan_slave(
     } else {
         ec_fsm_master_restart(fsm);
     }
-}
-
-/****************************************************************************/
-
-/** Master state: CONFIGURE SLAVE.
- *
- * Starts configuring a slave.
- */
-void ec_fsm_master_state_configure_slave(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    ec_master_t *master = fsm->master;
-
-    if (ec_fsm_slave_config_exec(&fsm->fsm_slave_config, fsm->datagram)) {
-        return;
-    }
-
-    fsm->slave->force_config = 0;
-
-    // configuration finished
-    master->config_busy = 0;
-    wake_up_interruptible(&master->config_queue);
-
-    if (!ec_fsm_slave_config_success(&fsm->fsm_slave_config)) {
-        // TODO: mark slave_config as failed.
-    }
-
-    fsm->idle = 1;
-    ec_fsm_master_action_next_slave_state(fsm);
 }
 
 /****************************************************************************/

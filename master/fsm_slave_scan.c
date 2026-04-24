@@ -89,11 +89,13 @@ void ec_fsm_slave_scan_state_retry_wait(ec_fsm_slave_scan_t *, ec_datagram_t *);
  */
 void ec_fsm_slave_scan_init(
         ec_fsm_slave_scan_t *fsm, /**< Slave scanning state machine. */
+        ec_slave_t *slave, /**< slave to scan */
         ec_fsm_slave_config_t *fsm_slave_config, /**< Slave configuration
                                                   state machine to use. */
         ec_fsm_pdo_t *fsm_pdo /**< PDO configuration machine to use. */
         )
 {
+    fsm->slave = slave;
     fsm->datagram = NULL;
     fsm->fsm_slave_config = fsm_slave_config;
     fsm->fsm_pdo = fsm_pdo;
@@ -119,11 +121,9 @@ void ec_fsm_slave_scan_clear(ec_fsm_slave_scan_t *fsm /**< slave state machine *
  */
 
 void ec_fsm_slave_scan_start(
-        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
-        ec_slave_t *slave /**< slave to configure */
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
         )
 {
-    fsm->slave = slave;
     fsm->scan_retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_start;
 }
@@ -1023,7 +1023,7 @@ void ec_fsm_slave_scan_enter_preop(
 
         fsm->state = ec_fsm_slave_scan_state_preop;
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-        ec_fsm_slave_config_start(fsm->fsm_slave_config, slave);
+        ec_fsm_slave_config_start(fsm->fsm_slave_config);
         ec_fsm_slave_config_exec(fsm->fsm_slave_config, fsm->datagram);
     } else {
         EC_SLAVE_DBG(slave, 1, "Reading mailbox"

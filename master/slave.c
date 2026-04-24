@@ -150,6 +150,7 @@ void ec_slave_init(
 
     INIT_LIST_HEAD(&slave->sdo_dictionary);
 
+    slave->scan_required = 1;
     slave->sdo_dictionary_fetched = 0;
     slave->jiffies_preop = 0;
 

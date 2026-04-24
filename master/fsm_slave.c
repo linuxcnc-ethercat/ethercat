@@ -36,6 +36,8 @@
 
 void ec_fsm_slave_state_idle(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_ready(ec_fsm_slave_t *, ec_datagram_t *);
+int ec_fsm_slave_action_scan(ec_fsm_slave_t *, ec_datagram_t *);
+void ec_fsm_slave_state_scan(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_acknowledge(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_config(ec_fsm_slave_t *, ec_datagram_t *);
 int ec_fsm_slave_action_process_sdo(ec_fsm_slave_t *, ec_datagram_t *);
@@ -81,16 +83,16 @@ void ec_fsm_slave_init(
     ec_fsm_eoe_init(&fsm->fsm_eoe);
     ec_fsm_change_init(&fsm->fsm_change);
     ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
-    ec_fsm_slave_config_init(&fsm->fsm_slave_config, &fsm->fsm_change,
+    ec_fsm_slave_config_init(&fsm->fsm_slave_config, slave, &fsm->fsm_change,
             &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo, &fsm->fsm_eoe);
 #else
     ec_fsm_change_init(&fsm->fsm_change);
     ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
-    ec_fsm_slave_config_init(&fsm->fsm_slave_config, &fsm->fsm_change,
+    ec_fsm_slave_config_init(&fsm->fsm_slave_config, slave, &fsm->fsm_change,
             &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo, NULL);
 #endif
-    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, &fsm->fsm_slave_config,
-            &fsm->fsm_pdo);
+    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, slave,
+            &fsm->fsm_slave_config, &fsm->fsm_pdo);
 }
 
 /****************************************************************************/
@@ -216,6 +218,68 @@ int ec_fsm_slave_has_work(
 
 /****************************************************************************/
 
+/** Check for pending scan.
+ *
+ * \return non-zero, if scan was started.
+ */
+int ec_fsm_slave_action_scan(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (!slave->scan_required) {
+        return 0;
+    }
+
+    EC_SLAVE_DBG(slave, 1, "Scanning slave %u on %s link.\n",
+            slave->ring_position,
+            ec_device_names[slave->device_index != 0]);
+    fsm->state = ec_fsm_slave_state_scan;
+    ec_fsm_slave_scan_start(&fsm->fsm_slave_scan);
+    ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, datagram); // execute immediately
+    return 1;
+}
+
+/****************************************************************************/
+
+/** Slave state: SCAN.
+ */
+void ec_fsm_slave_state_scan(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, datagram)) {
+        return;
+    }
+
+#ifdef EC_EOE
+    if (slave->sii.mailbox_protocols & EC_MBOX_EOE) {
+        ec_master_t *master = slave->master;
+        ec_eoe_t *eoe;
+        if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
+            EC_SLAVE_ERR(slave, "Failed to allocate EoE handler memory!\n");
+        } else if (ec_eoe_init(eoe, slave)) {
+            EC_SLAVE_ERR(slave, "Failed to init EoE handler!\n");
+            kfree(eoe);
+        } else {
+            list_add_tail(&eoe->list, &master->eoe_handlers);
+        }
+    }
+#endif
+
+    // go idle and wait for the master FSM to finish scanning before
+    // starting configuration.
+    slave->scan_required = 0;
+    fsm->state = ec_fsm_slave_state_idle;
+}
+
+/****************************************************************************/
+
 /** Kick the per-slave configuration FSM into motion.
  *
  * Called by the master-side FSM when it detects a slave whose current
@@ -239,7 +303,7 @@ void ec_fsm_slave_start_config(
         fsm->datagram = NULL;
         return;
     }
-    ec_fsm_slave_config_start(&fsm->fsm_slave_config, fsm->slave);
+    ec_fsm_slave_config_start(&fsm->fsm_slave_config);
     fsm->state = ec_fsm_slave_state_config;
     fsm->datagram = NULL;
 }
@@ -260,7 +324,7 @@ void ec_fsm_slave_start_quick_config(
         fsm->datagram = NULL;
         return;
     }
-    ec_fsm_slave_config_quick_start(&fsm->fsm_slave_config, fsm->slave);
+    ec_fsm_slave_config_quick_start(&fsm->fsm_slave_config);
     fsm->state = ec_fsm_slave_state_config;
     fsm->datagram = NULL;
 }
@@ -343,6 +407,12 @@ void ec_fsm_slave_state_ready(
 {
     ec_slave_t *slave = fsm->slave;
 
+    // Check for pending bus scan first so a freshly added slave can
+    // run its scan without the master FSM having to drive it.
+    if (ec_fsm_slave_action_scan(fsm, datagram)) {
+        return;
+    }
+
     /* Detect a pending (re-)configuration and drive it from here so that
      * the master FSM does not have to visit every slave sequentially to
      * kick the configs - any fsm_slave that reaches state_ready picks up
@@ -372,10 +442,9 @@ void ec_fsm_slave_state_ready(
                     && slave->current_state == EC_SLAVE_STATE_SAFEOP
                     && slave->requested_state == EC_SLAVE_STATE_OP
                     && slave->last_al_error == 0x001B) {
-                ec_fsm_slave_config_quick_start(&fsm->fsm_slave_config,
-                        slave);
+                ec_fsm_slave_config_quick_start(&fsm->fsm_slave_config);
             } else {
-                ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
+                ec_fsm_slave_config_start(&fsm->fsm_slave_config);
             }
             fsm->state = ec_fsm_slave_state_config;
             fsm->datagram = NULL;

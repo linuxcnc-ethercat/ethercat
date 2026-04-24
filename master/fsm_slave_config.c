@@ -121,6 +121,7 @@ void ec_fsm_slave_config_reconfigure(ec_fsm_slave_config_t *, ec_datagram_t *);
  */
 void ec_fsm_slave_config_init(
         ec_fsm_slave_config_t *fsm, /**< slave state machine */
+        ec_slave_t *slave, /**< slave to configure */
         ec_fsm_change_t *fsm_change, /**< State change state machine to use. */
         ec_fsm_coe_t *fsm_coe, /**< CoE state machine to use. */
         ec_fsm_soe_t *fsm_soe, /**< SoE state machine to use. */
@@ -131,6 +132,7 @@ void ec_fsm_slave_config_init(
     ec_sdo_request_init(&fsm->request_copy);
     ec_soe_request_init(&fsm->soe_request_copy);
 
+    fsm->slave = slave;
     fsm->datagram = NULL;
     fsm->fsm_change = fsm_change;
     fsm->fsm_coe = fsm_coe;
@@ -158,11 +160,9 @@ void ec_fsm_slave_config_clear(
 /** Start slave configuration state machine.
  */
 void ec_fsm_slave_config_start(
-        ec_fsm_slave_config_t *fsm, /**< slave state machine */
-        ec_slave_t *slave /**< slave to configure */
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    fsm->slave = slave;
     fsm->state = ec_fsm_slave_config_state_start;
 }
 
@@ -173,11 +173,9 @@ void ec_fsm_slave_config_start(
  * PDO / FMMU / DC configuration is still valid.
  */
 void ec_fsm_slave_config_quick_start(
-        ec_fsm_slave_config_t *fsm, /**< slave state machine */
-        ec_slave_t *slave /**< slave to configure */
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    fsm->slave = slave;
     fsm->state = ec_fsm_slave_config_state_quick_start;
 }
 

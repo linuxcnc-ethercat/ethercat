@@ -991,6 +991,14 @@ void ec_master_queue_datagram(
         }
     }
 
+    /* Skip datagrams marked invalid by a state function that had
+     * nothing to send this tick (e.g. the master's state_scan_slave
+     * wait loop). Queuing one would push a half-initialised frame
+     * onto the wire. */
+    if (datagram->state == EC_DATAGRAM_INVALID) {
+        return;
+    }
+
     list_add_tail(&datagram->queue, &master->datagram_queue);
     datagram->state = EC_DATAGRAM_QUEUED;
 }

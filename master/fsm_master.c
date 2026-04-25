@@ -419,6 +419,46 @@ void ec_fsm_master_state_broadcast(
     }
 
     if (master->slave_count) {
+        ec_slave_t *s;
+        int scan_pending = 0;
+
+        /* Sanity check: if any slave still has scan_required=1 we must
+         * finish scanning before we touch DC / PDO / FMMU - the old
+         * code path happily jumped to write_system_times on
+         * config_changed, which left unscanned slaves with
+         * base_fmmu_count=0 and every subsequent configuration aborted
+         * in enter_fmmu with "Slave has less FMMUs (0)". */
+        for (s = master->slaves;
+                s < master->slaves + master->slave_count;
+                s++) {
+            if (s->scan_required && !s->error_flag) {
+                scan_pending = 1;
+                break;
+            }
+        }
+
+        if (scan_pending) {
+            EC_MASTER_DBG(master, 1,
+                    "Configuration change deferred until scan completes.\n");
+            /* Kick every slave into state_ready so its action_scan can
+             * finish the outstanding scan; then wait in state_scan_slave
+             * until all scan_required flags are clear before rejoining
+             * the configure path. */
+            down(&master->scan_sem);
+            master->scan_busy = 1;
+            up(&master->scan_sem);
+            fsm->scan_jiffies = jiffies;
+            for (s = master->slaves;
+                    s < master->slaves + master->slave_count;
+                    s++) {
+                ec_fsm_slave_set_ready(&s->fsm);
+            }
+            master->scan_index = 0;
+            fsm->state = ec_fsm_master_state_scan_slave;
+            fsm->datagram->state = EC_DATAGRAM_INVALID;
+            fsm->state(fsm); // execute immediately
+            return;
+        }
 
         // application applied configurations
         if (master->config_changed) {

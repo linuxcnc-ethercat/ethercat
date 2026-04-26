@@ -1515,21 +1515,21 @@ void ec_master_exec_slave_fsms(
                     "This is a bug!\n", fsm->slave->ring_position);
             list_del_init(&fsm->list);
             master->fsm_exec_count--;
-            /* One broken FSM must not stall the rest of the list; without
-             * this other slaves never progress when parallel configuration
-             * puts many FSMs on the exec list. */
-            continue;
+            return;
         }
 
         if (fsm->datagram->state == EC_DATAGRAM_INIT ||
                 fsm->datagram->state == EC_DATAGRAM_QUEUED ||
                 fsm->datagram->state == EC_DATAGRAM_SENT) {
-            /* This FSM is still waiting for its own previous reply.
-             * Skip it this tick but keep servicing the rest of the list,
-             * otherwise a single slow slave serialises the whole bus and
-             * parallel configuration collapses back to 1.6's original
-             * sequential speed. */
-            continue;
+            /* Previous datagram was not sent or received yet. Wait for
+             * the next thread execution before touching any further
+             * FSM in the list. Skipping this slave and re-using the
+             * ring slot for the next FSM in the list races with the
+             * still-in-flight reply: the ring wraps, the old reply
+             * lands in a slot owned by a different slave, and
+             * scan/config reads garbage data (e.g. base_fmmu_count =
+             * 79). Match the Synapticon scheduler and just return. */
+            return;
         }
 
         datagram = ec_master_get_external_datagram(master);

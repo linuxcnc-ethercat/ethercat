@@ -333,11 +333,11 @@ void ec_fsm_slave_scan_state_base(
         return;
     }
 
-    slave->base_type       = EC_READ_U8 (datagram->data);
-    slave->base_revision   = EC_READ_U8 (datagram->data + 1);
+    slave->base_type       = EC_READ_U8 (fsm->datagram->data);
+    slave->base_revision   = EC_READ_U8 (fsm->datagram->data + 1);
     slave->base_build      = EC_READ_U16(fsm->datagram->data + 2);
 
-    slave->base_fmmu_count = EC_READ_U8 (datagram->data + 4);
+    slave->base_fmmu_count = EC_READ_U8 (fsm->datagram->data + 4);
     if (slave->base_fmmu_count > EC_MAX_FMMUS) {
         EC_SLAVE_WARN(slave, "Slave has more FMMUs (%u) than the master can"
                 " handle (%u).\n", slave->base_fmmu_count, EC_MAX_FMMUS);

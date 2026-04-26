@@ -604,7 +604,8 @@ int ec_master_thread_start(
         const char *name /**< Thread name. */
         )
 {
-    EC_MASTER_INFO(master, "Starting %s thread.\n", name);
+    EC_MASTER_INFO(master, "Starting %s thread (build-marker: typo-fix-v1).\n",
+            name);
     master->thread = kthread_create(thread_func, master, name);
     if (IS_ERR(master->thread)) {
         int err = (int) PTR_ERR(master->thread);

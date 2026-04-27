@@ -1,55 +1,69 @@
-name: Sync All Branches from GitLab (Keep Custom Branches)
+name: Sync upstream branches from GitLab
 
-# 触发条件：每小时定时同步 + 手动触发
+# Mirrors every branch from gitlab.com/etherlab.org/ethercat into this
+# repository, except for the locally maintained branches listed in
+# CUSTOM_BRANCHES. Tags are mirrored too. Custom branches and any
+# branch that exists only on GitHub are left untouched.
+
 on:
   schedule:
-    - cron: '0 0 * * 0'  # 每周日 0 点整执行
-  workflow_dispatch:     # 支持手动触发
+    - cron: '0 0 * * 0'   # weekly, Sunday 00:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write          # GITHUB_TOKEN must be allowed to push
 
 jobs:
-  sync-all-official-branches:
+  sync:
     runs-on: ubuntu-latest
+    env:
+      UPSTREAM_URL: https://gitlab.com/etherlab.org/ethercat.git
+      # Branches that live only here and must never be overwritten.
+      CUSTOM_BRANCHES: 'dev-1.6 stable-1.6'
     steps:
-      # 步骤1：配置Git身份
-      - name: Configure Git User
+      - name: Configure git identity
         run: |
           git config --global user.name "mika"
           git config --global user.email "mika-net@outlook.com"
 
-      # 步骤2：克隆GitHub目标仓库（含自定义分支）
-      - name: Clone GitHub Repo
+      - name: Clone target repository
         run: |
-          git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/mika4128/ethercat.git igh-repo
-          cd igh-repo
-          # 添加GitLab原仓库作为远程源
-          git remote add gitlab-upstream https://gitlab.com/etherlab.org/ethercat.git
-          # 拉取GitLab所有分支/标签的最新数据（清理失效的远程追踪分支，但不删本地/自定义分支）
-          git fetch gitlab-upstream --prune
+          git clone --no-checkout \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            repo
+          cd repo
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch upstream --prune
+          git fetch upstream --prune --tags
 
-      # 步骤3：自动识别并同步GitLab的所有分支
-      - name: Sync All GitLab Branches to GitHub
+      - name: Mirror upstream branches (skipping custom branches)
+        working-directory: repo
         run: |
-          cd igh-repo
-          # 提取GitLab原仓库的所有分支名（过滤掉HEAD，仅保留实际分支）
-          gitlab_branches=$(git branch -r | grep 'gitlab-upstream/' | grep -v 'HEAD' | sed 's/gitlab-upstream\///g')
-          
-          # 遍历每个原仓库分支，逐个同步
-          for branch in $gitlab_branches; do
-            echo "=== 开始同步分支: $branch ==="
-            # 切换到该分支（本地不存在则创建）
-            git checkout -B "$branch"
-            # 强制拉取GitLab该分支的最新代码（覆盖本地冲突）
-            git pull gitlab-upstream "$branch" --force
-            # 推送到GitHub（强制覆盖，保证与原仓库一致）
-            git push origin "$branch" --force
-            echo "=== 分支 $branch 同步完成 ==="
-          done
+          set -euo pipefail
+          # Space-padded skip list so substring matches don't bite.
+          skip=" $CUSTOM_BRANCHES "
+          # ls-remote queries the upstream URL directly; no reliance on
+          # what was fetched into refs/remotes/.
+          git ls-remote --heads upstream \
+            | awk '{print $2}' \
+            | sed 's|^refs/heads/||' \
+            | while read -r branch; do
+                if printf '%s' "$skip" | grep -q " $branch "; then
+                  echo "skip custom branch: $branch"
+                  continue
+                fi
+                echo "mirror branch: $branch"
+                # Push the upstream tip straight onto origin's branch.
+                # No local checkout, no merge, no chance of "unrelated
+                # histories" failing the run.
+                git push --force origin \
+                  "refs/remotes/upstream/$branch:refs/heads/$branch"
+              done
 
-      # 步骤4：同步所有原仓库标签
-      - name: Sync All GitLab Tags
+      - name: Mirror upstream tags
+        working-directory: repo
         run: |
-          cd igh-repo
-          # 拉取GitLab所有标签
-          git fetch gitlab-upstream --tags
-          # 推送所有标签到GitHub（不删除现有标签）
-          git push origin --tags
+          set -euo pipefail
+          # Push every tag that came in with the upstream fetch. Existing
+          # tags on origin keep their value unless upstream has moved them.
+          git push --force origin 'refs/tags/*:refs/tags/*'

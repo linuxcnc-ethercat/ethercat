@@ -1,4 +1,4 @@
-ethercat (1.6.9+parallelop1) unstable; urgency=medium
+ethercat (1.6.9+parallelop1~pre1) unstable; urgency=medium
 
   * Rename binary package ethercat -> ethercat-master to match the
     OpenSUSE EtherLab naming convention. Provides/Replaces/Conflicts

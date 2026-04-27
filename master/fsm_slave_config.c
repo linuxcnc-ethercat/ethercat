@@ -313,8 +313,13 @@ void ec_fsm_slave_config_state_init(
     if (ec_fsm_change_exec(fsm->fsm_change, datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        if (!fsm->fsm_change->spontaneous_change)
-            slave->error_flag = 1;
+        if (!fsm->fsm_change->spontaneous_change) {
+            /* Slave parked at <state>+ERR is recoverable: state_ready
+             * will run the ack and the next tick re-enters config.
+             * Setting error_flag here would lock it out of that path. */
+            if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR))
+                slave->error_flag = 1;
+        }
         fsm->state = ec_fsm_slave_config_state_error;
         return;
     }
@@ -778,8 +783,17 @@ void ec_fsm_slave_config_state_boot_preop(
     }
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        if (!fsm->fsm_change->spontaneous_change)
-            slave->error_flag = 1;
+        if (!fsm->fsm_change->spontaneous_change) {
+            /* Slave parked at <state>+ERR is recoverable: state_ready
+             * will run the ack and the next tick re-enters config.
+             * Setting error_flag here would lock it out of that path.
+             * Cap consecutive retries to avoid spinning forever on a
+             * persistently broken slave. */
+            if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)
+                    || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
+                slave->error_flag = 1;
+            }
+        }
         fsm->state = ec_fsm_slave_config_state_error;
         return;
     }
@@ -1767,8 +1781,17 @@ void ec_fsm_slave_config_state_safeop(
     if (ec_fsm_change_exec(fsm->fsm_change, datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        if (!fsm->fsm_change->spontaneous_change)
-            fsm->slave->error_flag = 1;
+        if (!fsm->fsm_change->spontaneous_change) {
+            /* Slave parked at <state>+ERR is recoverable: state_ready
+             * will run the ack and the next tick re-enters config.
+             * Setting error_flag here would lock it out of that path.
+             * Cap consecutive retries to avoid spinning forever on a
+             * persistently broken slave. */
+            if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)
+                    || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
+                slave->error_flag = 1;
+            }
+        }
         fsm->state = ec_fsm_slave_config_state_error;
         return;
     }
@@ -1778,6 +1801,7 @@ void ec_fsm_slave_config_state_safeop(
     EC_SLAVE_DBG(slave, 1, "Now in SAFEOP.\n");
 
     if (fsm->slave->current_state == fsm->slave->requested_state) {
+        slave->config_retries = 0;
         fsm->state = ec_fsm_slave_config_state_end; // successful
         EC_SLAVE_DBG(slave, 1, "Finished configuration.\n");
         return;
@@ -1895,8 +1919,17 @@ void ec_fsm_slave_config_state_op(
     if (ec_fsm_change_exec(fsm->fsm_change, datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        if (!fsm->fsm_change->spontaneous_change)
-            slave->error_flag = 1;
+        if (!fsm->fsm_change->spontaneous_change) {
+            /* Slave parked at <state>+ERR is recoverable: state_ready
+             * will run the ack and the next tick re-enters config.
+             * Setting error_flag here would lock it out of that path.
+             * Cap consecutive retries to avoid spinning forever on a
+             * persistently broken slave. */
+            if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)
+                    || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
+                slave->error_flag = 1;
+            }
+        }
         fsm->state = ec_fsm_slave_config_state_error;
         return;
     }
@@ -1905,6 +1938,7 @@ void ec_fsm_slave_config_state_op(
 
     EC_SLAVE_DBG(slave, 1, "Now in OP. Finished configuration.\n");
 
+    slave->config_retries = 0;
     fsm->state = ec_fsm_slave_config_state_end; // successful
 }
 

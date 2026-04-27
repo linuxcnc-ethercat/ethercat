@@ -46,6 +46,9 @@
 /** Number of state machine retries on datagram timeout. */
 #define EC_FSM_RETRIES 3
 
+/** Cap on recoverable AL state rejections per slave configuration attempt. */
+#define EC_FSM_CONFIG_RETRIES 5
+
 /** Seconds to wait before fetching SDO dictionary
     after slave entered PREOP state. */
 #define EC_WAIT_SDO_DICT 3

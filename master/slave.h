@@ -186,6 +186,7 @@ struct ec_slave
     ec_slave_state_t current_state; /**< Current application state. */
     uint16_t last_al_error; /**< Last AL state error code. */
     unsigned int error_flag; /**< Stop processing after an error. */
+    unsigned int config_retries; /**< Consecutive recoverable AL rejections. */
     unsigned int force_config; /**< Force (re-)configuration. */
     uint16_t configured_rx_mailbox_offset; /**< Configured receive mailbox
                                              offset. */

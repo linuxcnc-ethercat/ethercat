@@ -2,10 +2,9 @@ name: Build .deb packages
 
 on:
   push:
-    branches: [dev-1.6, stable-1.6]
+    branches: ['**']
     tags: ['v*']
   pull_request:
-    branches: [dev-1.6, stable-1.6]
   workflow_dispatch:
 
 jobs:
@@ -106,3 +105,4 @@ jobs:
         with:
           files: artifacts/**/*.deb
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, 'pre') || contains(github.ref_name, 'rc') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}

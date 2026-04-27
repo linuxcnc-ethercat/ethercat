@@ -1,3 +1,11 @@
+ethercat (1.6.9+parallelop1) unstable; urgency=medium
+
+  * Rename binary package ethercat -> ethercat-master to match the
+    OpenSUSE EtherLab naming convention. Provides/Replaces/Conflicts
+    on ethercat for smooth upgrade.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Mon, 27 Apr 2026 00:00:00 +0000
+
 ethercat (1.6.9) unstable; urgency=medium
 
   * Parallel slave configuration (multi-slave bus reaches OP in seconds).

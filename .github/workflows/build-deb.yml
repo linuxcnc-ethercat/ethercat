@@ -64,19 +64,15 @@ jobs:
           out="artifacts/${{ matrix.distro }}"
           mkdir -p "$out"
           # Tag each .deb with the distro so the release upload step
-          # does not see four identically named files (ubuntu-22.04 +
-          # ubuntu-24.04 + debian-12 + debian-13 all produce e.g.
-          # ethercat_1.6.9_amd64.deb). softprops/action-gh-release
-          # races on same-name uploads (HTTP 404 on the delete-then-
-          # upload sequence).
-          for src in ../ethercat_*_*.deb \
+          # does not see four identically named files across the matrix.
+          # softprops/action-gh-release races on same-name uploads
+          # (HTTP 404 on the delete-then-upload sequence).
+          for src in ../ethercat-master_*_*.deb \
                      ../ethercat-dkms_*_all.deb \
                      ../libethercat_*_*.deb \
                      ../libethercat-dev_*_*.deb; do
               [ -f "$src" ] || continue
               fname="$(basename "$src")"
-              # Strip the trailing _<arch>.deb (or _all.deb) and re-append
-              # with the distro tag wedged in.
               base="${fname%_*.deb}"
               suffix="${fname##*_}"
               cp "$src" "$out/${base}_${{ matrix.distro }}_${suffix}"

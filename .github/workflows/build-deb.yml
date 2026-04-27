@@ -60,7 +60,7 @@ jobs:
       - name: Collect artefacts
         run: |
           mkdir -p artifacts/${{ matrix.distro }}
-          cp ../ethercat_*_*.deb \
+          cp ../ethercat-master_*_*.deb \
              ../ethercat-dkms_*_all.deb \
              ../libethercat_*_*.deb \
              ../libethercat-dev_*_*.deb \

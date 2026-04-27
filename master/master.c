@@ -604,7 +604,7 @@ int ec_master_thread_start(
         const char *name /**< Thread name. */
         )
 {
-    EC_MASTER_INFO(master, "Starting %s thread (build-marker: typo-fix-v1).\n",
+    EC_MASTER_INFO(master, "Starting %s thread (build-marker: synapticon-dc-v2).\n",
             name);
     master->thread = kthread_create(thread_func, master, name);
     if (IS_ERR(master->thread)) {
@@ -1167,6 +1167,7 @@ break_send:
             datagram->cycles_sent = cycles_sent;
 #endif
             datagram->jiffies_sent = jiffies_sent;
+            datagram->app_time_sent = master->app_time;
             list_del_init(&datagram->sent); // empty list of sent datagrams
         }
 

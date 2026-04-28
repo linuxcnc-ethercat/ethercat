@@ -313,18 +313,15 @@ void ec_fsm_slave_config_state_init(
     if (ec_fsm_change_exec(fsm->fsm_change, datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        if (!fsm->fsm_change->spontaneous_change) {
-            /* If the slave reported an AL error while refusing the
-             * state change, fsm_change has already read the AL code
-             * (last_al_error) and ack'd the ERR bit before returning,
-             * so the error bit is no longer in current_state. Use
-             * last_al_error to recognise that as a recoverable
-             * rejection: leave error_flag clear so state_ready can
-             * retry. Cap consecutive retries via config_retries. */
-            if (slave->last_al_error == 0
-                    || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
-                slave->error_flag = 1;
-            }
+        /* fsm_change->state_check sets slave->error_flag=1 before
+         * starting the AL-code read / ack sequence. If the rejection
+         * was recoverable (slave answered with an AL code, retries
+         * not exhausted) clear the flag so state_ready picks the
+         * slave up on the next tick and retries the configuration. */
+        if (!fsm->fsm_change->spontaneous_change
+                && slave->last_al_error != 0
+                && ++slave->config_retries <= EC_FSM_CONFIG_RETRIES) {
+            slave->error_flag = 0;
         }
         fsm->state = ec_fsm_slave_config_state_error;
         return;
@@ -797,17 +794,12 @@ void ec_fsm_slave_config_state_boot_preop(
     }
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        if (!fsm->fsm_change->spontaneous_change) {
-            /* Slave reported an AL error refusing the state change:
-             * fsm_change captured the code into last_al_error and
-             * ack'd the ERR bit before returning, so the bit is no
-             * longer in current_state. Use last_al_error to keep
-             * error_flag clear so state_ready can retry; cap the
-             * loop with config_retries. */
-            if (slave->last_al_error == 0
-                    || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
-                slave->error_flag = 1;
-            }
+        /* fsm_change set error_flag=1 already; clear it for a
+         * recoverable AL rejection so state_ready retries. */
+        if (!fsm->fsm_change->spontaneous_change
+                && slave->last_al_error != 0
+                && ++slave->config_retries <= EC_FSM_CONFIG_RETRIES) {
+            slave->error_flag = 0;
         }
         fsm->state = ec_fsm_slave_config_state_error;
         return;
@@ -1812,17 +1804,12 @@ void ec_fsm_slave_config_state_safeop(
     if (ec_fsm_change_exec(fsm->fsm_change, datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        if (!fsm->fsm_change->spontaneous_change) {
-            /* Slave reported an AL error refusing the state change:
-             * fsm_change captured the code into last_al_error and
-             * ack'd the ERR bit before returning, so the bit is no
-             * longer in current_state. Use last_al_error to keep
-             * error_flag clear so state_ready can retry; cap the
-             * loop with config_retries. */
-            if (slave->last_al_error == 0
-                    || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
-                slave->error_flag = 1;
-            }
+        /* fsm_change set error_flag=1 already; clear it for a
+         * recoverable AL rejection so state_ready retries. */
+        if (!fsm->fsm_change->spontaneous_change
+                && slave->last_al_error != 0
+                && ++slave->config_retries <= EC_FSM_CONFIG_RETRIES) {
+            slave->error_flag = 0;
         }
         fsm->state = ec_fsm_slave_config_state_error;
         return;
@@ -1951,17 +1938,12 @@ void ec_fsm_slave_config_state_op(
     if (ec_fsm_change_exec(fsm->fsm_change, datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        if (!fsm->fsm_change->spontaneous_change) {
-            /* Slave reported an AL error refusing the state change:
-             * fsm_change captured the code into last_al_error and
-             * ack'd the ERR bit before returning, so the bit is no
-             * longer in current_state. Use last_al_error to keep
-             * error_flag clear so state_ready can retry; cap the
-             * loop with config_retries. */
-            if (slave->last_al_error == 0
-                    || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
-                slave->error_flag = 1;
-            }
+        /* fsm_change set error_flag=1 already; clear it for a
+         * recoverable AL rejection so state_ready retries. */
+        if (!fsm->fsm_change->spontaneous_change
+                && slave->last_al_error != 0
+                && ++slave->config_retries <= EC_FSM_CONFIG_RETRIES) {
+            slave->error_flag = 0;
         }
         fsm->state = ec_fsm_slave_config_state_error;
         return;

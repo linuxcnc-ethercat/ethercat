@@ -448,7 +448,15 @@ void ec_fsm_slave_state_ready(
                 ec_fsm_slave_config_start(&fsm->fsm_slave_config);
             }
             fsm->state = ec_fsm_slave_state_config;
-            fsm->datagram = NULL;
+            /* Execute state_config immediately on the slot the scheduler
+             * just handed in so the first config datagram is written
+             * here. Otherwise the slot is recorded as "consumed" by
+             * ec_fsm_slave_exec but holds no operation; it gets queued
+             * empty and the FSM blocks the exec list until that ghost
+             * frame round-trips, which can starve the slave on retry
+             * after an AL ERR ack (slave 17/18/19 stuck in PREOP).
+             * Matches Etherlab's ec_fsm_slave_action_config(). */
+            fsm->state(fsm, datagram);
             return;
         }
     }

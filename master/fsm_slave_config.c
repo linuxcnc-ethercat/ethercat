@@ -314,11 +314,17 @@ void ec_fsm_slave_config_state_init(
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
         if (!fsm->fsm_change->spontaneous_change) {
-            /* Slave parked at <state>+ERR is recoverable: state_ready
-             * will run the ack and the next tick re-enters config.
-             * Setting error_flag here would lock it out of that path. */
-            if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR))
+            /* If the slave reported an AL error while refusing the
+             * state change, fsm_change has already read the AL code
+             * (last_al_error) and ack'd the ERR bit before returning,
+             * so the error bit is no longer in current_state. Use
+             * last_al_error to recognise that as a recoverable
+             * rejection: leave error_flag clear so state_ready can
+             * retry. Cap consecutive retries via config_retries. */
+            if (slave->last_al_error == 0
+                    || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
                 slave->error_flag = 1;
+            }
         }
         fsm->state = ec_fsm_slave_config_state_error;
         return;
@@ -784,12 +790,13 @@ void ec_fsm_slave_config_state_boot_preop(
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
         if (!fsm->fsm_change->spontaneous_change) {
-            /* Slave parked at <state>+ERR is recoverable: state_ready
-             * will run the ack and the next tick re-enters config.
-             * Setting error_flag here would lock it out of that path.
-             * Cap consecutive retries to avoid spinning forever on a
-             * persistently broken slave. */
-            if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)
+            /* Slave reported an AL error refusing the state change:
+             * fsm_change captured the code into last_al_error and
+             * ack'd the ERR bit before returning, so the bit is no
+             * longer in current_state. Use last_al_error to keep
+             * error_flag clear so state_ready can retry; cap the
+             * loop with config_retries. */
+            if (slave->last_al_error == 0
                     || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
                 slave->error_flag = 1;
             }
@@ -1782,12 +1789,13 @@ void ec_fsm_slave_config_state_safeop(
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
         if (!fsm->fsm_change->spontaneous_change) {
-            /* Slave parked at <state>+ERR is recoverable: state_ready
-             * will run the ack and the next tick re-enters config.
-             * Setting error_flag here would lock it out of that path.
-             * Cap consecutive retries to avoid spinning forever on a
-             * persistently broken slave. */
-            if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)
+            /* Slave reported an AL error refusing the state change:
+             * fsm_change captured the code into last_al_error and
+             * ack'd the ERR bit before returning, so the bit is no
+             * longer in current_state. Use last_al_error to keep
+             * error_flag clear so state_ready can retry; cap the
+             * loop with config_retries. */
+            if (slave->last_al_error == 0
                     || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
                 slave->error_flag = 1;
             }
@@ -1920,12 +1928,13 @@ void ec_fsm_slave_config_state_op(
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
         if (!fsm->fsm_change->spontaneous_change) {
-            /* Slave parked at <state>+ERR is recoverable: state_ready
-             * will run the ack and the next tick re-enters config.
-             * Setting error_flag here would lock it out of that path.
-             * Cap consecutive retries to avoid spinning forever on a
-             * persistently broken slave. */
-            if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)
+            /* Slave reported an AL error refusing the state change:
+             * fsm_change captured the code into last_al_error and
+             * ack'd the ERR bit before returning, so the bit is no
+             * longer in current_state. Use last_al_error to keep
+             * error_flag clear so state_ready can retry; cap the
+             * loop with config_retries. */
+            if (slave->last_al_error == 0
                     || ++slave->config_retries > EC_FSM_CONFIG_RETRIES) {
                 slave->error_flag = 1;
             }

@@ -230,8 +230,10 @@ void ec_fsm_slave_scan_state_address(
         )
 {
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
@@ -269,8 +271,10 @@ void ec_fsm_slave_scan_state_state(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
@@ -315,8 +319,10 @@ void ec_fsm_slave_scan_state_base(
     u8 octet;
     int i;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
@@ -387,8 +393,10 @@ void ec_fsm_slave_scan_state_dc_cap(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
@@ -433,8 +441,10 @@ void ec_fsm_slave_scan_state_dc_times(
     ec_slave_t *slave = fsm->slave;
     int i;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
@@ -545,8 +555,10 @@ void ec_fsm_slave_scan_state_datalink(
     uint16_t dl_status;
     unsigned int i;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
@@ -978,8 +990,10 @@ void ec_fsm_slave_scan_state_regalias(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
@@ -1076,8 +1090,10 @@ void ec_fsm_slave_scan_state_sync(
     ec_slave_t *slave = fsm->slave;
     uint16_t tx_offset, tx_size, rx_offset, rx_size;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;

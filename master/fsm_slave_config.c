@@ -357,8 +357,10 @@ void ec_fsm_slave_config_state_clear_fmmus(
         )
 {
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -416,8 +418,10 @@ void ec_fsm_slave_config_state_clear_sync(
         )
 {
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -472,8 +476,10 @@ void ec_fsm_slave_config_state_dc_clear_assign(
         )
 {
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -634,8 +640,10 @@ void ec_fsm_slave_config_state_mbox_sync(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -1173,8 +1181,10 @@ void ec_fsm_slave_config_state_watchdog_divider(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -1232,8 +1242,10 @@ void ec_fsm_slave_config_state_watchdog(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -1331,8 +1343,10 @@ void ec_fsm_slave_config_state_pdo_sync(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -1418,8 +1432,10 @@ void ec_fsm_slave_config_state_fmmu(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -1497,8 +1513,10 @@ void ec_fsm_slave_config_state_dc_cycle(
         return;
     }
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -1547,8 +1565,10 @@ void ec_fsm_slave_config_state_dc_sync_check(
         return;
     }
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -1645,8 +1665,10 @@ void ec_fsm_slave_config_state_dc_start(
         return;
     }
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
@@ -1684,8 +1706,10 @@ void ec_fsm_slave_config_state_dc_assign(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;

@@ -1,9 +1,11 @@
-ethercat (1.6.9+parallelop1~pre3) unstable; urgency=medium
+ethercat (1.6.9+parallelop1~pre4) unstable; urgency=medium
 
   * Ship udev rule (99-EtherCAT.rules) granting group "ethercat" access
     to /dev/EtherCAT* devices.
   * Create system group "ethercat" on install; remove on purge.
   * postinst prints reminder to add user to the ethercat group.
+  * CI: tag .deb assets with distro suffix so all four matrix builds
+    end up in the GitHub release without name collisions.
 
  -- Luca Toniolo <toniolo.luca@gmail.com>  Tue, 28 Apr 2026 00:00:00 +0000
 

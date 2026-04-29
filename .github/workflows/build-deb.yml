@@ -59,11 +59,16 @@ jobs:
       - name: Collect artefacts
         run: |
           mkdir -p artifacts/${{ matrix.distro }}
-          cp ../ethercat-master_*_*.deb \
-             ../ethercat-dkms_*_all.deb \
-             ../libethercat_*_*.deb \
-             ../libethercat-dev_*_*.deb \
-             artifacts/${{ matrix.distro }}/
+          for f in ../ethercat-master_*_*.deb \
+                   ../ethercat-dkms_*_all.deb \
+                   ../libethercat_*_*.deb \
+                   ../libethercat-dev_*_*.deb; do
+            base=$(basename "$f")
+            # Insert ~${distro} before _<arch>.deb so each distro's debs
+            # have a unique asset name in the GitHub release.
+            new=$(echo "$base" | sed -E "s/_(amd64|all)\.deb$/~${{ matrix.distro }}_\1.deb/")
+            cp "$f" "artifacts/${{ matrix.distro }}/$new"
+          done
 
       - name: Upload artefacts
         uses: actions/upload-artifact@v4

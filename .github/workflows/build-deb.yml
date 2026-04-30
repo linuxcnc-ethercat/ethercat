@@ -9,11 +9,13 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.distro }}
+    name: ${{ matrix.distro }} (${{ matrix.variant }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        distro: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]
+        variant: [main, eoe]
         include:
           - distro: debian-12
             image: debian:bookworm
@@ -52,6 +54,12 @@ jobs:
       - name: Mark repo as safe (container runs as root)
         run: git config --global --add safe.directory "$PWD"
 
+      - name: Prepare EoE variant
+        if: matrix.variant == 'eoe'
+        run: |
+          apt-get install -y --no-install-recommends python3
+          ./script/prepare-eoe.sh
+
       - name: Build packages
         run: |
           ./script/build-deb.sh -j$(nproc)
@@ -60,16 +68,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          out="artifacts/${{ matrix.distro }}"
+          out="artifacts/${{ matrix.distro }}-${{ matrix.variant }}"
           mkdir -p "$out"
-          # Tag each .deb with the distro so the release upload step
-          # does not see four identically named files across the matrix.
-          # softprops/action-gh-release races on same-name uploads
-          # (HTTP 404 on the delete-then-upload sequence).
-          for src in ../ethercat-master_*_*.deb \
-                     ../ethercat-dkms_*_all.deb \
-                     ../libethercat_*_*.deb \
-                     ../libethercat-dev_*_*.deb; do
+          # Tag each .deb with distro+variant so release upload sees
+          # unique names across the matrix (softprops races on dupes).
+          # The wildcard suffixes catch both base and -eoe package names.
+          for src in ../ethercat-master*_*.deb \
+                     ../ethercat-dkms*_all.deb \
+                     ../libethercat*_*.deb; do
               [ -f "$src" ] || continue
               fname="$(basename "$src")"
               base="${fname%_*.deb}"
@@ -80,8 +86,8 @@ jobs:
       - name: Upload artefacts
         uses: actions/upload-artifact@v4
         with:
-          name: ethercat-deb-${{ matrix.distro }}
-          path: artifacts/${{ matrix.distro }}/*.deb
+          name: ethercat-deb-${{ matrix.distro }}-${{ matrix.variant }}
+          path: artifacts/${{ matrix.distro }}-${{ matrix.variant }}/*.deb
           if-no-files-found: error
 
   release:

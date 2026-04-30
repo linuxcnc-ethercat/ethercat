@@ -36,19 +36,26 @@
 
 /** Datagram timeout in microseconds.
  *
- * Kept at 1000 us. A short-lived attempt to bump this to 5000 us to
- * absorb chain latency from a misbehaving slave (VIPA 053-1EC01
- * stalling its 6-slave SII finalisation frame at ~1012 us) ended up
- * deterministically zombifying every downstream slave: when the
- * head-of-line FSM holds a slot longer, the per-slave fsm_sii / fsm_change
- * datagrams that follow more often see their cached fsm->datagram
- * pointer recycled into another slot before the FSM returns to it,
- * surfacing as 'Failed to receive ... datagram: Datagram ???' for
- * every slave behind position 0. 1000 us matches the existing
- * EC_FSM_RETRIES=3 cadence (~3 ms total worst case) without shifting
- * that timing.
+ * Matches Synapticon's value (their A09 patch
+ * "Increase the EC IO timeout to 100ms"). Two motivations:
+ *  1) Slower systems (VMs, busy hosts) used to disconnect slaves
+ *     under transient datagram delay at the previous 1 ms cap.
+ *  2) Bus-wide chain stalls from a single misbehaving slave (e.g.
+ *     VIPA 053-1EC01 returning INIT+ERROR at scan time, holding the
+ *     parallel scan FSM head-of-line through state_status -> state_code
+ *     -> state_ack -> state_check_ack for ~30 ms) were turning every
+ *     downstream slave into a zero-identity zombie. 1 ms made the
+ *     scan/SII FSMs retry mid-stall and lose their slot to ring
+ *     recycling; 5 ms was the worst of both worlds (long enough to
+ *     burn one retry attempt, short enough to still fire mid-stall).
+ *     100 ms lets one wait ride out the whole chain stall so the
+ *     first SII attempt succeeds without any retry bookkeeping.
+ *
+ * Cyclic process-data round-trips run < 100 us; the longer ceiling
+ * only changes how long the cleanup loop waits before declaring an
+ * unresponsive datagram dead, not the normal hot path.
  */
-#define EC_IO_TIMEOUT 1000
+#define EC_IO_TIMEOUT 100000
 
 /** Time to send a byte in nanoseconds.
  *

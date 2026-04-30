@@ -115,36 +115,6 @@ void ec_fsm_slave_config_state_error(ec_fsm_slave_config_t *, ec_datagram_t *);
 
 void ec_fsm_slave_config_reconfigure(ec_fsm_slave_config_t *, ec_datagram_t *);
 
-/****************************************************************************/
-
-/** Decide whether a slave-reported AL status code is worth retrying the
- * configuration for. The list mirrors the standard config-time errors
- * defined in ETG.1000.6: a slave that rejects SAFEOP because of a sync
- * watchdog or an inconsistent input mapping will usually accept the next
- * attempt once the master re-writes the offending sync manager. Vendor
- * specific codes (high bit set), the catch-all 0x0001 "Unspecified",
- * unrecognised codes outside the standard table, and structural rejects
- * like 0x0017 "Invalid sync manager configuration" all stay error-flagged
- * so the master does not pin the head-of-line ring slot retrying a slave
- * that will never recover (observed: VIPA SLIO returning vendor-specific
- * 0x0180 / 0x81C0 stalled the entire scan when retried indefinitely).
- */
-static int ec_fsm_slave_config_recoverable_al_code(uint16_t code)
-{
-    switch (code) {
-    case 0x001A: /* Synchronization error */
-    case 0x001B: /* Sync manager watchdog */
-    case 0x001D: /* Invalid output configuration */
-    case 0x001E: /* Invalid input configuration */
-    case 0x001F: /* Invalid watchdog configuration */
-    case 0x0024: /* Invalid Input Mapping */
-    case 0x0025: /* Invalid Output Mapping */
-    case 0x0026: /* Inconsistent Settings */
-        return 1;
-    default:
-        return 0;
-    }
-}
 
 /****************************************************************************/
 
@@ -344,16 +314,8 @@ void ec_fsm_slave_config_state_init(
     if (ec_fsm_change_exec(fsm->fsm_change, datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        /* fsm_change->state_check sets slave->error_flag=1 before
-         * starting the AL-code read / ack sequence. If the rejection
-         * was recoverable (slave answered with an AL code, retries
-         * not exhausted) clear the flag so state_ready picks the
-         * slave up on the next tick and retries the configuration. */
-        if (!fsm->fsm_change->spontaneous_change
-                && ec_fsm_slave_config_recoverable_al_code(slave->last_al_error)
-                && ++slave->config_retries <= EC_FSM_CONFIG_RETRIES) {
-            slave->error_flag = 0;
-        }
+        if (!fsm->fsm_change->spontaneous_change)
+            slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;
     }
@@ -825,13 +787,8 @@ void ec_fsm_slave_config_state_boot_preop(
     }
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        /* fsm_change set error_flag=1 already; clear it for a
-         * recoverable AL rejection so state_ready retries. */
-        if (!fsm->fsm_change->spontaneous_change
-                && ec_fsm_slave_config_recoverable_al_code(slave->last_al_error)
-                && ++slave->config_retries <= EC_FSM_CONFIG_RETRIES) {
-            slave->error_flag = 0;
-        }
+        if (!fsm->fsm_change->spontaneous_change)
+            slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;
     }
@@ -1835,13 +1792,8 @@ void ec_fsm_slave_config_state_safeop(
     if (ec_fsm_change_exec(fsm->fsm_change, datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        /* fsm_change set error_flag=1 already; clear it for a
-         * recoverable AL rejection so state_ready retries. */
-        if (!fsm->fsm_change->spontaneous_change
-                && ec_fsm_slave_config_recoverable_al_code(slave->last_al_error)
-                && ++slave->config_retries <= EC_FSM_CONFIG_RETRIES) {
-            slave->error_flag = 0;
-        }
+        if (!fsm->fsm_change->spontaneous_change)
+            slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;
     }
@@ -1969,13 +1921,8 @@ void ec_fsm_slave_config_state_op(
     if (ec_fsm_change_exec(fsm->fsm_change, datagram)) return;
 
     if (!ec_fsm_change_success(fsm->fsm_change)) {
-        /* fsm_change set error_flag=1 already; clear it for a
-         * recoverable AL rejection so state_ready retries. */
-        if (!fsm->fsm_change->spontaneous_change
-                && ec_fsm_slave_config_recoverable_al_code(slave->last_al_error)
-                && ++slave->config_retries <= EC_FSM_CONFIG_RETRIES) {
-            slave->error_flag = 0;
-        }
+        if (!fsm->fsm_change->spontaneous_change)
+            slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;
     }

@@ -36,20 +36,21 @@
 
 /** Datagram timeout in microseconds.
  *
- * Kept at 1000 us. Two failed attempts in field testing:
- *  - 5000 us (v8): all five SD700 servos behind a misbehaving VIPA
- *    coupler ended up zombie every boot.
- *  - 100000 us (v10, matching Synapticon's A09 default): same
- *    deterministic regression, no recovery messages emitted at all.
+ * Matches Synapticon's A09 patch ("Increase the EC IO timeout to
+ * 100ms"). Pairs with reverting our v5 broad error_flag-clear
+ * patch: with the broad clear the master kept retrying slave 0
+ * indefinitely so a long timeout gave the head-of-line ring slot
+ * enough headroom to wrap the ring twice and zombify everyone
+ * behind it; without that retry, slave 0 fails once and is
+ * dropped, so the longer ceiling buys the downstream slaves time
+ * to ride out the chain stall the misbehaving slave introduces.
  *
- * 1000 us is what the v7 build that was the only one to recover
- * automatically used. Deeper investigation into why a longer
- * timeout makes things worse is open: the empirical answer is
- * that the v7 baseline lets fsm_change burn its retries fast and
- * surface the AL status code + an explicit Acknowledged before
- * downstream slaves give up.
+ * Cyclic process-data round-trips run < 100 us, so the longer
+ * ceiling only changes how long the master cleanup loop waits
+ * before declaring an unresponsive datagram dead, not the normal
+ * hot path.
  */
-#define EC_IO_TIMEOUT 1000
+#define EC_IO_TIMEOUT 100000
 
 /** Time to send a byte in nanoseconds.
  *

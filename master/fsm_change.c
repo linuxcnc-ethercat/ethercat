@@ -372,9 +372,15 @@ void ec_fsm_change_state_status(
             timeout_ms * HZ / 1000) {
         char state_str[EC_STATE_STRING_SIZE];
         ec_state_string(fsm->requested_state, state_str, 0);
-        fsm->state = ec_fsm_change_state_error;
         EC_SLAVE_ERR(slave, "Timeout after %u ms while setting state %s.\n",
                 timeout_ms, state_str);
+        /* Read the AL status code so vendor-specific failure modes
+         * (e.g. VIPA SLIO reporting 0x81C0) get logged instead of
+         * being hidden behind the bare timeout error. The same flow
+         * also acknowledges the slave so it does not stay parked in
+         * an error state and stall subsequent scans. */
+        slave->error_flag = 1;
+        ec_fsm_change_state_start_code(fsm, datagram);
         return;
     }
 

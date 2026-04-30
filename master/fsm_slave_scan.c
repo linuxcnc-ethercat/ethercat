@@ -74,6 +74,7 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #ifdef EC_REGALIAS
 void ec_fsm_slave_scan_state_regalias(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #endif
+void ec_fsm_slave_scan_state_ack_preop(ec_fsm_slave_scan_t *, ec_datagram_t *);
 void ec_fsm_slave_scan_state_preop(ec_fsm_slave_scan_t *, ec_datagram_t *);
 void ec_fsm_slave_scan_state_sync(ec_fsm_slave_scan_t *, ec_datagram_t *);
 void ec_fsm_slave_scan_state_pdos(ec_fsm_slave_scan_t *, ec_datagram_t *);
@@ -804,13 +805,20 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm
         EC_READ_U16(slave->sii_words + 0x001C);
     if (slave->sii.mailbox_protocols) {
         int need_delim = 0;
-        uint16_t all = EC_MBOX_AOE | EC_MBOX_COE | EC_MBOX_FOE |
-            EC_MBOX_SOE | EC_MBOX_VOE;
+        uint16_t all = EC_MBOX_AOE | EC_MBOX_EOE | EC_MBOX_COE |
+            EC_MBOX_FOE | EC_MBOX_SOE | EC_MBOX_VOE;
         if ((slave->sii.mailbox_protocols & all) &&
                 slave->master->debug_level >= 1) {
             EC_SLAVE_DBG(slave, 1, "Slave announces to support ");
             if (slave->sii.mailbox_protocols & EC_MBOX_AOE) {
                 printk(KERN_CONT "AoE");
+                need_delim = 1;
+            }
+            if (slave->sii.mailbox_protocols & EC_MBOX_EOE) {
+                if (need_delim) {
+                    printk(KERN_CONT ", ");
+                }
+                printk(KERN_CONT "EoE");
                 need_delim = 1;
             }
             if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
@@ -1029,16 +1037,37 @@ void ec_fsm_slave_scan_enter_preop(
         )
 {
     ec_slave_t *slave = fsm->slave;
-    uint8_t current_state = slave->current_state & EC_SLAVE_STATE_MASK;
+    uint8_t state_byte = slave->current_state;
+    uint8_t current_state = state_byte & EC_SLAVE_STATE_MASK;
 
     if (current_state != EC_SLAVE_STATE_PREOP
             && current_state != EC_SLAVE_STATE_SAFEOP
             && current_state != EC_SLAVE_STATE_OP) {
+        /* Drive an ack first when the slave is sitting on an AL error
+         * bit or reports a non-standard state byte ("(invalid)"): the
+         * full fsm_slave_config path otherwise loops on
+         * spontaneous_change as the slave keeps reporting the same
+         * vendor-specific byte (seen with VIPA SLIO + AL code 0x81C0
+         * stalling the entire scan until the operator manually
+         * acknowledges via `ethercat states INIT`). */
+        int needs_ack = (state_byte & EC_SLAVE_STATE_ACK_ERR)
+                || (current_state != EC_SLAVE_STATE_INIT
+                        && current_state != EC_SLAVE_STATE_BOOT);
+
         if (slave->master->debug_level) {
             char str[EC_STATE_STRING_SIZE];
-            ec_state_string(current_state, str, 0);
+            ec_state_string(state_byte, str, 0);
             EC_SLAVE_DBG(slave, 0, "Slave is not in the state"
-                    " to do mailbox com (%s), setting to PREOP.\n", str);
+                    " to do mailbox com (%s), %s.\n", str,
+                    needs_ack ? "acknowledging error first"
+                              : "setting to PREOP");
+        }
+
+        if (needs_ack) {
+            fsm->state = ec_fsm_slave_scan_state_ack_preop;
+            ec_fsm_change_ack(fsm->fsm_slave_config->fsm_change, slave);
+            ec_fsm_change_exec(fsm->fsm_slave_config->fsm_change, datagram);
+            return;
         }
 
         fsm->state = ec_fsm_slave_scan_state_preop;
@@ -1056,6 +1085,39 @@ void ec_fsm_slave_scan_enter_preop(
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_slave_scan_state_sync;
     }
+}
+
+/****************************************************************************/
+
+/** Slave scan state: ACK PREOP.
+ *
+ * Drives the per-slave fsm_change through a MODE_ACK_ONLY sequence so an
+ * outstanding AL error bit (or stale vendor-specific state byte) is
+ * cleared before the regular config FSM tries to push the slave to
+ * PREOP. Once the ack returns we drop into the existing
+ * config_start path; if the slave keeps refusing, fsm_slave_config
+ * surfaces the failure via state_error like normal.
+ */
+void ec_fsm_slave_scan_state_ack_preop(
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (ec_fsm_change_exec(fsm->fsm_slave_config->fsm_change, datagram)) {
+        return;
+    }
+
+    if (!ec_fsm_change_success(fsm->fsm_slave_config->fsm_change)) {
+        EC_SLAVE_WARN(slave, "Failed to acknowledge state during scan;"
+                " continuing with PREOP attempt.\n");
+    }
+
+    fsm->state = ec_fsm_slave_scan_state_preop;
+    ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+    ec_fsm_slave_config_start(fsm->fsm_slave_config);
+    ec_fsm_slave_config_exec(fsm->fsm_slave_config, datagram);
 }
 
 /****************************************************************************/

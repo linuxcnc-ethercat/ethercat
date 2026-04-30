@@ -604,7 +604,7 @@ int ec_master_thread_start(
         const char *name /**< Thread name. */
         )
 {
-    EC_MASTER_INFO(master, "Starting %s thread (build-marker: repeat-restored-v6).\n",
+    EC_MASTER_INFO(master, "Starting %s thread (build-marker: io-timeout-5ms-v8).\n",
             name);
     master->thread = kthread_create(thread_func, master, name);
     if (IS_ERR(master->thread)) {

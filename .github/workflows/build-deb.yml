@@ -58,6 +58,7 @@ jobs:
           ./script/build-deb.sh -j$(nproc)
 
       - name: Collect artefacts
+        shell: bash
         run: |
           set -euo pipefail
           out="artifacts/${{ matrix.distro }}"

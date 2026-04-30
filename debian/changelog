@@ -6,6 +6,12 @@ ethercat (1.6.9+parallelop1~pre5) unstable; urgency=medium
   * postinst prints reminder to add user to the ethercat group.
   * Rebased on Mika's dev-1.6 (FSM/EC_IO_TIMEOUT work, distro-tagged
     release artefacts).
+  * Build all common NIC drivers in the DKMS module (8139too, e100,
+    e1000, e1000e, r8169, igb, igc, genet) instead of only igc.
+  * CI now produces a parallel "eoe" variant of every package
+    (ethercat-master-eoe, libethercat-eoe, libethercat-eoe-dev,
+    ethercat-dkms-eoe) with --enable-eoe set. The two variants
+    Conflict with each other so only one can be installed at a time.
 
  -- Luca Toniolo <toniolo.luca@gmail.com>  Thu, 30 Apr 2026 00:00:00 +0000
 

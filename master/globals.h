@@ -36,18 +36,19 @@
 
 /** Datagram timeout in microseconds.
  *
- * Sized to absorb chain latency when one slave is misbehaving without
- * killing the entire bundled frame. The parallel scan FSM packs one
- * read per slave into a single ethernet frame, so a single quirky
- * slave that stalls the chain by tens of microseconds will trip the
- * timeout for every co-bundled datagram (observed: VIPA 053-1EC01
- * holding a 6-slave SII finalisation frame at ~1012 us, just past
- * the previous 1000 us limit, marking all 6 datagrams TIMED_OUT and
- * leaving downstream slaves with zero-identity zombies). 5000 us
- * keeps cyclic process-data unaffected (typical < 100 us round-trip)
- * while letting the scan/FSM path tolerate a slow chain.
+ * Kept at 1000 us. A short-lived attempt to bump this to 5000 us to
+ * absorb chain latency from a misbehaving slave (VIPA 053-1EC01
+ * stalling its 6-slave SII finalisation frame at ~1012 us) ended up
+ * deterministically zombifying every downstream slave: when the
+ * head-of-line FSM holds a slot longer, the per-slave fsm_sii / fsm_change
+ * datagrams that follow more often see their cached fsm->datagram
+ * pointer recycled into another slot before the FSM returns to it,
+ * surfacing as 'Failed to receive ... datagram: Datagram ???' for
+ * every slave behind position 0. 1000 us matches the existing
+ * EC_FSM_RETRIES=3 cadence (~3 ms total worst case) without shifting
+ * that timing.
  */
-#define EC_IO_TIMEOUT 5000
+#define EC_IO_TIMEOUT 1000
 
 /** Time to send a byte in nanoseconds.
  *

@@ -36,26 +36,20 @@
 
 /** Datagram timeout in microseconds.
  *
- * Matches Synapticon's value (their A09 patch
- * "Increase the EC IO timeout to 100ms"). Two motivations:
- *  1) Slower systems (VMs, busy hosts) used to disconnect slaves
- *     under transient datagram delay at the previous 1 ms cap.
- *  2) Bus-wide chain stalls from a single misbehaving slave (e.g.
- *     VIPA 053-1EC01 returning INIT+ERROR at scan time, holding the
- *     parallel scan FSM head-of-line through state_status -> state_code
- *     -> state_ack -> state_check_ack for ~30 ms) were turning every
- *     downstream slave into a zero-identity zombie. 1 ms made the
- *     scan/SII FSMs retry mid-stall and lose their slot to ring
- *     recycling; 5 ms was the worst of both worlds (long enough to
- *     burn one retry attempt, short enough to still fire mid-stall).
- *     100 ms lets one wait ride out the whole chain stall so the
- *     first SII attempt succeeds without any retry bookkeeping.
+ * Kept at 1000 us. Two failed attempts in field testing:
+ *  - 5000 us (v8): all five SD700 servos behind a misbehaving VIPA
+ *    coupler ended up zombie every boot.
+ *  - 100000 us (v10, matching Synapticon's A09 default): same
+ *    deterministic regression, no recovery messages emitted at all.
  *
- * Cyclic process-data round-trips run < 100 us; the longer ceiling
- * only changes how long the cleanup loop waits before declaring an
- * unresponsive datagram dead, not the normal hot path.
+ * 1000 us is what the v7 build that was the only one to recover
+ * automatically used. Deeper investigation into why a longer
+ * timeout makes things worse is open: the empirical answer is
+ * that the v7 baseline lets fsm_change burn its retries fast and
+ * surface the AL status code + an explicit Acknowledged before
+ * downstream slaves give up.
  */
-#define EC_IO_TIMEOUT 100000
+#define EC_IO_TIMEOUT 1000
 
 /** Time to send a byte in nanoseconds.
  *

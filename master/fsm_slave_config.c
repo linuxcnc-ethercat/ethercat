@@ -211,21 +211,6 @@ int ec_fsm_slave_config_exec(
         return 0;
     }
 
-    if (fsm->datagram &&
-            (fsm->datagram->state == EC_DATAGRAM_INIT ||
-             fsm->datagram->state == EC_DATAGRAM_QUEUED ||
-             fsm->datagram->state == EC_DATAGRAM_SENT)) {
-        /* The slot we sent the previous request on is still waiting
-         * for a reply. Mark the new slot the scheduler just handed
-         * us as "not consumed" so the ring index is not advanced
-         * over it; clobbering fsm->datagram's state would corrupt
-         * the in-flight request. */
-        if (datagram != fsm->datagram) {
-            datagram->state = EC_DATAGRAM_INVALID;
-        }
-        return ec_fsm_slave_config_running(fsm);
-    }
-
     fsm->state(fsm, datagram);
 
     if (!ec_fsm_slave_config_running(fsm)) {

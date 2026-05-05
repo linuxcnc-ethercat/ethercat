@@ -158,17 +158,6 @@ int ec_fsm_soe_exec(
         return 0;
     }
 
-    if (fsm->datagram &&
-            (fsm->datagram->state == EC_DATAGRAM_INIT ||
-             fsm->datagram->state == EC_DATAGRAM_QUEUED ||
-             fsm->datagram->state == EC_DATAGRAM_SENT)) {
-        // datagram not received yet; keep waiting, do not consume the new one
-        if (datagram != fsm->datagram) {
-            datagram->state = EC_DATAGRAM_INVALID;
-        }
-        return 1;
-    }
-
     fsm->state(fsm, datagram);
 
     if (fsm->state == ec_fsm_soe_end || fsm->state == ec_fsm_soe_error) {

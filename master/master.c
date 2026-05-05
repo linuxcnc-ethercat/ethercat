@@ -604,7 +604,7 @@ int ec_master_thread_start(
         const char *name /**< Thread name. */
         )
 {
-    EC_MASTER_INFO(master, "Starting %s thread (build-marker: match-synapticon-v13).\n",
+    EC_MASTER_INFO(master, "Starting %s thread (build-marker: apply-parallel-0007-v14).\n",
             name);
     master->thread = kthread_create(thread_func, master, name);
     if (IS_ERR(master->thread)) {

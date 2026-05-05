@@ -164,13 +164,8 @@ int ec_fsm_slave_exec(
         fsm->state != ec_fsm_slave_state_ready;
 
     if (datagram_used) {
-        /* state_config bookkeeps its own fsm->datagram via
-         * ec_fsm_slave_config_exec(); only record the ring slot here
-         * if the child FSM actually consumed it. */
-        if (datagram->state != EC_DATAGRAM_INVALID) {
-            datagram->device_index = fsm->slave->device_index;
-            fsm->datagram = datagram;
-        }
+        datagram->device_index = fsm->slave->device_index;
+        fsm->datagram = datagram;
     } else {
         fsm->datagram = NULL;
     }

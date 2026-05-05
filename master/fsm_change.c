@@ -149,20 +149,6 @@ int ec_fsm_change_exec(
         return 0;
     }
 
-    /* Previously queued datagram still in flight: keep the slot idle
-     * until the reply lands so state functions do not read a junk
-     * EC_DATAGRAM_INIT/QUEUED/SENT status as if it were a valid reply.
-     */
-    if (fsm->datagram &&
-            (fsm->datagram->state == EC_DATAGRAM_INIT ||
-             fsm->datagram->state == EC_DATAGRAM_QUEUED ||
-             fsm->datagram->state == EC_DATAGRAM_SENT)) {
-        if (datagram != fsm->datagram) {
-            datagram->state = EC_DATAGRAM_INVALID;
-        }
-        return 1;
-    }
-
     fsm->state(fsm, datagram);
 
     if (fsm->state == ec_fsm_change_state_end

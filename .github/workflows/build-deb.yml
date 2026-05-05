@@ -38,23 +38,27 @@ jobs:
           # have intermittently stalled the ubuntu-24.04 jobs.
           echo 'Acquire::Retries "10";' > /etc/apt/apt.conf.d/80-retries
           echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries
-          for i in 1 2 3; do
-            apt-get update && break || sleep 15
+          install_pkgs() {
+              apt-get update && \
+              apt-get install -y --no-install-recommends \
+                  build-essential \
+                  debhelper \
+                  dpkg-dev \
+                  autoconf \
+                  automake \
+                  libtool \
+                  pkg-config \
+                  dkms \
+                  git \
+                  ca-certificates \
+                  fakeroot
+          }
+          for i in 1 2 3 4 5; do
+              install_pkgs && break || { echo "apt attempt $i failed; sleeping"; sleep 30; }
           done
-          for i in 1 2 3; do
-            apt-get install -y --no-install-recommends --fix-missing \
-              build-essential \
-              debhelper \
-              dpkg-dev \
-              autoconf \
-              automake \
-              libtool \
-              pkg-config \
-              dkms \
-              git \
-              ca-certificates \
-              fakeroot && break || sleep 15
-          done
+          # Sanity-check the packages we actually need at later steps.
+          command -v git
+          command -v dpkg-buildpackage
 
       - name: Checkout
         uses: actions/checkout@v4

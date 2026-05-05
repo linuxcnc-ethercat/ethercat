@@ -1,3 +1,10 @@
+ethercat (1.6.9+parallelop1~pre6) unstable; urgency=medium
+
+  * Rebased on mika/dev-1.6 (parallel-slave/0007: drop redundant
+    inner head-of-line check).
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Wed, 30 Apr 2026 00:00:00 +0000
+
 ethercat (1.6.9+parallelop1~pre5) unstable; urgency=medium
 
   * Ship udev rule (99-EtherCAT.rules) granting group "ethercat" access

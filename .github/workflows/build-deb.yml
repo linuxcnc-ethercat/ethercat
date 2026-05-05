@@ -34,19 +34,27 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            build-essential \
-            debhelper \
-            dpkg-dev \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config \
-            dkms \
-            git \
-            ca-certificates \
-            fakeroot
+          # Make apt resilient against archive.ubuntu.com hiccups that
+          # have intermittently stalled the ubuntu-24.04 jobs.
+          echo 'Acquire::Retries "10";' > /etc/apt/apt.conf.d/80-retries
+          echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries
+          for i in 1 2 3; do
+            apt-get update && break || sleep 15
+          done
+          for i in 1 2 3; do
+            apt-get install -y --no-install-recommends --fix-missing \
+              build-essential \
+              debhelper \
+              dpkg-dev \
+              autoconf \
+              automake \
+              libtool \
+              pkg-config \
+              dkms \
+              git \
+              ca-certificates \
+              fakeroot && break || sleep 15
+          done
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,7 +65,9 @@ jobs:
       - name: Prepare EoE variant
         if: matrix.variant == 'eoe'
         run: |
-          apt-get install -y --no-install-recommends python3
+          for i in 1 2 3; do
+            apt-get install -y --no-install-recommends python3 && break || sleep 15
+          done
           ./script/prepare-eoe.sh
 
       - name: Build packages

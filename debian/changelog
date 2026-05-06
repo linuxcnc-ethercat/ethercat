@@ -1,3 +1,20 @@
+ethercat (1.6.9+parallelop1~pre9) unstable; urgency=medium
+
+  * Rebased on mika/dev-1.6 to silence the user-visible
+    "Failed to get reference clock time: Input/output error" warning:
+    - Port Synapticon's dc_offset_valid flag (B-base-02 partial):
+      kernel returns -EAGAIN instead of -EIO while the per-slave DC
+      offset write loop is still in progress, killing the cold-start
+      storm.
+    - Whitelist EIO/ENXIO/EAGAIN in libethercat
+      ecrt_master_reference_clock_time() wrapper so steady-state
+      polling races (sync_datagram queued but reply not yet RECEIVED)
+      no longer spam stderr at 1-4 kHz cyclic rates. Return value
+      still propagates so callers keep their valid/invalid flag
+      semantics.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Wed, 06 May 2026 00:00:00 +0000
+
 ethercat (1.6.9+parallelop1~pre8) unstable; urgency=medium
 
   * CI: drop --fix-missing in the apt retry loop; --fix-missing was

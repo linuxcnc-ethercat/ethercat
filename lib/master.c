@@ -809,9 +809,17 @@ int ecrt_master_reference_clock_time(const ec_master_t *master,
 
     ret = ioctl(master->fd, EC_IOCTL_REF_CLOCK_TIME, time);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get reference clock time: %s\n",
-                strerror(EC_IOCTL_ERRNO(ret)));
-        return -EC_IOCTL_ERRNO(ret);
+        ret = EC_IOCTL_ERRNO(ret);
+        /* Match Synapticon's lib: EIO / ENXIO / EAGAIN are normal
+         * transients (sync_datagram not yet received, no DC reference
+         * clock yet, or per-slave DC offsets still being written).
+         * The application polls this every cycle - logging on every
+         * miss spams syslog before the bus has even settled. */
+        if (ret != EIO && ret != ENXIO && ret != EAGAIN) {
+            fprintf(stderr, "Failed to get reference clock time: %s\n",
+                    strerror(ret));
+        }
+        return -ret;
     }
 
     return ret;

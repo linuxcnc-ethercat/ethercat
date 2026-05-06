@@ -605,7 +605,7 @@ int ec_master_thread_start(
         const char *name /**< Thread name. */
         )
 {
-    EC_MASTER_INFO(master, "Starting %s thread (build-marker: dc-offset-valid-v15).\n",
+    EC_MASTER_INFO(master, "Starting %s thread (build-marker: lib-refclk-quiet-v16).\n",
             name);
     master->thread = kthread_create(thread_func, master, name);
     if (IS_ERR(master->thread)) {

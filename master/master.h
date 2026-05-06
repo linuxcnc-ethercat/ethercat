@@ -235,6 +235,11 @@ struct ec_master {
     ec_slave_config_t *dc_ref_config; /**< Application-selected DC reference
                                         clock slave config. */
     ec_slave_t *dc_ref_clock; /**< DC reference clock slave. */
+    u8 dc_offset_valid; /**< DC slaves have valid system time offsets;
+                          gates queueing of sync / sync_reference /
+                          sync_monitor datagrams so the application
+                          does not race the master FSM still mid-way
+                          through the per-slave DC offset write loop. */
 
     unsigned int scan_busy; /**< Current scan state. */
     unsigned int scan_index; /**< Index of slave currently scanned. */

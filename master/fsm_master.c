@@ -290,6 +290,7 @@ void ec_fsm_master_state_broadcast(
     if (datagram->working_counter != fsm->slaves_responding[fsm->dev_idx]) {
         fsm->rescan_required = 1;
         fsm->slaves_responding[fsm->dev_idx] = datagram->working_counter;
+        master->dc_offset_valid = 0;
         EC_MASTER_INFO(master, "%u slave(s) responding on %s device. "
                 "Re-scanning on next possibility.\n",
                 fsm->slaves_responding[fsm->dev_idx],
@@ -464,6 +465,7 @@ void ec_fsm_master_state_broadcast(
         // application applied configurations
         if (master->config_changed) {
             master->config_changed = 0;
+            master->dc_offset_valid = 0;
 
             EC_MASTER_DBG(master, 1, "Configuration changed.\n");
 
@@ -774,6 +776,7 @@ void ec_fsm_master_action_configure(
 
     if (master->config_changed) {
         master->config_changed = 0;
+        master->dc_offset_valid = 0;
 
         // abort iterating through slaves,
         // first compensate DC system time offsets,
@@ -1097,6 +1100,7 @@ void ec_fsm_master_state_scan_slave(
 
     if (master->slave_count) {
         master->config_changed = 0;
+        master->dc_offset_valid = 0;
 
         fsm->slave = master->slaves; // begin with first slave
         ec_fsm_master_enter_write_system_times(fsm);
@@ -1137,6 +1141,11 @@ void ec_fsm_master_enter_write_system_times(
             fsm->state = ec_fsm_master_state_dc_read_offset;
             return;
         }
+        /* All DC slaves traversed (or none needed). Mark offsets valid
+         * so ecrt_master_sync_slave_clocks() and friends start queueing
+         * their FRMW datagrams; until this point those calls return
+         * -EAGAIN and the application back-off path keeps quiet. */
+        master->dc_offset_valid = 1;
 
     } else {
         if (master->active) {

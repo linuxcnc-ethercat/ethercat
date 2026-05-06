@@ -224,6 +224,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->app_time = 0ULL;
     master->dc_ref_time = 0ULL;
+    master->dc_offset_valid = 0;
 
     master->scan_busy = 0;
     master->scan_index = 0;
@@ -604,7 +605,7 @@ int ec_master_thread_start(
         const char *name /**< Thread name. */
         )
 {
-    EC_MASTER_INFO(master, "Starting %s thread (build-marker: apply-parallel-0007-v14).\n",
+    EC_MASTER_INFO(master, "Starting %s thread (build-marker: dc-offset-valid-v15).\n",
             name);
     master->thread = kthread_create(thread_func, master, name);
     if (IS_ERR(master->thread)) {
@@ -2944,6 +2945,14 @@ int ecrt_master_reference_clock_time(const ec_master_t *master,
         return -EIO;
     }
 
+    if (!master->dc_offset_valid) {
+        /* Per-slave DC offsets still being written; the sync_datagram
+         * payload is meaningful only once they have all landed. Tell
+         * the application to back off rather than treating it as a
+         * hard I/O error. */
+        return -EAGAIN;
+    }
+
     // Get returned datagram time, transmission delay removed.
     *time = EC_READ_U32(master->sync_datagram.data) -
         master->dc_ref_clock->transmission_delay;
@@ -2955,12 +2964,16 @@ int ecrt_master_reference_clock_time(const ec_master_t *master,
 
 int ecrt_master_sync_reference_clock(ec_master_t *master)
 {
-    if (master->dc_ref_clock) {
-        EC_WRITE_U32(master->ref_sync_datagram.data, master->app_time);
-        ec_master_queue_datagram(master, &master->ref_sync_datagram);
-    } else {
+    if (!master->dc_ref_clock) {
         return -ENXIO;
     }
+    if (!master->dc_offset_valid) {
+        /* Per-slave DC offsets have not finished propagating yet; queueing
+         * the broadcast write would feed an inconsistent value to the bus. */
+        return -EAGAIN;
+    }
+    EC_WRITE_U32(master->ref_sync_datagram.data, master->app_time);
+    ec_master_queue_datagram(master, &master->ref_sync_datagram);
     return 0;
 }
 
@@ -2984,12 +2997,18 @@ int ecrt_master_sync_reference_clock_to(
 
 int ecrt_master_sync_slave_clocks(ec_master_t *master)
 {
-    if (master->dc_ref_clock) {
-        ec_datagram_zero(&master->sync_datagram);
-        ec_master_queue_datagram(master, &master->sync_datagram);
-    } else {
+    if (!master->dc_ref_clock) {
         return -ENXIO;
     }
+    if (!master->dc_offset_valid) {
+        /* Skip the FRMW until the per-slave offset write loop finishes;
+         * otherwise ecrt_master_reference_clock_time() races the
+         * sync_datagram and trips '-EIO Failed to get reference clock
+         * time' on the application side. */
+        return -EAGAIN;
+    }
+    ec_datagram_zero(&master->sync_datagram);
+    ec_master_queue_datagram(master, &master->sync_datagram);
     return 0;
 }
 

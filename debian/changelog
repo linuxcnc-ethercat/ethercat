@@ -1,3 +1,21 @@
+ethercat (1:1.6.9-1) unstable; urgency=medium
+
+  * First non-pre release of the linuxcnc-ethercat fork of IgH
+    EtherLab. Carries the cumulative work from the
+    1.6.9+parallelop1~preN series:
+    - Inline parallel-op TX queue (mika/dev-1.6 base) cuts cold-start
+      DC sync time and quiets the steady-state
+      "Failed to get reference clock time: I/O error" warning storm
+      via dc_offset_valid + EIO/ENXIO/EAGAIN whitelist.
+    - CI matrix builds for Debian 11/12/13 and Ubuntu 22.04/24.04;
+      tagged releases publish to linuxcnc-ethercat/apt.
+  * Versioned with Debian epoch (1:) so this package cleanly
+    upgrades over the openSUSE EtherLab build
+    (ethercat-master 1.6.9.gb709e58-1+28.1), which would otherwise
+    sort higher than a plain 1.6.9-1.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Tue, 12 May 2026 12:00:00 +0000
+
 ethercat (1.6.9+parallelop1~pre9) unstable; urgency=medium
 
   * Rebased on mika/dev-1.6 to silence the user-visible

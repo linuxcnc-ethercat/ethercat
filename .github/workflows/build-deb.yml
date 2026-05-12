@@ -9,22 +9,28 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.distro }} (${{ matrix.variant }})
+    name: ${{ matrix.distro }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        distro: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]
-        variant: [main, eoe]
+        distro: [debian-11, debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]
         include:
+          - distro: debian-11
+            image: debian:bullseye
+            deb_rev: deb11u1
           - distro: debian-12
             image: debian:bookworm
+            deb_rev: deb12u1
           - distro: debian-13
             image: debian:trixie
+            deb_rev: deb13u1
           - distro: ubuntu-22.04
             image: ubuntu:22.04
+            deb_rev: ubuntu22.04u1
           - distro: ubuntu-24.04
             image: ubuntu:24.04
+            deb_rev: ubuntu24.04u1
 
     container:
       image: ${{ matrix.image }}
@@ -34,8 +40,6 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          # Make apt resilient against archive.ubuntu.com hiccups that
-          # have intermittently stalled the ubuntu-24.04 jobs.
           echo 'Acquire::Retries "10";' > /etc/apt/apt.conf.d/80-retries
           echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries
           install_pkgs() {
@@ -43,6 +47,7 @@ jobs:
               apt-get install -y --no-install-recommends \
                   build-essential \
                   debhelper \
+                  devscripts \
                   dpkg-dev \
                   autoconf \
                   automake \
@@ -56,9 +61,9 @@ jobs:
           for i in 1 2 3 4 5; do
               install_pkgs && break || { echo "apt attempt $i failed; sleeping"; sleep 30; }
           done
-          # Sanity-check the packages we actually need at later steps.
           command -v git
           command -v dpkg-buildpackage
+          command -v dch
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,13 +71,19 @@ jobs:
       - name: Mark repo as safe (container runs as root)
         run: git config --global --add safe.directory "$PWD"
 
-      - name: Prepare EoE variant
-        if: matrix.variant == 'eoe'
+      - name: Stamp version with codename suffix
         run: |
-          for i in 1 2 3; do
-            apt-get install -y --no-install-recommends python3 && break || sleep 15
-          done
-          ./script/prepare-eoe.sh
+          # Pull the current version straight from changelog and append a
+          # codename revision so each distro's .deb is uniquely named in the
+          # downstream apt repo pool. Tag pushes embed the tag in the entry.
+          base_ver=$(dpkg-parsechangelog --show-field Version)
+          new_ver="${base_ver}+${{ matrix.deb_rev }}"
+          msg="CI build for ${{ matrix.distro }}"
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+              msg="Release ${GITHUB_REF_NAME} for ${{ matrix.distro }}"
+          fi
+          DEBEMAIL="ci@linuxcnc-ethercat.github.io" DEBFULLNAME="LinuxCNC-EtherCAT CI" \
+              dch --newversion "${new_ver}" --distribution stable "$msg"
 
       - name: Build packages
         run: |
@@ -82,26 +93,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          out="artifacts/${{ matrix.distro }}-${{ matrix.variant }}"
-          mkdir -p "$out"
-          # Tag each .deb with distro+variant so release upload sees
-          # unique names across the matrix (softprops races on dupes).
-          # The wildcard suffixes catch both base and -eoe package names.
+          mkdir -p artifacts
           for src in ../ethercat-master*_*.deb \
                      ../ethercat-dkms*_all.deb \
                      ../libethercat*_*.deb; do
               [ -f "$src" ] || continue
-              fname="$(basename "$src")"
-              base="${fname%_*.deb}"
-              suffix="${fname##*_}"
-              cp "$src" "$out/${base}_${{ matrix.distro }}_${suffix}"
+              cp "$src" "artifacts/$(basename "$src")"
           done
 
       - name: Upload artefacts
         uses: actions/upload-artifact@v4
         with:
-          name: ethercat-deb-${{ matrix.distro }}-${{ matrix.variant }}
-          path: artifacts/${{ matrix.distro }}-${{ matrix.variant }}/*.deb
+          name: ethercat-deb-${{ matrix.distro }}
+          path: artifacts/*.deb
           if-no-files-found: error
 
   release:
@@ -126,3 +130,19 @@ jobs:
           files: artifacts/**/*.deb
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, 'pre') || contains(github.ref_name, 'rc') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
+
+      - name: Trigger apt-repo ingestion
+        env:
+          GH_TOKEN: ${{ secrets.APT_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+              echo "APT_DISPATCH_TOKEN not set; skipping ingestion dispatch."
+              exit 0
+          fi
+          gh api \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              /repos/linuxcnc-ethercat/apt/dispatches \
+              -f event_type=ingest-release \
+              -f "client_payload[source_repo]=${{ github.repository }}" \
+              -f "client_payload[tag]=${{ github.ref_name }}"

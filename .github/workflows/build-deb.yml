@@ -98,6 +98,7 @@ jobs:
                      ../ethercat-dkms*_all.deb \
                      ../libethercat*_*.deb; do
               [ -f "$src" ] || continue
+              case "$src" in *-dbgsym*) continue ;; esac
               cp "$src" "artifacts/$(basename "$src")"
           done
 

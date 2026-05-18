@@ -3,7 +3,7 @@
 
 export DH_VERBOSE = 1
 
-DEB_VERSION := $(shell dpkg-parsechangelog -SVersion | cut -d- -f1)
+DEB_VERSION := $(shell dpkg-parsechangelog -SVersion | sed 's/^[0-9]*://' | cut -d- -f1)
 DKMS_SRC := $(CURDIR)/debian/ethercat-dkms/usr/src/ethercat-$(DEB_VERSION)
 
 %:

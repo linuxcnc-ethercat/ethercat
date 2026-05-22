@@ -74,7 +74,7 @@ void CommandCache::execute(const StringVector &args)
     uint32_t fields;
     stringstream err;
 
-    if (args.size() != 1) 
+    if (args.size() != 1)
     {
         err << "'" << getName() << "' requires exactly one argument!";
         throwInvalidUsageException(err);
@@ -100,7 +100,7 @@ void CommandCache::execute(const StringVector &args)
     for (mi = masterIndices.begin(); mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
         m.open(MasterDevice::ReadWrite);
-        
+
         try {
             m.setSiiCaching(fields);
             cout << "Master " << dec << *mi << ": SII caching set to 0x"

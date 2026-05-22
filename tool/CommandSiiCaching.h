@@ -1,5 +1,5 @@
 /*****************************************************************************
- * 
+ *
  *  This file is part of the IgH EtherCAT Master.
  *
  *  The IgH EtherCAT Master is free software; you can redistribute it and/or

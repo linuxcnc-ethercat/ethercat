@@ -102,8 +102,6 @@ static const struct pci_device_id igb_pci_tbl[] = {
 
 // MODULE_DEVICE_TABLE(pci, igb_pci_tbl);
 
-void ec_poll(struct net_device *);
-
 static int igb_setup_all_tx_resources(struct igb_adapter *);
 static int igb_setup_all_rx_resources(struct igb_adapter *);
 static void igb_free_all_tx_resources(struct igb_adapter *);
@@ -3109,7 +3107,7 @@ static void ec_kick_watchdog(struct irq_work *work)
 * This function can never fail.
 *
 **/
-void ec_poll(struct net_device *netdev)
+static void ec_poll(struct net_device *netdev)
 {
 	struct igb_adapter *adapter = netdev_priv(netdev);
 	int i;

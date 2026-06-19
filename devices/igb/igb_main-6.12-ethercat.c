@@ -2513,6 +2513,9 @@ static int igb_ndo_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
 			   struct net_device *dev,
 			   const unsigned char *addr, u16 vid,
 			   u16 flags,
+#ifdef CONFIG_SUSE_KERNEL
+			   bool *notified,
+#endif
 			   struct netlink_ext_ack *extack)
 {
 	/* guarantee we can provide a unique filter for the unicast address */

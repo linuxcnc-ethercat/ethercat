@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2007-2022  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2007-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -300,8 +300,14 @@ int main(int argc, char **argv)
     if (off_counter_out < 0)
         return -1;
 
-    // configure SYNC signals for this slave
-    ecrt_slave_config_dc(sc, 0x0700, PERIOD_NS, 4400000, 0, 0);
+    // configure SYNC0/SYNC1 interrupts for this slave
+    ecrt_slave_config_dc(sc,
+            0x0700, // AssignActivate (see vendor docs)
+            PERIOD_NS, // SYNC0 cycle time [ns]
+            4400000, // SYNC0 shift time [ns]
+            0, // SYNC1 cycle time [ns]
+            0 // SYNC1 shift time [ns]
+            );
 
     printf("Activating master...\n");
     if (ecrt_master_activate(master))

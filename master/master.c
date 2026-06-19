@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2020  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -53,12 +53,30 @@
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0) || \
-    (defined(CONFIG_PREEMPT_RT_FULL) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
+    (defined(CONFIG_PREEMPT_RT_FULL) && \
+     LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 #  define ec_rt_lock_interruptible(lock) \
           rt_mutex_lock_interruptible(lock)
 #else
 #  define ec_rt_lock_interruptible(lock) \
           rt_mutex_lock_interruptible(lock, 0)
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 47)
+
+#define smp_store_release(p, v) \
+do { \
+	smp_mb(); \
+	ACCESS_ONCE(*p) = (v); \
+} while (0)
+
+#define smp_load_acquire(p)	\
+({ \
+	typeof(*p) ___p1 = ACCESS_ONCE(*p); \
+	smp_mb(); \
+	___p1; \
+})
+
 #endif
 
 #include "master.h"
@@ -75,6 +93,11 @@
 
 /** SDO injection timeout in microseconds. */
 #define EC_SDO_INJECTION_TIMEOUT 10000
+
+/** SII caching mask (combination of valid flags). */
+#define EC_SII_CACHING_MASK \
+    (EC_SII_VENDOR | EC_SII_PRODUCT | \
+     EC_SII_REVISION | EC_SII_SERIAL | EC_SII_ALIAS)
 
 #ifdef EC_HAVE_CYCLES
 
@@ -107,6 +130,7 @@ const unsigned int rate_intervals[] = {
 /****************************************************************************/
 
 void ec_master_clear_config(ec_master_t *);
+void ec_master_clear_sii_cache(ec_master_t *);
 void ec_master_clear_slave_configs(ec_master_t *);
 void ec_master_clear_domains(ec_master_t *);
 int ec_master_thread_start(ec_master_t *, int (*)(void *), const char *);
@@ -127,6 +151,9 @@ void ec_master_find_dc_ref_clock(ec_master_t *);
 void ec_master_clear_device_stats(ec_master_t *);
 void ec_master_update_device_stats(ec_master_t *);
 void ec_master_nanosleep(const unsigned long);
+int ec_master_cached_sii_page_matches(const ec_master_t *,
+        const ec_sii_page_t *, uint32_t, uint32_t, uint32_t, uint32_t,
+        uint16_t);
 static void sc_reset_task_kicker(struct irq_work *work);
 static void sc_reset_task(struct work_struct *work);
 
@@ -162,7 +189,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         dev_t device_number, /**< Character device number. */
         struct class *class, /**< Device class. */
         unsigned int debug_level, /**< Debug level (module parameter). */
-        unsigned int run_on_cpu /**< bind created kernel threads to a cpu */
+        unsigned int run_on_cpu, /**< Bind created kernel threads to a cpu. */
+        unsigned int sii_caching /**< SII caching mode. */
         )
 {
     int ret;
@@ -195,11 +223,14 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->phase = EC_ORPHANED;
     master->active = 0;
     master->config_changed = 0;
+
     master->injection_seq_fsm = 0;
     master->injection_seq_rt = 0;
 
     master->slaves = NULL;
     master->slave_count = 0;
+
+    INIT_LIST_HEAD(&master->sii_cache);
 
     INIT_LIST_HEAD(&master->configs);
     INIT_LIST_HEAD(&master->domains);
@@ -242,6 +273,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->debug_level = debug_level;
     master->run_on_cpu = run_on_cpu;
+    master->sii_caching = sii_caching & EC_SII_CACHING_MASK;
+    EC_MASTER_INFO(master, "Initialising master with SII caching set to %u.",
+		    master->sii_caching);
     master->stats.timeouts = 0;
     master->stats.corrupted = 0;
     master->stats.unmatched = 0;
@@ -417,6 +451,7 @@ void ec_master_clear(
     ec_master_clear_domains(master);
     ec_master_clear_slave_configs(master);
     ec_master_clear_slaves(master);
+    ec_master_clear_sii_cache(master);
 
     ec_datagram_clear(&master->sync_mon_datagram);
     ec_datagram_clear(&master->sync_datagram);
@@ -453,6 +488,21 @@ void ec_master_clear_eoe_handlers(
     }
 }
 #endif
+
+/****************************************************************************/
+
+/** Clear SII page cache.
+ */
+void ec_master_clear_sii_cache(ec_master_t *master)
+{
+    ec_sii_page_t *page, *next;
+
+    list_for_each_entry_safe(page, next, &master->sii_cache, list) {
+        list_del(&page->list);
+        ec_sii_page_clear(page);
+        kfree(page);
+    }
+}
 
 /****************************************************************************/
 
@@ -596,8 +646,9 @@ int ec_master_thread_start(
         return err;
     }
     if (0xffffffff != master->run_on_cpu) {
-        EC_MASTER_INFO(master, " binding thread to cpu %u\n",master->run_on_cpu);
-        kthread_bind(master->thread,master->run_on_cpu);
+        EC_MASTER_INFO(master, " binding thread to cpu %u\n",
+                master->run_on_cpu);
+        kthread_bind(master->thread, master->run_on_cpu);
     }
     /* Ignoring return value of wake_up_process */
     (void) wake_up_process(master->thread);
@@ -1596,6 +1647,7 @@ static int ec_master_idle_thread(void *priv_data)
 static int ec_master_operation_thread(void *priv_data)
 {
     ec_master_t *master = (ec_master_t *) priv_data;
+    unsigned int seq_rt;
 
     EC_MASTER_DBG(master, 1, "Operation thread running"
             " with fsm interval = %u us, max data size=%zu\n",
@@ -1604,7 +1656,11 @@ static int ec_master_operation_thread(void *priv_data)
     while (!kthread_should_stop()) {
         ec_datagram_output_stats(&master->fsm_datagram);
 
-        if (master->injection_seq_rt == master->injection_seq_fsm) {
+        /* Use smp_load_acquire() to prevent re-ordering.
+         * https://gitlab.com/etherlab.org/ethercat/-/work_items/168 */
+        seq_rt = smp_load_acquire(&master->injection_seq_rt);
+        if (seq_rt == master->injection_seq_fsm) { // was injected
+
             // output statistics
             ec_master_output_stats(master);
 
@@ -1616,7 +1672,9 @@ static int ec_master_operation_thread(void *priv_data)
             if (ec_fsm_master_exec(&master->fsm)) {
                 // Inject datagrams (let the RT thread queue them, see
                 // ecrt_master_send())
-                master->injection_seq_fsm++;
+                // re-ordering-safe version of `master->injection_seq_fsm++`
+                smp_store_release(&master->injection_seq_fsm,
+                        master->injection_seq_fsm + 1);
             }
 
             ec_master_exec_slave_fsms(master);
@@ -2232,6 +2290,143 @@ void ec_master_request_op(
     }
 }
 
+/****************************************************************************/
+
+/** Check if a cached SII page is matching the caching criteria.
+ *
+ * Returns non-zero if matching.
+ */
+int ec_master_cached_sii_page_matches(
+        const ec_master_t *master, /**< EtherCAT master. */
+        const ec_sii_page_t *cached_page, /**< SII page. */
+        uint32_t vendor_id,
+        uint32_t product_code,
+        uint32_t revision,
+        uint32_t serial,
+        uint16_t alias)
+{
+    if (!master->sii_caching) {
+        return 0;
+    }
+
+    if ((master->sii_caching & EC_SII_VENDOR) &&
+            cached_page->vendor_id != vendor_id) {
+        return 0;
+    }
+
+    if ((master->sii_caching & EC_SII_PRODUCT) &&
+            cached_page->product_code != product_code) {
+        return 0;
+    }
+
+    if ((master->sii_caching & EC_SII_REVISION) &&
+            cached_page->revision_number != revision) {
+        return 0;
+    }
+
+    if ((master->sii_caching & EC_SII_SERIAL) &&
+            (!serial || cached_page->serial_number != serial)) {
+        return 0;
+    }
+
+    if ((master->sii_caching & EC_SII_ALIAS) &&
+            (!alias || cached_page->alias != alias)) {
+        return 0;
+    }
+
+    return 1;
+}
+
+/****************************************************************************/
+
+/** Find a matching cached SII page.
+ *
+ * Returns pointer to the cached page, or zero if nothing usable found.
+ */
+ec_sii_page_t *ec_master_find_cached_sii_page(
+        const ec_master_t *master, /**< EtherCAT master. */
+        uint32_t vendor_id,
+        uint32_t product_code,
+        uint32_t revision,
+        uint32_t serial,
+        uint16_t alias)
+{
+    ec_sii_page_t *cached_page;
+
+    list_for_each_entry(cached_page, &master->sii_cache, list) {
+        if (ec_master_cached_sii_page_matches(master, cached_page,
+                    vendor_id, product_code, revision, serial, alias)) {
+            return cached_page;
+        }
+    }
+
+    return NULL;
+}
+
+/****************************************************************************/
+
+/** Add an SII page to the cache.
+ *
+ * If caching is disabled or the page already exists, it is not added.
+ *
+ * Returns non-zero on error.
+ */
+int ec_master_cache_sii_page(
+        ec_master_t *master, /**< EtherCAT master. */
+        const ec_sii_page_t *page /**< SII page. */
+        )
+{
+    ec_sii_page_t *cached_page;
+    int ret;
+
+    if (!master->sii_caching) {
+        return 0;
+    }
+
+    if ((master->sii_caching & EC_SII_SERIAL) && !page->serial_number) {
+        // only caching non-zero serial numbers
+        return 0;
+    }
+
+    if ((master->sii_caching & EC_SII_ALIAS) && !page->alias) {
+        // not caching non-zero alias addresses
+        return 0;
+    }
+
+    list_for_each_entry(cached_page, &master->sii_cache, list) {
+        if (ec_master_cached_sii_page_matches(master, cached_page,
+                    page->vendor_id, page->product_code,
+                    page->revision_number, page->serial_number,
+                    page->alias)) {
+            EC_MASTER_WARN(master, "Matching SII page already existing.\n");
+            return 0;
+        }
+    }
+
+    EC_MASTER_DBG(master, 1,
+            "Caching SII page for 0x%08X / 0x%08X / 0x%08X / 0x%08X / %u\n",
+            page->vendor_id, page->product_code, page->revision_number,
+            page->serial_number, page->alias);
+
+    if (!(cached_page = (ec_sii_page_t *)
+                kmalloc(sizeof(ec_sii_page_t), GFP_KERNEL))) {
+        EC_MASTER_ERR(master, "Error allocating SII page memory!\n");
+        return -ENOMEM;
+    }
+
+    ec_sii_page_init(cached_page);
+    cached_page->origin = EC_SII_PAGE_CACHED;
+
+    ret = ec_sii_page_copy(cached_page, page);
+    if (ret) {
+        EC_MASTER_ERR(master, "Failed to copy SII page!\n");
+        return ret;
+    }
+
+    list_add_tail(&cached_page->list, &master->sii_cache);
+    return 0;
+}
+
 /*****************************************************************************
  *  Application interface
  ****************************************************************************/
@@ -2436,11 +2631,14 @@ int ecrt_master_send(ec_master_t *master)
 {
     ec_datagram_t *datagram, *n;
     ec_device_index_t dev_idx;
+    unsigned int seq_fsm;
 
-    if (master->injection_seq_rt != master->injection_seq_fsm) {
+    seq_fsm = smp_load_acquire(&master->injection_seq_fsm);
+    if (master->injection_seq_rt != seq_fsm) {
         // inject datagram produced by master FSM
         ec_master_queue_datagram(master, &master->fsm_datagram);
-        master->injection_seq_rt = master->injection_seq_fsm;
+
+        smp_store_release(&master->injection_seq_rt, seq_fsm);
     }
 
     ec_master_inject_external_datagrams(master);
@@ -3294,6 +3492,30 @@ int ecrt_master_reset(ec_master_t *master)
 
 /****************************************************************************/
 
+int ecrt_master_sii_caching(ec_master_t *master,
+        ec_sii_caching_fields_t fields)
+{
+    fields &= EC_SII_CACHING_MASK;
+
+    if (master->sii_caching == fields) {
+        // no changes
+        return 0;
+    }
+
+    EC_MASTER_DBG(master, 1, "Setting SII caching fields to %u.\n",
+            fields);
+    master->sii_caching = fields;
+
+    if (!master->sii_caching) {
+        EC_MASTER_DBG(master, 1, "Clearing SII page cache.\n");
+        ec_master_clear_sii_cache(master);
+    }
+
+    return 0;
+}
+
+/****************************************************************************/
+
 static void sc_reset_task_kicker(struct irq_work *work)
 {
     struct ec_master *master =
@@ -3344,6 +3566,7 @@ EXPORT_SYMBOL(ecrt_master_sdo_upload);
 EXPORT_SYMBOL(ecrt_master_write_idn);
 EXPORT_SYMBOL(ecrt_master_read_idn);
 EXPORT_SYMBOL(ecrt_master_reset);
+EXPORT_SYMBOL(ecrt_master_sii_caching);
 
 /** \endcond */
 

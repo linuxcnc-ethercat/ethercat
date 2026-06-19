@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------
 #
-#  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
+#  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
 #
 #  This file is part of the IgH EtherCAT Master.
 #
@@ -65,6 +65,7 @@ noinst_HEADERS = \
 	sdo.c sdo.h \
 	sdo_entry.c sdo_entry.h \
 	sdo_request.c sdo_request.h \
+	sii_page.c sii_page.h \
 	slave.c slave.h \
 	slave_config.c slave_config.h \
 	soe_errors.c \

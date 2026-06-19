@@ -25,13 +25,13 @@
 #
 #------------------------------------------------------------------------------
 
-LSMOD=/sbin/lsmod
-MODPROBE=/sbin/modprobe
-RMMOD=/sbin/rmmod
-MODINFO=/sbin/modinfo
-IP=/bin/ip
+LSMOD="@kmoddir@/lsmod"
+MODPROBE="@kmoddir@/modprobe"
+RMMOD="@kmoddir@/rmmod"
+MODINFO="@kmoddir@/modinfo"
+IP="@ipcmd@"
 
-ETHERCAT=@bindir@/ethercat
+ETHERCAT="@bindir@/ethercat"
 
 #------------------------------------------------------------------------------
 
@@ -39,7 +39,7 @@ if [ "$1" = "-c" ]; then
     ETHERCAT_CONFIG="$2"
     COMMAND="$3"
 else
-    ETHERCAT_CONFIG=@sysconfdir@/ethercat.conf
+    ETHERCAT_CONFIG="@sysconfdir@/ethercat.conf"
     COMMAND="$1"
 fi
 
@@ -121,9 +121,17 @@ start)
         exit 1
     fi
 
+    MODULE_PARAMS=(
+        main_devices="${DEVICES}"
+        backup_devices="${BACKUPS}"
+    )
+
+    if [ -n "$SII_CACHING" ]; then
+        MODULE_PARAMS+=(sii_caching="$SII_CACHING")
+    fi
+
     # load master module
-    if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master \
-            main_devices="${DEVICES}" backup_devices="${BACKUPS}"; then
+    if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master "${MODULE_PARAMS[@]}"; then
         exit 1
     fi
 
@@ -139,7 +147,7 @@ start)
         if [ "${MODULE}" != "generic" ] && [ "${MODULE}" != "ccat" ]; then
             # unload standard module and check if unloading was successful
             ${RMMOD} "${MODULE}" 2> /dev/null || true
-            if ${LSMOD} | grep "^${MODULE} " > /dev/null; then
+            if ${LSMOD} | grep "^${MODULE//-/_} " > /dev/null; then
                 # could not unload module
                 ${RMMOD} ${LOADED_MODULES}
                 exit 1
@@ -166,7 +174,7 @@ stop)
     # unload EtherCAT device modules
     for MODULE in ${DEVICE_MODULES} master; do
         ECMODULE=ec_${MODULE}
-        if ! ${LSMOD} | grep -q "^${ECMODULE} "; then
+        if ! ${LSMOD} | grep -q "^${ECMODULE//-/_} "; then
             continue # ec_* module not loaded
         fi
         if ! ${RMMOD} "${ECMODULE}"; then

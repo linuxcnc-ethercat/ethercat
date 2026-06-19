@@ -69,6 +69,7 @@ void ec_fsm_sii_init(ec_fsm_sii_t *fsm, /**< finite state machine */
 {
     fsm->state = NULL;
     fsm->datagram = datagram;
+    fsm->read_word_count = 0;
 }
 
 /****************************************************************************/
@@ -97,6 +98,7 @@ void ec_fsm_sii_read(ec_fsm_sii_t *fsm, /**< finite state machine */
     fsm->slave = slave;
     fsm->word_offset = word_offset;
     fsm->mode = mode;
+    fsm->read_word_count = 0;
 }
 
 /****************************************************************************/
@@ -171,8 +173,14 @@ void ec_fsm_sii_state_start_reading(
             break;
     }
 
-    EC_WRITE_U8 (datagram->data,     0x80); // two address octets
+    // 0x0502 (direction)
+    EC_WRITE_U8 (datagram->data,     0x80); // two address octets FIXME (RO)
+
+    // 0x0503 (trigger operations)
     EC_WRITE_U8 (datagram->data + 1, 0x01); // request read operation
+
+    // Address 0x0504:0x0507 DWORD 32-bit word address
+    // Only the lower 16 bit (0x0504:0x0505) will be used.
     EC_WRITE_U16(datagram->data + 2, fsm->word_offset);
 
 #ifdef SII_DEBUG
@@ -221,10 +229,12 @@ void ec_fsm_sii_state_read_check(
     // issue check/fetch datagram
     switch (fsm->mode) {
         case EC_FSM_SII_USE_INCREMENT_ADDRESS:
-            ec_datagram_aprd(datagram, fsm->slave->ring_position, 0x502, 10);
+            ec_datagram_aprd(datagram, fsm->slave->ring_position,
+                    0x502, 14);
             break;
         case EC_FSM_SII_USE_CONFIGURED_ADDRESS:
-            ec_datagram_fprd(datagram, fsm->slave->station_address, 0x502, 10);
+            ec_datagram_fprd(datagram, fsm->slave->station_address,
+                    0x502, 14);
             break;
     }
 
@@ -276,7 +286,7 @@ void ec_fsm_sii_state_read_fetch(
         return;
     }
 
-    // check "busy bit"
+    // check "busy bit" 0x0503.7
     if (EC_READ_U8(datagram->data + 1) & 0x81) { /* busy bit or
                                                     read operation busy */
         // still busy... timeout?
@@ -297,8 +307,14 @@ void ec_fsm_sii_state_read_fetch(
         return;
     }
 
+    // if 0x0502.6 is set, we have read 4 words (instead of 2)
+    fsm->read_word_count = EC_READ_U8(datagram->data) & 0x40 ? 4 : 2;
+    if (fsm->read_word_count > fsm->slave->sii_parallel_words) {
+        fsm->slave->sii_parallel_words = fsm->read_word_count;
+    }
+
     // SII value received.
-    memcpy(fsm->value, datagram->data + 6, 4);
+    memcpy(fsm->value, datagram->data + 6, fsm->read_word_count * 2);
     fsm->state = ec_fsm_sii_state_end;
 }
 
@@ -316,12 +332,18 @@ void ec_fsm_sii_state_start_writing(
     ec_datagram_t *datagram = fsm->datagram;
 
     // initiate write operation
-    ec_datagram_fpwr(datagram, fsm->slave->station_address, 0x502, 8);
+    ec_datagram_fpwr(datagram, fsm->slave->station_address, 0x0502, 8);
     EC_WRITE_U8 (datagram->data,     0x81); /* two address octets
                                                + enable write access */
     EC_WRITE_U8 (datagram->data + 1, 0x02); // request write operation
-    EC_WRITE_U16(datagram->data + 2, fsm->word_offset);
-    memset(datagram->data + 4, 0x00, 2);
+
+    // Address 0x0504:0x0507 DWORD 32-bit word address
+    // Only the lower 16 bit (0x0504:0x0505) will be used.
+    EC_WRITE_U32(datagram->data + 2, fsm->word_offset);
+
+    // Data 0x0508:0x050b
+    // For the write operation only the lower 16 bit (0x0508:0x0509) will be
+    // used.
     memcpy(datagram->data + 6, fsm->value, 2);
 
 #ifdef SII_DEBUG

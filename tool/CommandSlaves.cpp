@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -255,7 +255,16 @@ void CommandSlaves::showSlaves(
             << "  Revision number: 0x"
             << setw(8) << si->revision_number << endl
             << "  Serial number:   0x"
-            << setw(8) << si->serial_number << endl;
+            << setw(8) << si->serial_number << endl
+            << "SII:" << endl
+            << "  Parallel read: ";
+        if (si->sii_parallel_words) {
+            cout << si->sii_parallel_words << " words";
+        }
+        else {
+            cout << " n/a";
+        }
+        cout << endl;
 
         cout << "DL information:" << endl
             << "  FMMU bit operation: "

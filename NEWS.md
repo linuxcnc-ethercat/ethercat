@@ -1,3 +1,23 @@
+# Version 1.7.0
+
+- Added SII caching functionality with
+    - the kernel module parameter `sii_caching`,
+    - the configuration variable `SII_CACHING`,
+    - and the API method `ecrt_master_sii_caching()`.
+
+# Version 1.6.9
+
+- Protect datagram injection mechanism against re-ordering.
+- Fixed for genet and igb drivers for openSUSE Leap 16.0 kernel 6.12.
+- tty: Implemented new timer interface since kernel 6.15.
+- Do not require .config to exist in kernel sources.
+- Fix: Attach slaves before calculating DCs.
+- Discard EoE traffic in CoE statemachine, if EoE is disabled.
+- Support for Linux 6.19
+- Added `--with-kmod-dir` and `--with-ip-cmd` configuration switches
+  to specify the paths of the tools used in the `ethercatctl` script.
+- Changed the default path of the `ip` command to `/sbin/ip`.
+
 # Version 1.6.8
 
 - Fixed usage of `FAKE_EC_HOMEDIR` variable in fake library.

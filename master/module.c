@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -56,6 +56,7 @@ static unsigned int debug_level;  /**< Debug level parameter. */
 static unsigned int run_on_cpu = 0xffffffff; /**< Bind created kernel threads
                                                to a cpu. Default do not bind.
                                               */
+static unsigned int sii_caching; /**< SII Caching mode. */
 
 static ec_master_t *masters; /**< Array of masters. */
 static struct semaphore master_sem; /**< Master semaphore. */
@@ -80,10 +81,12 @@ module_param_array(main_devices, charp, &master_count, S_IRUGO);
 MODULE_PARM_DESC(main_devices, "MAC addresses of main devices");
 module_param_array(backup_devices, charp, &backup_count, S_IRUGO);
 MODULE_PARM_DESC(backup_devices, "MAC addresses of backup devices");
-module_param_named(debug_level, debug_level, uint, S_IRUGO);
+module_param(debug_level, uint, S_IRUGO);
 MODULE_PARM_DESC(debug_level, "Debug level");
-module_param_named(run_on_cpu, run_on_cpu, uint, S_IRUGO);
+module_param(run_on_cpu, uint, S_IRUGO);
 MODULE_PARM_DESC(run_on_cpu, "Bind kthreads to a specific cpu");
+module_param(sii_caching, uint, S_IRUGO);
+MODULE_PARM_DESC(sii_caching, "SII caching mode (default=0=off)");
 
 /** \endcond */
 
@@ -153,7 +156,8 @@ int __init ec_init_module(void)
 
     for (i = 0; i < master_count; i++) {
         ret = ec_master_init(&masters[i], i, macs[i][0], macs[i][1],
-                    device_number, class, debug_level, run_on_cpu);
+                    device_number, class, debug_level, run_on_cpu,
+                    sii_caching);
         if (ret)
             goto out_free_masters;
     }

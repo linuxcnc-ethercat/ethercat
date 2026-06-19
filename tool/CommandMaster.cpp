@@ -94,7 +94,46 @@ void CommandMaster::execute(const StringVector &args)
         cout << endl
             << "  Active: " << (data.active ? "yes" : "no") << endl
             << "  Slaves: " << data.slave_count << endl
-            << "  Ethernet devices:" << endl;
+            << "  SII caching: ";
+
+        bool first{true};
+        if (data.sii_caching & EC_SII_VENDOR) {
+            cout << "Vendor";
+            first = false;
+        }
+        if (data.sii_caching & EC_SII_PRODUCT) {
+            if (not first) {
+                cout << " | ";
+            }
+            first = false;
+            cout << "Product";
+        }
+        if (data.sii_caching & EC_SII_REVISION) {
+            if (not first) {
+                cout << " | ";
+            }
+            first = false;
+            cout << "Revision";
+        }
+        if (data.sii_caching & EC_SII_SERIAL) {
+            if (not first) {
+                cout << " | ";
+            }
+            first = false;
+            cout << "Serial";
+        }
+        if (data.sii_caching & EC_SII_ALIAS) {
+            if (not first) {
+                cout << " | ";
+            }
+            first = false;
+            cout << "Alias";
+        }
+        if (first) {
+            cout << "disabled";
+        }
+
+        cout << endl << "  Ethernet devices:" << endl;
 
         for (dev_idx = EC_DEVICE_MAIN; dev_idx < data.num_devices;
                 dev_idx++) {

@@ -4942,7 +4942,9 @@ static void rtl_remove_one(struct pci_dev *pdev)
 	rtl_release_firmware(tp);
 
 	/* restore original MAC address */
-	rtl_rar_set(tp, tp->dev->perm_addr);
+	if (is_valid_ether_addr(tp->dev->perm_addr)) {
+		rtl_rar_set(tp, tp->dev->perm_addr);
+	}
 }
 
 static const struct net_device_ops rtl_netdev_ops = {

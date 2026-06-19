@@ -68,6 +68,8 @@ endif
 # Any precious variable used inside script_templates should appear here
 expand_script = $(SED) \
 	-e 's,[@]VERSION[@],$(VERSION),g' \
+	-e 's,[@]ipcmd[@],$(ipcmd),g' \
+	-e 's,[@]kmoddir[@],$(kmoddir),g' \
 	-e 's,[@]bindir[@],$(bindir),g' \
 	-e 's,[@]sbindir[@],$(sbindir),g' \
 	-e 's,[@]sysconfdir[@],$(sysconfdir),g'

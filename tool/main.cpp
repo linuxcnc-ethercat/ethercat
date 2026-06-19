@@ -28,9 +28,9 @@
 using namespace std;
 
 #include "CommandAlias.h"
+#include "CommandCStruct.h"
 #include "CommandConfig.h"
 #include "CommandCrc.h"
-#include "CommandCStruct.h"
 #include "CommandData.h"
 #include "CommandDebug.h"
 #include "CommandDomains.h"
@@ -50,6 +50,7 @@ using namespace std;
 #include "CommandRegWrite.h"
 #include "CommandRescan.h"
 #include "CommandSdos.h"
+#include "CommandSiiCaching.h"
 #include "CommandSiiRead.h"
 #include "CommandSiiWrite.h"
 #include "CommandSlaves.h"
@@ -294,6 +295,7 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandRegWrite());
     commandList.push_back(new CommandRescan());
     commandList.push_back(new CommandSdos());
+    commandList.push_back(new CommandCache());
     commandList.push_back(new CommandSiiRead());
     commandList.push_back(new CommandSiiWrite());
     commandList.push_back(new CommandSlaves());

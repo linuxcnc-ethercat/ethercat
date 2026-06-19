@@ -2459,7 +2459,11 @@ static int bcmgenet_rx_poll(struct napi_struct *napi, int budget)
 	if (ring->dim.use_dim) {
 		dim_update_sample(ring->dim.event_ctr, ring->dim.packets,
 				  ring->dim.bytes, &dim_sample);
+#ifdef CONFIG_SUSE_KERNEL
+		net_dim(&ring->dim.dim, &dim_sample);
+#else
 		net_dim(&ring->dim.dim, dim_sample);
+#endif
 	}
 
 	return work_done;

@@ -57,6 +57,10 @@ Depends:
  dkms,
  make,
  gcc,
+ autoconf,
+ automake,
+ libtool,
+ pkg-config,
  libc6-dev | libc-dev
 Recommends: linux-headers-generic | linux-headers-amd64 | linux-headers-arm64 | linux-headers
 Description: IgH EtherCAT master — kernel module source (DKMS)

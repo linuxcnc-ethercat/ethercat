@@ -1,3 +1,18 @@
+ethercat (1:1.6.9-3) unstable; urgency=medium
+
+  * ethercat-dkms: depend on autoconf, automake, libtool and pkg-config.
+    dkms.conf MAKE[0] runs `./bootstrap` (autoreconf) before configure,
+    but the autotools were only in source Build-Depends, not in the dkms
+    package's runtime Depends. On a clean machine the on-target DKMS
+    build (install time / kernel-postinst) failed with:
+        ./bootstrap: line 32: autoreconf: command not found
+        # exit code: 127
+    so ec_master was never built and ethercat.service failed to start
+    with "Module ec_master not found". Pull the build tools in so apt
+    installs them alongside the dkms package.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Mon, 22 Jun 2026 10:33:12 +0800
+
 ethercat (1:1.6.9-2) unstable; urgency=medium
 
   * Fix DKMS build failure on epoch-versioned packages. dpkg version

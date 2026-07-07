@@ -1,0 +1,54 @@
+#-----------------------------------------------------------------------------
+#
+#  Copyright (C) 2006-2017  Florian Pose, Ingenieurgemeinschaft IgH
+#
+#  This file is part of the IgH EtherCAT Master.
+#
+#  The IgH EtherCAT Master is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License version 2, as
+#  published by the Free Software Foundation.
+#
+#  The IgH EtherCAT Master is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+#  Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with the IgH EtherCAT Master; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#
+#  ---
+#
+#  vim: syntax=make
+#
+#-----------------------------------------------------------------------------
+
+src := @abs_srcdir@
+ccflags-y := -I@abs_top_builddir@
+
+TOPDIR := $(src)/../..
+
+REV := $(shell if test -s $(TOPDIR)/revision; then \
+		cat $(TOPDIR)/revision; \
+	else \
+		git -C $(TOPDIR) describe 2>/dev/null || echo "unknown"; \
+	fi)
+
+ifeq (@ENABLE_MACB@,1)
+    obj-m += ec_macb.o
+    ec_macb-objs := \
+        macb_main-@KERNEL_MACB@-ethercat.o \
+        macb_ptp-@KERNEL_MACB@-ethercat.o
+
+ifeq (@ENABLE_DRIVER_RESOURCE_VERIFYING@,1)
+	ccflags-y := -DEC_ENABLE_DRIVER_RESOURCE_VERIFYING
+endif
+
+    CFLAGS_macb_main-@KERNEL_MACB@-ethercat.o = -DREV="\"$(REV)\""
+endif
+
+KBUILD_EXTRA_SYMBOLS := \
+	@abs_top_builddir@/$(LINUX_SYMVERS) \
+	@abs_top_builddir@/master/$(LINUX_SYMVERS)
+
+#-----------------------------------------------------------------------------

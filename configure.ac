@@ -492,6 +492,52 @@ fi
 AC_SUBST(KERNEL_GENET, [$kernelgenet])
 
 #-----------------------------------------------------------------------------
+# macb driver
+#-----------------------------------------------------------------------------
+
+AC_ARG_ENABLE([macb],
+    AS_HELP_STRING([--enable-macb],
+                   [Build macb driver for Raspi 5 [default=no]]),
+    [
+        case "${enableval}" in
+            yes) enablemacb=1
+                ;;
+            no) enablemacb=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-macb])
+                ;;
+        esac
+    ],
+    [enablemacb=0]
+)
+
+AM_CONDITIONAL(ENABLE_MACB, test "x$enablemacb" = "x1")
+AC_SUBST(ENABLE_MACB, [$enablemacb])
+
+AC_ARG_WITH([macb-kernel],
+    AS_HELP_STRING([--with-macb-kernel=<X.Y.Z>],
+                   [macb kernel (only if differing)]),
+    [
+        kernelmacb=[$withval]
+    ],
+    [
+        kernelmacb=$linuxversion
+    ]
+)
+
+if test "x${enablemacb}" = "x1"; then
+    AC_MSG_CHECKING([for kernel for macb driver])
+
+    if test ! -f "${srcdir}/devices/macb/macb_main-${kernelmacb}-orig.c"; then
+        AC_MSG_ERROR([kernel $kernelmacb not available for macb driver!])
+    fi
+
+    AC_MSG_RESULT([$kernelmacb])
+fi
+
+AC_SUBST(KERNEL_MACB, [$kernelmacb])
+
+#-----------------------------------------------------------------------------
 # igb driver
 #-----------------------------------------------------------------------------
 
@@ -1474,6 +1520,8 @@ AC_CONFIG_FILES([
         devices/igb/Makefile
         devices/igc/Kbuild
         devices/igc/Makefile
+        devices/macb/Kbuild
+        devices/macb/Makefile
         devices/r8169/Kbuild
         devices/r8169/Makefile
         devices/stmmac/Kbuild

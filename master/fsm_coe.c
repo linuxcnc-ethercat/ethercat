@@ -2133,7 +2133,7 @@ void ec_fsm_coe_up_response(
     if (rec_size < 6) {
         request->errno = EIO;
         fsm->state = ec_fsm_coe_error;
-        EC_SLAVE_ERR(slave, "Received currupted SDO upload response"
+        EC_SLAVE_ERR(slave, "Received corrupted SDO upload response"
                 " (%zu bytes)!\n", rec_size);
         ec_print_data(data, rec_size);
         return;
@@ -2211,7 +2211,7 @@ void ec_fsm_coe_up_response(
         if (rec_size < 10) {
             request->errno = EIO;
             fsm->state = ec_fsm_coe_error;
-            EC_SLAVE_ERR(slave, "Received currupted SDO normal upload"
+            EC_SLAVE_ERR(slave, "Received corrupted SDO normal upload"
                     " response (only %zu bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
             return;
@@ -2428,7 +2428,7 @@ void ec_fsm_coe_up_seg_response(
     }
 
     if (rec_size < 10) {
-        EC_SLAVE_ERR(slave, "Received currupted SDO upload"
+        EC_SLAVE_ERR(slave, "Received corrupted SDO upload"
                 " segment response!\n");
         ec_print_data(data, rec_size);
         request->errno = EIO;

@@ -4,6 +4,10 @@ vim: spelllang=en spell tw=78
 
 -------------------------------------------------------------------------------
 
+Changes in 1.5.4:
+
+* Back-ported security fixes from 1.6.10.
+
 Changes in 1.5.3:
 
 * Added the ecrt_slave_config_flag() to the application interface.

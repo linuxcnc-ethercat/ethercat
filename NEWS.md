@@ -4,6 +4,10 @@
     - the kernel module parameter `sii_caching`,
     - the configuration variable `SII_CACHING`,
     - and the API method `ecrt_master_sii_caching()`.
+- Security fixes against malicious subdevices
+    - Protected `rec_size` calculation in FoE.
+    - Check for malicious EoE frame details.
+- Fixed unsufficient re-allocation of SoE request buffer.
 
 # Version 1.6.9
 

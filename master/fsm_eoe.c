@@ -443,7 +443,7 @@ void ec_fsm_eoe_set_ip_response(
 
     if (rec_size < 4) {
         fsm->state = ec_fsm_eoe_error;
-        EC_SLAVE_ERR(slave, "Received currupted EoE set IP parameter response"
+        EC_SLAVE_ERR(slave, "Received corrupted EoE set IP parameter response"
                 " (%zu bytes)!\n", rec_size);
         ec_print_data(data, rec_size);
         return;

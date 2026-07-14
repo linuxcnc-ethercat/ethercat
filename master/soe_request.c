@@ -200,8 +200,18 @@ int ec_soe_request_append_data(
         size_t size /**< Number of bytes in \a source. */
         )
 {
-    if (req->data_size + size > req->mem_size) {
-        size_t new_size = req->mem_size ? req->mem_size * 2 : size;
+    size_t new_total_size = req->data_size + size;
+
+    if (new_total_size > req->mem_size) {
+        size_t new_size;
+        if (req->mem_size * 2 >= new_total_size) {
+            // just double it to reduce the number of re-allocations
+            new_size = req->mem_size * 2;
+        }
+        else {
+            new_size = new_total_size;
+        }
+
         uint8_t *new_data = (uint8_t *) kmalloc(new_size, GFP_KERNEL);
         if (!new_data) {
             EC_ERR("Failed to allocate %zu bytes of SoE memory.\n",
@@ -215,7 +225,7 @@ int ec_soe_request_append_data(
     }
 
     memcpy(req->data + req->data_size, source, size);
-    req->data_size += size;
+    req->data_size = new_total_size;
     return 0;
 }
 

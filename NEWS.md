@@ -1,15 +1,17 @@
-# Version 1.7.0
+# Version History
+
+## Version 1.7.0
 
 - Added SII caching functionality with
-    - the kernel module parameter `sii_caching`,
-    - the configuration variable `SII_CACHING`,
-    - and the API method `ecrt_master_sii_caching()`.
+  - the kernel module parameter `sii_caching`,
+  - the configuration variable `SII_CACHING`,
+  - and the API method `ecrt_master_sii_caching()`.
 - Security fixes against malicious subdevices
-    - Protected `rec_size` calculation in FoE.
-    - Check for malicious EoE frame details.
+  - Protected `rec_size` calculation in FoE.
+  - Check for malicious EoE frame details.
 - Fixed unsufficient re-allocation of SoE request buffer.
 
-# Version 1.6.9
+## Version 1.6.9
 
 - Protect datagram injection mechanism against re-ordering.
 - Fixed for genet and igb drivers for openSUSE Leap 16.0 kernel 6.12.
@@ -22,27 +24,27 @@
   to specify the paths of the tools used in the `ethercatctl` script.
 - Changed the default path of the `ip` command to `/sbin/ip`.
 
-# Version 1.6.8
+## Version 1.6.8
 
 - Fixed usage of `FAKE_EC_HOMEDIR` variable in fake library.
 
-# Version 1.6.7
+## Version 1.6.7
 
 - Completed API methods in fake library
 - Fix igb for openSUSE 15.6 (kernel 6.4)
 
-# Version 1.6.6
+## Version 1.6.6
 
 - Added Ethernet drivers for kernels 6.4 and 6.12.
 - Added missing functions to fake user library.
 - Use sint(32) notation in EtherLab output driver
 - Added CONTRIBUTING.md
 
-# Version 1.6.5
+## Version 1.6.5
 
 - Implemented interface changes of Linux 6.15.
 
-# Version 1.6.4
+## Version 1.6.4
 
 - igc: Set RX descriptor write-back threshold to 1
 - Avoid rescan on non-responding slave
@@ -56,7 +58,7 @@
 - Explicitly check for pkg-config macros
 - Many documentation improvements (thanks to Nicola Fontana)
 
-# Version 1.6.3
+## Version 1.6.3
 
 - Fix ccat for aarch64 >= 6.11.0
 - Removed domain information from libfakeethercat RtIPC paths
@@ -64,17 +66,17 @@
 - Fixed some compiler warnings
 - Added static keywords to internal functions
 
-# Version 1.6.2
+## Version 1.6.2
 
 - Fixed typo in bash completion.
 - Directly include `soe_error_codes` into `SoeCommand.cpp`
 - Fixed check of non-zero bit offset in libfakeethercat
 
-# Version 1.6.1
+## Version 1.6.1
 
 - Added libfakeethercat to simulate Process Data of EtherCAT Slaves.
 
-# Version 1.6.0
+## Version 1.6.0
 
 - Added all native Ethernet drivers for kernels 5.14 and 6.1.
 - Dropped support for kernels < 3.0.
@@ -82,68 +84,67 @@
 - Added EoE set IP command via command-line-tool.
 - Changed the default AL state change timeout from 5 to 10 s.
 
-# Back-ports since version 1.5.2
+## Back-ports since version 1.5.2
 
 - Added feature flag API.
 - Fixed FoE timeout calculation bug.
 
-# Version 1.5.2
+## Version 1.5.2
 
 - API extensions (find the complete description in `include/ecrt.h`)
-    - Added redundancy features; enable using `--with-devices`.
-    - Re-designed and seamlessly integrated RTDM interface.
-    - Added `ecrt_sdo_request_index()` method to change index and subindex.
-    - Changed the data types of the shift times in `ecrt_slave_config_dc()`
-      to `int32_t` to correctly display negative shift times.
-    - Added API for querying CoE emergency requests.
-    - Added interface to read/write register contents; re-worked register
-      requests.
-    - Added interface to select the reference clock and to sync to it.
-    - Exported `ecrt_domain_size()` to userspace.
-    - Added `ecrt_slave_config_reg_so_entry_pos()` to register non-unique
-      PDO entries.
+  - Added redundancy features; enable using `--with-devices`.
+  - Re-designed and seamlessly integrated RTDM interface.
+  - Added `ecrt_sdo_request_index()` method to change index and subindex.
+  - Changed the data types of the shift times in `ecrt_slave_config_dc()`
+    to `int32_t` to correctly display negative shift times.
+  - Added API for querying CoE emergency requests.
+  - Added interface to read/write register contents; re-worked register
+    requests.
+  - Added interface to select the reference clock and to sync to it.
+  - Exported `ecrt_domain_size()` to userspace.
+  - Added `ecrt_slave_config_reg_so_entry_pos()` to register non-unique PDO
+    entries.
 - Ethernet drivers
-    - Added 8139too driver for 3.0, 3.2, 3.4.
-    - Added r8169 driver for 2.6.36 (J. Kunz), 3.2 (J. Kunz), 3.4 (F. Pose).
-    - Added e1000 driver for 3.0, 3.4.
-    - Added e1000e driver for 3.2 (J. Kunz), 3.4 (F. Pose).
-    - Added e100 driver for 3.0, 3.4.
-    - Fixes regarding 8139too driver for 2.6.36.
-    - Some fixes for all e1000 and e1000e drivers.
+  - Added 8139too driver for 3.0, 3.2, 3.4.
+  - Added r8169 driver for 2.6.36 (J. Kunz), 3.2 (J. Kunz), 3.4 (F. Pose).
+  - Added e1000 driver for 3.0, 3.4.
+  - Added e1000e driver for 3.2 (J. Kunz), 3.4 (F. Pose).
+  - Added e100 driver for 3.0, 3.4.
+  - Fixes regarding 8139too driver for 2.6.36.
+  - Some fixes for all e1000 and e1000e drivers.
 - General behaviour
-    - Avoided semaphore locking from userspace/rtdm library: Implemented
-      datagram ring instead of queue.
-    - Assign SII to PDI during PREOP transition; Introduced
-      `--enable-sii-assign` to switch this on.
-    - Avoided re-allocating memory in userspace library implementations of
-      `ecrt_sdo_request_state()` and in VoE handlers.
-    - Send sync datagrams only if reference clock is found.
-    - Adjusted some DC clock discipline parameters.
-    - Fixed AL status code lookup.
-    - Fixed some `ioctl()` return values and permissions.
-    - Fixed FoE data OpCode, thanks to R. Roesch.
-    - Fixed and improved cancelling requests when clearing configuration.
-    - Using common wait queue for requests.
-    - Removed some unnecessary request types.
-    - Output slave FSM datagram statistics.
-    - Removed some state-dependent datagram skip messages.
-    - Immediately restart slave FSM on several failed requests.
-    - Reset master state machine when going to orphaned phase.
+  - Avoided semaphore locking from userspace/rtdm library: Implemented
+    datagram ring instead of queue.
+  - Assign SII to PDI during PREOP transition; Introduced
+    `--enable-sii-assign` to switch this on.
+  - Avoided re-allocating memory in userspace library implementations of
+    `ecrt_sdo_request_state()` and in VoE handlers.
+  - Send sync datagrams only if reference clock is found.
+  - Adjusted some DC clock discipline parameters.
+  - Fixed AL status code lookup.
+  - Fixed some `ioctl()` return values and permissions.
+  - Fixed FoE data OpCode, thanks to R. Roesch.
+  - Fixed and improved cancelling requests when clearing configuration.
+  - Using common wait queue for requests.
+  - Removed some unnecessary request types.
+  - Output slave FSM datagram statistics.
+  - Removed some state-dependent datagram skip messages.
+  - Immediately restart slave FSM on several failed requests.
+  - Reset master state machine when going to orphaned phase.
 - Command-line tool:
-    - Show complete access flag in config view.
-    - Added EtherLab skin for `ethercat pdos` command.
-    - Fixed 'String too large' bug.
+  - Show complete access flag in config view.
+  - Added EtherLab skin for `ethercat pdos` command.
+  - Fixed 'String too large' bug.
 - Infrastructure:
-    - Added `AM_PROG_AR` necessary for autoconf 1.12.
-    - Avoided use of `AM_CFLAGS`, which is not used in some situations.
-    - Added vmalloc() include fix for ARM architecture, thanks to Andrea
-      Scian.
-    - Install ethercat service to multi-user target by default.
-    - Fixed COPYING.LESSER to be LGPL 2.1 (like in file headers).
-    - More detailed output of configure script.
-    - Added `rtai_rtdm_dc` example, thanks to Graeme Foot.
+  - Added `AM_PROG_AR` necessary for autoconf 1.12.
+  - Avoided use of `AM_CFLAGS`, which is not used in some situations.
+  - Added vmalloc() include fix for ARM architecture, thanks to Andrea Scian.
+  - Install ethercat service to multi-user target by default.
+  - Fixed COPYING.LESSER to be LGPL 2.1 (like in file headers).
+  - More detailed output of configure script.
+  - Added `rtai_rtdm_dc` example, thanks to Graeme Foot.
 
-# Version 1.5.1
+## Version 1.5.1
 
 - Fixed reset of `allow_scanning` flag if `ecrt_master_activate()` was not
   called.
@@ -154,7 +155,7 @@
 - Added fix for ESC port order (DC delay calculation).
 - Added e1000 driver for 2.6.35.
 
-# Version 1.5.0
+## Version 1.5.0
 
 - Added a userspace library for accessing the application interface. This
   library is licensed under LGPLv2.
@@ -170,13 +171,13 @@
   Introduced new method `ec_datagram_zero()` for that.
 - Added `phy_read` and `phy_write` commands to `ethercat` tool.
 - Added e100 driver for Intel PRO/100 NICs.
-    - Added e100 driver for 2.6.27.
-    - Added e100 driver for 2.6.28, thanks to Kim. H. Madsen.
-    - Added e100 driver for 2.6.29, thanks to Andre Puschmann.
-    - Added e100 driver for 2.6.31.
-    - Added e100 driver for 2.6.32.
-    - Added e100 driver for 2.6.33, thanks to J. Kunz.
-    - Added e100 driver for 2.6.37.
+  - Added e100 driver for 2.6.27.
+  - Added e100 driver for 2.6.28, thanks to Kim. H. Madsen.
+  - Added e100 driver for 2.6.29, thanks to Andre Puschmann.
+  - Added e100 driver for 2.6.31.
+  - Added e100 driver for 2.6.32.
+  - Added e100 driver for 2.6.33, thanks to J. Kunz.
+  - Added e100 driver for 2.6.37.
 - Added 8139too driver for kernels 2.6.25 (F. Pose), 2.6.26 (M. Luescher),
   2.6.27, 2.6.28, 2.6.29 (M. Goetze), 2.6.31 (F. Pose), 2.6.32 (F. Pose),
   2.6.33 (J. Kunz), 2.6.34 (Malcolm Lewis), 2.6.35 (B. Benner),
@@ -215,8 +216,8 @@
 - Added `ethercat graph` command which outputs the bus topology in
   DOT language.
 - Changed `EC_MAX_SII_SIZE` to 4096.
-- `ethercat xml` creates valid XML <EtherCATInfoList> for more than one slave
-  (thanks to E. Burgstaller).
+- `ethercat xml` creates valid XML `<EtherCATInfoList>` for more than one
+  slave (thanks to E. Burgstaller).
 - Added `ethercat eoe` command to display Ethernet over EtherCAT statistics.
 - Added `ethercat cstruct` command to output PDO information in C language.
 - Significantly improved EoE bandwidth by running EoE processing in a kthread.
@@ -229,7 +230,7 @@
   wildcard for vendor ID and product code.
 - Added support for systemd.
 
-# Version 1.4.0
+## Version 1.4.0
 
 - Fixed race condition in jiffy-based frame timeout calculation.
 - Fixed race condition concerning the `ec_slave_config_state->operational`
@@ -247,7 +248,7 @@
 - Fixed spelling of 'PDO', 'SDO' (all uppercase) and 'xx over EtherCAT'
   (without hyphens).
 
-# Version 1.4.0-rc3
+## Version 1.4.0-rc3
 
 - Ported the master thread to the kthread interface.
 - Added missing semaphore `up()` in an `ioctl()`. In rare cases, the master
@@ -259,7 +260,7 @@
 - Added some missing header files in the command-line-tool code.
 - Removed unstable e100, forcedeth, and r8169 drivers.
 
-# Version 1.4.0-rc2
+## Version 1.4.0-rc2
 
 - Fixed a deadlock causing race condition concerning thread signaling when the
   master thread had no opportunity to run, but shall be killed immediately
@@ -269,73 +270,71 @@
 - Minor fixes.
 - Removed some deprecated files.
 
-# Version 1.4.0-rc1
+## Version 1.4.0-rc1
 
 - Realtime interface changes:
-    - Replaced `ec_slave_t` with `ec_slave_config_t`, separating the bus
-      configuration from the actual slaves. Therefore, renamed
-      `ecrt_master_get_slave()` to `ecrt_master_slave_config()`.
-    - Replaced slave address string with alias and position values. See
-      `ecrt_master_slave_config()`.
-    - Removed `ecrt_master_get_slave_by_pos()`, because it is no longer
-      necessary due to alias/position addressing.
-    - Added `ec_slave_config_state_t` for the new method
-      `ecrt_slave_config_state()`.
-    - Process data memory for a domain can now be allocated externally. This
-      offers the possibility to use a shared-memory region. Therefore,
-      added the domain methods `ecrt_domain_size()` and
-      `ecrt_domain_external_memory()`.
-    - PDO entry registration functions do not return a process data pointer,
-      but an offset in the domain's process data. In addition, an optional bit
-      position can be requested. This was necessary for the external domain
-      memory. An additional advantage is, that the returned offset is
-      immediately valid. If the domain's process data is allocated internally,
-      the start address can be retrieved with `ecrt_domain_data()`.
-    - Replaced `ecrt_slave_pdo_mapping/add/clear()` with
-      `ecrt_slave_config_pdo_assign_add()` to add a PDO to a sync manager's
-      PDO assignment and `ecrt_slave_config_pdo_mapping_add()` to add a PDO
-      entry to a PDO's mapping. `ecrt_slave_config_pdos()` is a convenience
-      function for both, that uses the new data types `ec_pdo_info_t` and
-      `ec_pdo_entry_info_t`. PDO entries, that are mapped with these functions
-      can now immediately be registered, even if the bus is offline.
-    - Renamed `ec_bus_status_t`, `ec_master_status_t` to `ec_bus_state_t` and
-      `ec_master_state_t`, respectively. Renamed `ecrt_master_get_status()` to
-      `ecrt_master_state()`, for consistency reasons.
-    - Added `ec_domain_state_t` and `ec_wc_state_t` for a new output parameter
-      of `ecrt_domain_state()`. The domain state object does now contain
-      information, if the process data was exchanged completely.
-    - Former "PDO registration" meant PDO entry registration in fact, therefore
-      renamed `ec_pdo_reg_t` to `ec_pdo_entry_reg_t` and
-      `ecrt_domain_register_pdo()` to `ecrt_slave_config_reg_pdo_entry()`.
-    - Removed `ecrt_domain_register_pdo_range()`, because it's functionality
-      can be reached by specifying an explicit PDO assignment/mapping and
-      registering the mapped PDO entries.
-    - Added an SDO access interface, working with SDO requests. These can be
-      scheduled for reading and writing during realtime operation.
-    - Exported `ecrt_slave_config_sdo()`, the generic SDO configuration
-      function.
-    - Removed the `bus_state` and `bus_tainted` flags from
-      `ec_master_state_t`.
+  - Replaced `ec_slave_t` with `ec_slave_config_t`, separating the bus
+    configuration from the actual slaves. Therefore, renamed
+    `ecrt_master_get_slave()` to `ecrt_master_slave_config()`.
+  - Replaced slave address string with alias and position values. See
+    `ecrt_master_slave_config()`.
+  - Removed `ecrt_master_get_slave_by_pos()`, because it is no longer
+    necessary due to alias/position addressing.
+  - Added `ec_slave_config_state_t` for the new method
+    `ecrt_slave_config_state()`.
+  - Process data memory for a domain can now be allocated externally. This
+    offers the possibility to use a shared-memory region. Therefore, added the
+    domain methods `ecrt_domain_size()` and `ecrt_domain_external_memory()`.
+  - PDO entry registration functions do not return a process data pointer, but
+    an offset in the domain's process data. In addition, an optional bit
+    position can be requested. This was necessary for the external domain
+    memory. An additional advantage is, that the returned offset is
+    immediately valid. If the domain's process data is allocated internally,
+    the start address can be retrieved with `ecrt_domain_data()`.
+  - Replaced `ecrt_slave_pdo_mapping/add/clear()` with
+    `ecrt_slave_config_pdo_assign_add()` to add a PDO to a sync manager's PDO
+    assignment and `ecrt_slave_config_pdo_mapping_add()` to add a PDO entry to
+    a PDO's mapping. `ecrt_slave_config_pdos()` is a convenience function for
+    both, that uses the new data types `ec_pdo_info_t` and
+    `ec_pdo_entry_info_t`. PDO entries, that are mapped with these functions
+    can now immediately be registered, even if the bus is offline.
+  - Renamed `ec_bus_status_t`, `ec_master_status_t` to `ec_bus_state_t` and
+    `ec_master_state_t`, respectively. Renamed `ecrt_master_get_status()` to
+    `ecrt_master_state()`, for consistency reasons.
+  - Added `ec_domain_state_t` and `ec_wc_state_t` for a new output parameter
+    of `ecrt_domain_state()`. The domain state object does now contain
+    information, if the process data was exchanged completely.
+  - Former "PDO registration" meant PDO entry registration in fact, therefore
+    renamed `ec_pdo_reg_t` to `ec_pdo_entry_reg_t` and
+    `ecrt_domain_register_pdo()` to `ecrt_slave_config_reg_pdo_entry()`.
+  - Removed `ecrt_domain_register_pdo_range()`, because it's functionality
+    can be reached by specifying an explicit PDO assignment/mapping and
+    registering the mapped PDO entries.
+  - Added an SDO access interface, working with SDO requests. These can be
+    scheduled for reading and writing during realtime operation.
+  - Exported `ecrt_slave_config_sdo()`, the generic SDO configuration
+    function.
+  - Removed the `bus_state` and `bus_tainted` flags from `ec_master_state_t`.
 - Device interface changes:
-    - Moved device output parameter of `ecdev_offer()` to return value.
+  - Moved device output parameter of `ecdev_offer()` to return value.
 - Replaced the Sysfs interface with a new `ethercat` command-line tool, that
   communicates with the master via a character device and ioctls. The device
   is created via udev. The tool is able to
-    - Write alias addresses.
-    - Show the bus configuration.
-    - Output binary domain process data.
-    - Set the master's debug level.
-    - Show domain information.
-    - Show master information.
-    - List PDO assignment/mapping.
-    - Write an SDO entry.
-    - List SDO dictionaries.
-    - Read an SDO entry.
-    - Output a slave's SII contents.
-    - Write slave's SII contents.
-    - Show slaves.
-    - Request slave states.
-    - Generate slave information xmls.
+  - Write alias addresses.
+  - Show the bus configuration.
+  - Output binary domain process data.
+  - Set the master's debug level.
+  - Show domain information.
+  - Show master information.
+  - List PDO assignment/mapping.
+  - Write an SDO entry.
+  - List SDO dictionaries.
+  - Read an SDO entry.
+  - Output a slave's SII contents.
+  - Write slave's SII contents.
+  - Show slaves.
+  - Request slave states.
+  - Generate slave information xmls.
 - Removed include/ecdb.h.
 - Using the timestamp counter is now optional (configure `--enable-cycles`),
   because it is only available on Intel architectures.
@@ -345,17 +344,17 @@
 - Current PDO assignment/mapping is now read via CoE during bus scan, using
   direct SDO access, independent of the dictionary.
 - Network driver news:
-    - Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
-    - Added 8139too driver for kernel 2.6.23, thanks to Richard Hacker.
-    - Added 8139too driver for kernel 2.6.24.
-    - Added e1000 driver for kernel 2.6.22.
-    - Added e1000 driver for kernel 2.6.24, thanks to Matthias Luescher.
-    - Added alpha support for the Realtek r8169 chipset, thanks to Scott
-      Hassan.
-    - Fixed unnecessary watchdog executions in e1000 drivers (thanks to
-      Olav Zarges).
-    - Fixed missing protection for a `spin_lock_irqrestore()` call in e1000
-      drivers from 2.6.20 to 2.6.24 (thanks to Olav Zarges).
+  - Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
+  - Added 8139too driver for kernel 2.6.23, thanks to Richard Hacker.
+  - Added 8139too driver for kernel 2.6.24.
+  - Added e1000 driver for kernel 2.6.22.
+  - Added e1000 driver for kernel 2.6.24, thanks to Matthias Luescher.
+  - Added alpha support for the Realtek r8169 chipset, thanks to Scott
+    Hassan.
+  - Fixed unnecessary watchdog executions in e1000 drivers (thanks to
+    Olav Zarges).
+  - Fixed missing protection for a `spin_lock_irqrestore()` call in e1000
+    drivers from 2.6.20 to 2.6.24 (thanks to Olav Zarges).
 - Removed the "bus validation" routines. Slave scanning is now done any time
   the bus topology changes, even during realtime operation. Because of this,
   the `bus_tainted` flag was deprecated and removed.
@@ -366,11 +365,11 @@
 - Added support for slaves that do not support the LRW datagram type. Separate
   domains have to be used for inputs and output.
 - CoE implementation:
-    - Use expedites transfer type for SDOs <= 4 byte (thanks to J. Mohre).
-    - Allow gaps in PDO mapping (thanks to R. Roesch).
-    - Added some transfer timeouts.
-    - Asynchronous handling of Emergency requests.
-    - Bug fixes.
+  - Use expedites transfer type for SDOs <= 4 byte (thanks to J. Mohre).
+  - Allow gaps in PDO mapping (thanks to R. Roesch).
+  - Added some transfer timeouts.
+  - Asynchronous handling of Emergency requests.
+  - Bug fixes.
 - Sync managers are disabled, if the size is zero.
 - Renamed `ec_master` module parameters main and backup to `main_devices` and
   `backup_devices` to avoid warnings of some compilers.
@@ -380,7 +379,7 @@
 - Changed all occurrences of 'EEPROM' to 'SII'
 - Allow multiple sync manager categories in SII.
 
-# Version 1.3.2
+## Version 1.3.2
 
 - New feature: Read dynamic PDO mapping from SDO dictionary.
 - Implemented SII writing workaround for some broken slaves.
@@ -391,7 +390,7 @@
 - Fixed source MAC address setting bug.
 - Removed config.kbuild and replaced Kbuild files by Kbuild.in files.
 
-# Version 1.3.1
+## Version 1.3.1
 
 - Improved EoE handling: Avoided skipping of datagrams and release lock
   while processing.
@@ -405,7 +404,7 @@
 - Fixed problems on big-endian systems.
 - Added documentation on how to set up an EoE network.
 
-# Version 1.3.0
+## Version 1.3.0
 
 - Added Intel PRO/1000 Gigabit Ethernet driver (e1000).
 - Added testing version of Intel PRO/100 Ethernet driver (e100).
@@ -458,7 +457,7 @@
   any more).
 - Removed EtherCAT line comments from 8139too drivers.
 
-# Version 1.2.0
+## Version 1.2.0
 
 - Several fixes of bugs and stability issues. Master should now run fine
   with kernels 2.6.17 to 2.6.19.
@@ -487,7 +486,7 @@
   remaining current.
 - Added frame counter in master info file.
 
-# Version 1.1.1
+## Version 1.1.1
 
 - State change FSM: Clearing of sync managers before PREOP.
 - Added `modules_install` make target.
@@ -508,9 +507,8 @@
 - Improved output of `lsec`.
 - SDO download state machine.
 
-# Version 1.1
+## Version 1.1
 
 - Improved realtime interface.
-
 
 vim: spelllang=en spell tw=78

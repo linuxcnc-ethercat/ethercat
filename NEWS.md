@@ -9,7 +9,8 @@
 - Security fixes against malicious subdevices
   - Protected `rec_size` calculation in FoE.
   - Check for malicious EoE frame details.
-- Fixed unsufficient re-allocation of SoE request buffer.
+- Avoid writing invalid MAC onto r8169 NIC on removal
+- Fixed insufficient re-allocation of SoE request buffer.
 
 ## Version 1.6.9
 
@@ -95,8 +96,8 @@
   - Added redundancy features; enable using `--with-devices`.
   - Re-designed and seamlessly integrated RTDM interface.
   - Added `ecrt_sdo_request_index()` method to change index and subindex.
-  - Changed the data types of the shift times in `ecrt_slave_config_dc()`
-    to `int32_t` to correctly display negative shift times.
+  - Changed the data types of the shift times in `ecrt_slave_config_dc()` to
+    `int32_t` to correctly display negative shift times.
   - Added API for querying CoE emergency requests.
   - Added interface to read/write register contents; re-worked register
     requests.

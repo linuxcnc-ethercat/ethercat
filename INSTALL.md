@@ -1,12 +1,10 @@
-This is the INSTALL file of the IgH EtherCAT Master.
-
-vim: set spelllang=en spell tw=78
-
 # Building and installing
+
+This is the INSTALL.md file of the IgH EtherCAT Master.
 
 The complete build and installation procedure is described in the respective
 section of the
-[documentation](https://gitlab.com/etherlab.org/ethercat/-/jobs/artifacts/stable-1.5/raw/pdf/ethercat_doc.pdf?job=pdf).
+[documentation](https://gitlab.com/etherlab.org/ethercat/-/jobs/artifacts/stable-1.6/raw/pdf/ethercat_doc.pdf?job=pdf).
 
 ---
 
@@ -57,3 +55,5 @@ examples.
 Have fun!
 
 ---
+
+vim: set spelllang=en spell tw=78

@@ -1,5 +1,4 @@
-FakeEtherCAT Library                        {#libfakeethercat}
-====================
+# FakeEtherCAT Library                        {#libfakeethercat}
 
 Libfakeethercat is a userspace library which has the same API as the EtherCAT
 master interface library libethercat. Libfakeethercat can be used to spin up
@@ -14,11 +13,11 @@ references), most function calls will just do nothing and return no error.
 However, some methods have a bit of logic implemented to simulate a working
 master. This is what is possible:
 
- - Creating master and domain instances
- - Activating master, `send()` and `receive()`.
- - Processing and queuing domains
- - Configuring PDOs
- - Configuring SDOs using `ecrt_slave_config_sdo*()`
+- Creating master and domain instances
+- Activating master, `send()` and `receive()`.
+- Processing and queuing domains
+- Configuring PDOs
+- Configuring SDOs using `ecrt_slave_config_sdo*()`
 
 The SDO config does not do anything, but when activating the master the SDO
 config will be dumped into a JSON file.
@@ -29,8 +28,8 @@ bus works without errors. So currently, a bus error cannot be simulated.
 ## How to build
 
 [RtIPC](https://gitlab.com/etherlab.org/rtipc) is needed.  Simply pass
-`--enable-fakeuserlib` to your `./configure` call and the library will be
-built for you.
+`--enable-fakeuserlib` to your `./configure` call and the library will be built
+for you.
 
 ## How to set up dry run mode
 
@@ -67,6 +66,7 @@ export FAKE_EC_HOMEDIR=/tmp/FakeEtherCAT
 rm -rf $FAKE_EC_HOMEDIR
 mkdir -p $FAKE_EC_HOMEDIR
 ```
+
 For each master instance, one subdirectory named by the master id is created.
 
 ### Spin up your application
@@ -123,7 +123,7 @@ simulator.
 
 ## Environment variables
 
- - FAKE_EC_HOMEDIR: Directory for RtIPC bulletin board and SDO json files
- - FAKE_EC_NAME: Will be used for naming RtIPC config and SDO json file
- - FAKE_EC_PREFIX: Prefix for RtIPC variables, useful to run multiple
-                   simulators side by side.
+- `FAKE_EC_HOMEDIR`: Directory for RtIPC bulletin board and SDO json files
+- `FAKE_EC_NAME`: Will be used for naming RtIPC config and SDO json file
+- `FAKE_EC_PREFIX`: Prefix for RtIPC variables, useful to run multiple simulators
+  side by side.

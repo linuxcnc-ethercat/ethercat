@@ -1,5 +1,4 @@
-Notes regaring API Usage                {#apiusage}
-========================
+# Notes regaring API Usage                {#apiusage}
 
 There are some restrictions on the
 [Application Interface](@ref ApplicationInterface) with respect to the state of
@@ -10,12 +9,12 @@ following.
 
 All configuration (`ecrt_slave_config_*()`) has to be done in Linux process
 context. They can be blocking, so take care when holding locks. After
-ecrt_master_activate() ing the master, your application must not alter the
-slave configuration. Instead, update process data using ecrt_domain_queue()
-and ecrt_domain_process() or use the asynchronous interface like
+`ecrt_master_activate()` ing the master, your application must not alter the
+slave configuration. Instead, update process data using ecrt_domain_queue() and
+ecrt_domain_process() or use the asynchronous interface like
 ecrt_sdo_request_read(). Don't forget to ecrt_master_receive() and
-ecrt_master_send(). These functions can be called from non-process context
-too, like Xenomai/RTAI applications or custom kernel modules.
+ecrt_master_send(). These functions can be called from non-process context too,
+like Xenomai/RTAI applications or custom kernel modules.
 
 ## Master Phase
 

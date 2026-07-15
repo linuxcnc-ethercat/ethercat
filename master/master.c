@@ -66,15 +66,15 @@
 
 #define smp_store_release(p, v) \
 do { \
-	smp_mb(); \
-	ACCESS_ONCE(*p) = (v); \
+    smp_mb(); \
+    ACCESS_ONCE(*p) = (v); \
 } while (0)
 
-#define smp_load_acquire(p)	\
+#define smp_load_acquire(p) \
 ({ \
-	typeof(*p) ___p1 = ACCESS_ONCE(*p); \
-	smp_mb(); \
-	___p1; \
+    typeof(*p) ___p1 = ACCESS_ONCE(*p); \
+    smp_mb(); \
+    ___p1; \
 })
 
 #endif
@@ -1105,8 +1105,8 @@ void ec_master_send_datagrams(
             }
 
             // EtherCAT datagram header
-            EC_WRITE_U8 (cur_data, datagram->type);
-            EC_WRITE_U8 (cur_data + 1, datagram->index);
+            EC_WRITE_U8(cur_data, datagram->type);
+            EC_WRITE_U8(cur_data + 1, datagram->index);
             memcpy(cur_data + 2, datagram->address, EC_ADDR_LEN);
             EC_WRITE_U16(cur_data + 6, datagram->data_size & 0x7FF);
             EC_WRITE_U16(cur_data + 8, 0x0000);
@@ -1228,8 +1228,8 @@ void ec_master_receive_datagrams(
     cmd_follows = 1;
     while (cmd_follows) {
         // process datagram header
-        datagram_type  = EC_READ_U8 (cur_data);
-        datagram_index = EC_READ_U8 (cur_data + 1);
+        datagram_type  = EC_READ_U8(cur_data);
+        datagram_index = EC_READ_U8(cur_data + 1);
         data_size      = EC_READ_U16(cur_data + 6) & 0x07FF;
         cmd_follows    = EC_READ_U16(cur_data + 6) & 0x8000;
         cur_data += EC_DATAGRAM_HEADER_SIZE;
@@ -1466,12 +1466,12 @@ void ec_master_nanosleep(const unsigned long nsecs)
         set_current_state(TASK_INTERRUPTIBLE);
         hrtimer_start(&t.timer, hrtimer_get_expires(&t.timer), mode);
 
-        if (likely(t.task))
+        if (likely(t.task)) {
             schedule();
+        }
 
         hrtimer_cancel(&t.timer);
         mode = HRTIMER_MODE_ABS;
-
     } while (t.task && !signal_pending(current));
 }
 
@@ -1540,7 +1540,6 @@ void ec_master_exec_slave_fsms(
 
     while (master->fsm_exec_count < EC_EXT_RING_SIZE / 2
             && count < master->slave_count) {
-
         if (ec_fsm_slave_is_ready(&master->fsm_slave->fsm)) {
             datagram = ec_master_get_external_datagram(master);
 
@@ -1660,7 +1659,6 @@ static int ec_master_operation_thread(void *priv_data)
          * https://gitlab.com/etherlab.org/ethercat/-/work_items/168 */
         seq_rt = smp_load_acquire(&master->injection_seq_rt);
         if (seq_rt == master->injection_seq_fsm) { // was injected
-
             // output statistics
             ec_master_output_stats(master);
 
@@ -2138,7 +2136,6 @@ void ec_master_find_dc_ref_clock(
                 break;
             }
         }
-
     }
 
     master->dc_ref_clock = ref;
@@ -2586,7 +2583,6 @@ int ecrt_master_deactivate(ec_master_t *master)
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
-
         // set states for all slaves
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
 

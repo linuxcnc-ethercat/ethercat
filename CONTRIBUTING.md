@@ -165,6 +165,9 @@ Enhancement suggestions are tracked as
 
 There is a [coding style document](CodingStyle.md) next to this guide.
 
+Please install the [pre-commit hooks](.pre-commit-config.yaml) via `pre-commit
+install`.
+
 <!-- omit in toc -->
 ## Attribution
 

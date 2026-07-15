@@ -108,3 +108,11 @@ Please see the [contributing document](CONTRIBUTING.md).
 
 Developers shall use the coding style rules in the [coding style
 file](CodingStyle.md).
+
+There is a [cpplint configuration](CPPLINT.cfg) included as well that is
+automatically checked via [pre-commit hooks](.pre-commit-config.yaml). So
+please install the pre-commit hooks via
+
+```bash
+pre-commit install
+```

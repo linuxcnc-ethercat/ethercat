@@ -681,9 +681,9 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
 {
     ec_sync_config_t *sync_config;
 
-    EC_CONFIG_DBG(sc, 1, "ecrt_slave_config_sync_manager(sc = 0x%p,"
-            " sync_index = %u, dir = %i, watchdog_mode = %i)\n",
-            sc, sync_index, dir, watchdog_mode);
+    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, sync_index = %u, dir = %i,"
+            " watchdog_mode = %i)\n", __func__, sc, sync_index, dir,
+            watchdog_mode);
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_CONFIG_ERR(sc, "Invalid sync manager index %u!\n", sync_index);
@@ -863,7 +863,6 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
         ecrt_slave_config_pdo_assign_clear(sc, sync_info->index);
 
         if (sync_info->n_pdos && sync_info->pdos) {
-
             for (j = 0; j < sync_info->n_pdos; j++) {
                 pdo_info = &sync_info->pdos[j];
 

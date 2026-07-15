@@ -200,7 +200,6 @@ int shall_count(
     for (; first_fmmu != cur_fmmu;
             first_fmmu = list_entry(first_fmmu->list.next,
                 ec_fmmu_config_t, list)) {
-
         if (first_fmmu->sc == cur_fmmu->sc
                 && first_fmmu->dir == cur_fmmu->dir) {
             return 0; // was already counted
@@ -264,7 +263,6 @@ int ec_domain_finish(
     }
 
     list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
-
         // Correct logical FMMU address
         fmmu->logical_start_address += base_address;
 
@@ -401,8 +399,8 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
     ec_slave_config_t *sc;
     int ret;
 
-    EC_MASTER_DBG(domain->master, 1, "ecrt_domain_reg_pdo_entry_list("
-            "domain = 0x%p, regs = 0x%p)\n", domain, regs);
+    EC_MASTER_DBG(domain->master, 1, "%s(domain = 0x%p, regs = 0x%p)\n",
+            __func__, domain, regs);
 
     for (reg = regs; reg->index; reg++) {
         sc = ecrt_master_slave_config_err(domain->master, reg->alias,
@@ -432,8 +430,8 @@ size_t ecrt_domain_size(const ec_domain_t *domain)
 
 void ecrt_domain_external_memory(ec_domain_t *domain, uint8_t *mem)
 {
-    EC_MASTER_DBG(domain->master, 1, "ecrt_domain_external_memory("
-            "domain = 0x%p, mem = 0x%p)\n", domain, mem);
+    EC_MASTER_DBG(domain->master, 1, "%s(domain = 0x%p, mem = 0x%p)\n",
+            __func__, domain, mem);
 
     down(&domain->master->master_sem);
 
@@ -651,7 +649,6 @@ int ecrt_domain_queue(ec_domain_t *domain)
     ec_device_index_t dev_idx;
 
     list_for_each_entry(datagram_pair, &domain->datagram_pairs, list) {
-
 #if EC_MAX_NUM_DEVICES > 1
         /* copy main data to send buffer */
         memcpy(datagram_pair->send_buffer,

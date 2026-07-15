@@ -2378,8 +2378,7 @@ ec_domain_t *ecrt_master_create_domain_err(
     ec_domain_t *domain, *last_domain;
     unsigned int index;
 
-    EC_MASTER_DBG(master, 1, "ecrt_master_create_domain(master = 0x%p)\n",
-            master);
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p)\n", __func__, master);
 
     if (!(domain =
                 (ec_domain_t *) kmalloc(sizeof(ec_domain_t), GFP_KERNEL))) {
@@ -2427,7 +2426,7 @@ int ecrt_master_activate(ec_master_t *master)
     int eoe_was_running;
 #endif
 
-    EC_MASTER_DBG(master, 1, "ecrt_master_activate(master = 0x%p)\n", master);
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p)\n", __func__, master);
 
     if (master->active) {
         EC_MASTER_WARN(master, "%s: Master already active!\n", __func__);
@@ -2695,7 +2694,6 @@ ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *master,
     ec_slave_config_t *sc;
     unsigned int found = 0;
 
-
     EC_MASTER_DBG(master, 1, "ecrt_master_slave_config(master = 0x%p,"
             " alias = %u, position = %u, vendor_id = 0x%08x,"
             " product_code = 0x%08x)\n",
@@ -2760,18 +2758,16 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 int ecrt_master_select_reference_clock(ec_master_t *master,
         ec_slave_config_t *sc)
 {
-    if (sc) {
-        ec_slave_t *slave = sc->slave;
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p, sc = 0x%p)\n",
+            __func__, master, sc);
 
-        // output an early warning
-        if (slave &&
-                (!slave->base_dc_supported || !slave->has_dc_system_time)) {
-            EC_MASTER_WARN(master, "Slave %u can not act as"
-                    " a reference clock!", slave->ring_position);
-        }
+    if (down_interruptible(&master->master_sem)) {
+        return -EINTR;
     }
 
     master->dc_ref_config = sc;
+    ec_master_find_dc_ref_clock(master);
+    up(&master->master_sem);
     return 0;
 }
 
@@ -2779,8 +2775,8 @@ int ecrt_master_select_reference_clock(ec_master_t *master,
 
 int ecrt_master(ec_master_t *master, ec_master_info_t *master_info)
 {
-    EC_MASTER_DBG(master, 1, "ecrt_master(master = 0x%p,"
-            " master_info = 0x%p)\n", master, master_info);
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p,"
+            " master_info = 0x%p)\n", __func__, master, master_info);
 
     master_info->slave_count = master->slave_count;
     master_info->link_up = master->devices[EC_DEVICE_MAIN].link_state;
@@ -2794,8 +2790,8 @@ int ecrt_master(ec_master_t *master, ec_master_info_t *master_info)
 int ecrt_master_scan_progress(ec_master_t *master,
         ec_master_scan_progress_t *progress)
 {
-    EC_MASTER_DBG(master, 1, "ecrt_master_scan_progress(master = 0x%p,"
-            " progress = 0x%p)\n", master, progress);
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p, progress = 0x%p)\n",
+            __func__, master, progress);
 
     progress->slave_count = master->slave_count;
     progress->scan_index = master->scan_index;
@@ -2870,9 +2866,9 @@ out_get_slave:
 void ecrt_master_callbacks(ec_master_t *master,
         void (*send_cb)(void *), void (*receive_cb)(void *), void *cb_data)
 {
-    EC_MASTER_DBG(master, 1, "ecrt_master_callbacks(master = 0x%p,"
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p,"
             " send_cb = 0x%p, receive_cb = 0x%p, cb_data = 0x%p)\n",
-            master, send_cb, receive_cb, cb_data);
+            __func__, master, send_cb, receive_cb, cb_data);
 
     master->app_send_cb = send_cb;
     master->app_receive_cb = receive_cb;

@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -145,8 +145,16 @@ int ec_datagram_prealloc(
         )
 {
     if (datagram->data_origin == EC_ORIG_EXTERNAL
-            || size <= datagram->mem_size)
+            || size <= datagram->mem_size) {
         return 0;
+    }
+
+    if (size > EC_MAX_DATA_SIZE) {
+        EC_ERR("%s(datagram = %p, size = %zu): Exceeding the"
+                " maximum datagram size of %u bytes.\n",
+                __func__, datagram, size, EC_MAX_DATA_SIZE);
+        return -EOVERFLOW;
+    }
 
     if (datagram->data) {
         kfree(datagram->data);

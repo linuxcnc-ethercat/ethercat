@@ -2766,7 +2766,13 @@ int ecrt_master_select_reference_clock(ec_master_t *master,
     }
 
     master->dc_ref_config = sc;
-    ec_master_find_dc_ref_clock(master);
+    // Re-run the full DC calculation, not just ec_master_find_dc_ref_clock():
+    // the reference pointer alone is not enough. calc_topology() and
+    // calc_transmission_delays() must recompute every slave's propagation
+    // delay relative to the newly selected reference, otherwise the cyclic
+    // write-system-times FSM keeps writing delays anchored on the old
+    // default reference and the selection has no effect on DC compensation.
+    ec_master_calc_dc(master);
     up(&master->master_sem);
     return 0;
 }

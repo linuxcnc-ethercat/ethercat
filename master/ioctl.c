@@ -1917,22 +1917,25 @@ static ATTRIBUTES int ec_ioctl_select_ref_clock(
         goto out_return;
     }
 
-    if (down_interruptible(&master->master_sem)) {
-        ret = -EINTR;
-        goto out_return;
-    }
-
+    // Resolve the config index under master_sem, then release it before
+    // calling ecrt_master_select_reference_clock(): that function now takes
+    // master_sem itself (to apply the selection immediately), so holding it
+    // here would self-deadlock on the non-recursive semaphore.
     if (config_index != 0xFFFFFFFF) {
-        if (!(sc = ec_master_get_config(master, config_index))) {
+        if (down_interruptible(&master->master_sem)) {
+            ret = -EINTR;
+            goto out_return;
+        }
+        sc = ec_master_get_config(master, config_index);
+        up(&master->master_sem);
+        if (!sc) {
             ret = -ENOENT;
-            goto out_up;
+            goto out_return;
         }
     }
 
-    ecrt_master_select_reference_clock(master, sc);
+    ret = ecrt_master_select_reference_clock(master, sc);
 
-out_up:
-    up(&master->master_sem);
 out_return:
     return ret;
 }

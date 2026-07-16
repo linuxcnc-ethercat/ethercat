@@ -11,6 +11,7 @@
   - Check for malicious EoE frame details.
 - Avoid writing invalid MAC onto r8169 NIC on removal
 - Fixed insufficient re-allocation of SoE request buffer.
+- Protect datagram receiving mechanism against re-ordering.
 
 ## Version 1.6.9
 

@@ -2201,6 +2201,30 @@ void ec_master_find_dc_ref_clock(
     if (ref) {
         EC_MASTER_INFO(master, "Using slave %u as DC reference clock.\n",
                 ref->ring_position);
+
+        // The cyclic time distribution datagram only writes to slaves behind
+        // the reference in frame order; DC slaves in front of it free-run.
+        {
+            unsigned int upstream_dc = 0;
+
+            for (slave = master->slaves; slave < ref; slave++) {
+                if (slave->base_dc_supported && slave->has_dc_system_time) {
+                    upstream_dc++;
+                    if (slave->config && slave->config->dc_assign_activate) {
+                        EC_SLAVE_WARN(slave, "Slave has DC sync configured,"
+                                " but is in front of the reference clock and"
+                                " will not receive cyclic time"
+                                " distribution!\n");
+                    }
+                }
+            }
+
+            if (upstream_dc) {
+                EC_MASTER_WARN(master, "%u DC-capable slave(s) in front of"
+                        " the reference clock will not receive cyclic time"
+                        " distribution.\n", upstream_dc);
+            }
+        }
     }
     else {
         EC_MASTER_INFO(master, "No DC reference clock found.\n");

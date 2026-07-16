@@ -1059,34 +1059,44 @@ void ec_slave_calc_port_delays(
  */
 void ec_slave_calc_transmission_delays_rec(
         ec_slave_t *slave, /**< Current slave. */
+        ec_slave_t *came_from, /**< DC slave we recursed in from (NULL at the
+                                    reference clock). */
         uint32_t *delay /**< Sum of delays. */
         )
 {
-    unsigned int i;
+    unsigned int i, first;
     ec_slave_t *next_dc;
 
     EC_SLAVE_DBG(slave, 1, "%s(delay = %u ns)\n", __func__, *delay);
 
     slave->transmission_delay = *delay;
 
-    i = ec_slave_get_next_port(slave, slave->upstream_port);
+    // Visit every open port in frame-traversal order (downstream ports first,
+    // the master-facing upstream port last), skipping the port we arrived
+    // through. Link delays are symmetric, so each edge adds the same amount
+    // whether descended or ascended, and the round-trip is accounted by adding
+    // the edge delay both before and after recursing. Starting the walk at the
+    // reference clock and allowing the upstream direction re-roots the delay
+    // tree at the reference, so slaves upstream of a non-default reference get
+    // recomputed too (previously they kept stale delays from the old default).
+    first = ec_slave_get_next_port(slave, slave->upstream_port);
+    i = first;
 
-    while (i != slave->upstream_port) {
+    do {
         ec_slave_port_t *port = &slave->ports[i];
         next_dc = ec_slave_find_next_dc_slave(port->next_slave);
-        if (next_dc) {
+        if (next_dc && next_dc != came_from) {
             *delay = *delay + port->delay_to_next_dc;
 #if 0
             EC_SLAVE_DBG(slave, 1, "%u:%u %u\n",
                     slave->ring_position, i, *delay);
 #endif
-            ec_slave_calc_transmission_delays_rec(next_dc, delay);
+            ec_slave_calc_transmission_delays_rec(next_dc, slave, delay);
+            *delay = *delay + port->delay_to_next_dc;
         }
 
         i = ec_slave_get_next_port(slave, i);
-    }
-
-    *delay = *delay + slave->ports[slave->upstream_port].delay_to_next_dc;
+    } while (i != first);
 }
 
 /****************************************************************************/

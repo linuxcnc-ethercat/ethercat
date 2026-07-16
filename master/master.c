@@ -2297,11 +2297,16 @@ void ec_master_calc_transmission_delays(
             slave < master->slaves + master->slave_count;
             slave++) {
         ec_slave_calc_port_delays(slave);
+        // Reset before the re-rootable walk below: with a non-default
+        // reference some slaves would otherwise keep stale delays from a
+        // previous reference if they are not revisited.
+        slave->transmission_delay = 0U;
     }
 
     if (master->dc_ref_clock) {
         uint32_t delay = 0;
-        ec_slave_calc_transmission_delays_rec(master->dc_ref_clock, &delay);
+        ec_slave_calc_transmission_delays_rec(master->dc_ref_clock, NULL,
+                &delay);
     }
 }
 

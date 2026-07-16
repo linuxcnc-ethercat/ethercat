@@ -1084,8 +1084,14 @@ void ec_slave_calc_transmission_delays_rec(
 
     do {
         ec_slave_port_t *port = &slave->ports[i];
-        next_dc = ec_slave_find_next_dc_slave(port->next_slave);
-        if (next_dc && next_dc != came_from) {
+        // ec_slave_get_next_port() falls back to upstream_port when no
+        // further connected port exists; on the first slave that port faces
+        // the master and has no next_slave. Also skip a next_dc that resolves
+        // back to ourselves (possible when ascending through a non-DC slave,
+        // whose downstream search would find us again).
+        next_dc = port->next_slave ?
+            ec_slave_find_next_dc_slave(port->next_slave) : NULL;
+        if (next_dc && next_dc != came_from && next_dc != slave) {
             *delay = *delay + port->delay_to_next_dc;
 #if 0
             EC_SLAVE_DBG(slave, 1, "%u:%u %u\n",

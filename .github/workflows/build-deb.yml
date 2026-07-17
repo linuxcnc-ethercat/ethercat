@@ -66,7 +66,7 @@ jobs:
           command -v dch
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Mark repo as safe (container runs as root)
         run: git config --global --add safe.directory "$PWD"
@@ -103,7 +103,7 @@ jobs:
           done
 
       - name: Upload artefacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ethercat-deb-${{ matrix.distro }}
           path: artifacts/*.deb
@@ -118,7 +118,7 @@ jobs:
       contents: write
     steps:
       - name: Download all artefacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
 

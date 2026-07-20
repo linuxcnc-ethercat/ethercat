@@ -1,3 +1,15 @@
+ethercat (1:1.6.9-4) unstable; urgency=medium
+
+  * Fix PREOP scan using a stale datagram pointer (mika/dev-1.6
+    0565b558). The slave-scan FSM could dereference a datagram pointer
+    that had already been freed/reused, breaking PREOP scanning on
+    affected setups. Reported by GameOEver as
+    linuxcnc-ethercat/linuxcnc-ethercat#494 -- thanks for the report;
+    the root cause was in the EtherCAT master driver, not the
+    linuxcnc-ethercat HAL component.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Mon, 20 Jul 2026 16:25:00 +0800
+
 ethercat (1:1.6.9-3) unstable; urgency=medium
 
   * ethercat-dkms: depend on autoconf, automake, libtool and pkg-config.

@@ -1056,7 +1056,7 @@ void ec_fsm_slave_scan_enter_preop(
         fsm->state = ec_fsm_slave_scan_state_preop;
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
         ec_fsm_slave_config_start(fsm->fsm_slave_config);
-        ec_fsm_slave_config_exec(fsm->fsm_slave_config, fsm->datagram);
+        ec_fsm_slave_config_exec(fsm->fsm_slave_config, datagram);
     } else {
         EC_SLAVE_DBG(slave, 1, "Reading mailbox"
                 " sync manager configuration.\n");
@@ -1112,7 +1112,7 @@ void ec_fsm_slave_scan_state_preop(
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    if (ec_fsm_slave_config_exec(fsm->fsm_slave_config, fsm->datagram))
+    if (ec_fsm_slave_config_exec(fsm->fsm_slave_config, datagram))
         return;
 
     if (!ec_fsm_slave_config_success(fsm->fsm_slave_config)) {

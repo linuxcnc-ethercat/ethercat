@@ -177,14 +177,14 @@ size_t DataTypeHandler::interpretAsType(
         case 0x0009: // string
         case 0x000a: // octet_string
         case 0x000b: // unicode_string
-            dataSize = str.str().size() + 1; // include terminating \0
+            dataSize = str.str().size();
             if (dataSize > targetSize) {
                 stringstream err;
                 err << "String too large ("
                     << dataSize << " > " << targetSize << ")";
                 throw SizeException(err.str());
             }
-            str.read((char *) target, dataSize);
+            str.read((char *) target, dataSize + 1); // including \0
             break;
         case 0x0011: // double
             {

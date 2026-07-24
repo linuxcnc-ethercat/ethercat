@@ -121,7 +121,7 @@ void CommandRegWrite::execute(const StringVector &args)
             io.size = 1024; // FIXME
         }
 
-        io.data = new uint8_t[io.size];
+        io.data = new uint8_t[io.size + 1];
 
         try {
             io.size = interpretAsType(

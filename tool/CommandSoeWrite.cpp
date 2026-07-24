@@ -150,7 +150,7 @@ void CommandSoeWrite::execute(const StringVector &args)
         }
     }
 
-    ioctl.data = new uint8_t[memSize];
+    ioctl.data = new uint8_t[memSize + 1];
 
     try {
         ioctl.data_size = interpretAsType(

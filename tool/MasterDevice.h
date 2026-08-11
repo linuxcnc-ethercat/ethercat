@@ -38,13 +38,13 @@ class MasterDeviceException:
     protected:
         /** Constructor with string parameter. */
         MasterDeviceException(
-                const std::string &s /**< Message. */
-                ): std::runtime_error(s) {}
+                const std::string &s): /**< Message. */
+            std::runtime_error(s) {}
 
         /** Constructor with stringstream parameter. */
         MasterDeviceException(
-                const std::stringstream &s /**< Message. */
-                ): std::runtime_error(s.str()) {}
+                const std::stringstream &s): /**< Message. */
+            std::runtime_error(s.str()) {}
 };
 
 /****************************************************************************/
@@ -59,7 +59,7 @@ class MasterDeviceSdoAbortException:
 
     protected:
         /** Constructor with abort code parameter. */
-        MasterDeviceSdoAbortException(uint32_t code):
+        explicit MasterDeviceSdoAbortException(uint32_t code):
             MasterDeviceException("SDO transfer aborted.") {
                 abortCode = code;
             };
@@ -77,7 +77,7 @@ class MasterDeviceSoeException:
 
     protected:
         /** Constructor with error code parameter. */
-        MasterDeviceSoeException(uint16_t code):
+        explicit MasterDeviceSoeException(uint16_t code):
             MasterDeviceException("SoE transfer aborted.") {
                 errorCode = code;
             };
@@ -96,7 +96,7 @@ class MasterDeviceEoeException:
 
     protected:
         /** Constructor with error code parameter. */
-        MasterDeviceEoeException(uint16_t result):
+        explicit MasterDeviceEoeException(uint16_t result):
             MasterDeviceException("EoE set IP parameter failed."),
             result(result) {};
 };
@@ -107,7 +107,7 @@ class MasterDeviceEoeException:
 class MasterDevice
 {
     public:
-        MasterDevice(unsigned int = 0U);
+        explicit MasterDevice(unsigned int = 0U);
         ~MasterDevice();
 
         void setIndex(unsigned int);
@@ -125,8 +125,10 @@ class MasterDevice
                 uint16_t);
         void getConfigPdoEntry(ec_ioctl_config_pdo_entry_t *, unsigned int,
                 uint8_t, uint16_t, uint8_t);
-        void getConfigSdo(ec_ioctl_config_sdo_t *, unsigned int, unsigned int);
-        void getConfigIdn(ec_ioctl_config_idn_t *, unsigned int, unsigned int);
+        void getConfigSdo(ec_ioctl_config_sdo_t *, unsigned int,
+                unsigned int);
+        void getConfigIdn(ec_ioctl_config_idn_t *, unsigned int,
+                unsigned int);
         void getConfigFlag(ec_ioctl_config_flag_t *, unsigned int,
                 unsigned int);
         void getDomain(ec_ioctl_domain_t *, unsigned int);
@@ -139,7 +141,8 @@ class MasterDevice
         void getPdoEntry(ec_ioctl_slave_sync_pdo_entry_t *, uint16_t, uint8_t,
                 uint8_t, uint8_t);
         void getSdo(ec_ioctl_slave_sdo_t *, uint16_t, uint16_t);
-        void getSdoEntry(ec_ioctl_slave_sdo_entry_t *, uint16_t, int, uint8_t);
+        void getSdoEntry(ec_ioctl_slave_sdo_entry_t *, uint16_t, int,
+                uint8_t);
         void readSii(ec_ioctl_slave_sii_t *);
         void writeSii(ec_ioctl_slave_sii_t *);
         void readReg(ec_ioctl_slave_reg_t *);

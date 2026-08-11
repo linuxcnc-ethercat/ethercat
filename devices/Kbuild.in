@@ -82,6 +82,10 @@ ifeq (@ENABLE_IGC@,1)
 	obj-m += igc/
 endif
 
+ifeq (@ENABLE_MACB@,1)
+	obj-m += macb/
+endif
+
 ifeq (@ENABLE_R8169@,1)
 ifeq (@R8169_IN_SUBDIR@,1)
 	obj-m += r8169/

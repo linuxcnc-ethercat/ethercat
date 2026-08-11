@@ -466,11 +466,10 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 {
     size_t rec_size, data_size;
     uint8_t *data, frame_type, last_fragment, time_appended, mbox_prot;
-    uint8_t fragment_offset, fragment_number;
+    uint8_t size_or_offset, fragment_number;
 #if EOE_DEBUG_LEVEL >= 2
     uint8_t frame_number;
 #endif
-    off_t offset;
 #if EOE_DEBUG_LEVEL >= 3
     unsigned int i;
 #endif
@@ -524,17 +523,18 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     last_fragment = (EC_READ_U16(data) >> 8) & 0x0001;
     time_appended = (EC_READ_U16(data) >> 9) & 0x0001;
     fragment_number = EC_READ_U16(data + 2) & 0x003F;
-    fragment_offset = (EC_READ_U16(data + 2) >> 6) & 0x003F;
+    size_or_offset = (EC_READ_U16(data + 2) >> 6) & 0x003F;
 #if EOE_DEBUG_LEVEL >= 2
     frame_number = (EC_READ_U16(data + 2) >> 12) & 0x000F;
 #endif
 
+    data_size = time_appended ? rec_size - 8 : rec_size - 4;
+
 #if EOE_DEBUG_LEVEL >= 2
     EC_SLAVE_DBG(eoe->slave, 0, "EoE %s RX fragment %u%s, offset %u,"
             " frame %u%s, %zu octets\n", eoe->dev->name, fragment_number,
-           last_fragment ? "" : "+", fragment_offset, frame_number,
-           time_appended ? ", + timestamp" : "",
-           time_appended ? rec_size - 8 : rec_size - 4);
+           last_fragment ? "" : "+", size_or_offset, frame_number,
+           time_appended ? ", + timestamp" : "", data_size);
 #endif
 
 #if EOE_DEBUG_LEVEL >= 3
@@ -549,36 +549,47 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     printk(KERN_CONT "\n");
 #endif
 
-    data_size = time_appended ? rec_size - 8 : rec_size - 4;
-
     if (!fragment_number) {
+        size_t complete_size = size_or_offset * 32;
+
         if (eoe->rx_skb) {
             EC_SLAVE_WARN(eoe->slave, "EoE RX freeing old socket buffer.\n");
             dev_kfree_skb(eoe->rx_skb);
+            eoe->rx_skb = NULL;
+        }
+
+        if (!complete_size || data_size > complete_size) {
+            EC_SLAVE_ERR(eoe->slave, "Received corrupted EoE first fragment"
+                    " (%zu of %zu bytes)!\n", data_size, complete_size);
+            eoe->stats.rx_errors++;
+            eoe->state = ec_eoe_state_tx_start;
+            return;
         }
 
         // new socket buffer
-        if (!(eoe->rx_skb = dev_alloc_skb(fragment_offset * 32))) {
-            if (printk_ratelimit())
+        if (!(eoe->rx_skb = dev_alloc_skb(complete_size))) {
+            if (printk_ratelimit()) {
                 EC_SLAVE_WARN(eoe->slave, "EoE RX low on mem,"
                         " frame dropped.\n");
+            }
             eoe->stats.rx_dropped++;
             eoe->state = ec_eoe_state_tx_start;
             return;
         }
 
         eoe->rx_skb_offset = 0;
-        eoe->rx_skb_size = fragment_offset * 32;
+        eoe->rx_skb_size = complete_size;
         eoe->rx_expected_fragment = 0;
     }
     else {
+        off_t offset = size_or_offset * 32;
+
         if (!eoe->rx_skb) {
             eoe->stats.rx_dropped++;
             eoe->state = ec_eoe_state_tx_start;
             return;
         }
 
-        offset = fragment_offset * 32;
         if (offset != eoe->rx_skb_offset ||
             offset + data_size > eoe->rx_skb_size ||
             fragment_number != eoe->rx_expected_fragment) {

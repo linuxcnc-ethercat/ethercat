@@ -28,6 +28,7 @@ SUBDIRS = \
 	genet \
 	igb \
 	igc \
+	macb \
 	r8169 \
 	stmmac
 

@@ -448,7 +448,7 @@ void ec_fsm_soe_read_response(
 
     if (rec_size < EC_SOE_SIZE) {
         fsm->state = ec_fsm_soe_error;
-        EC_SLAVE_ERR(slave, "Received currupted SoE read response"
+        EC_SLAVE_ERR(slave, "Received corrupted SoE read response"
                 " (%zu bytes)!\n", rec_size);
         ec_print_data(data, rec_size);
         ec_fsm_soe_print_error(fsm);

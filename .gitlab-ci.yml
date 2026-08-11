@@ -2,6 +2,7 @@ image:
     registry.gitlab.com/etherlab.org/build-container-factory/leap-15.4:linux-syms
 
 stages:
+    - lint
     - build
     - test
     - doc
@@ -10,6 +11,23 @@ stages:
 
 variables:
     PACKAGE_REGISTRY_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/ethercat/${CI_COMMIT_TAG}"
+
+pre-commit:
+    stage: lint
+    image: python:3.12
+
+    before_script:
+      - pip install pre-commit
+
+    script:
+      - |
+          pre-commit run \
+            --from-ref origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME \
+            --to-ref HEAD \
+            --show-diff-on-failure
+
+    rules:
+      - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 rtai:
     stage: build
@@ -149,37 +167,36 @@ update docs server:
     trigger: etherlab.org/docs
 
 upload:
-  stage: deploy
-  image: curlimages/curl:latest
-  rules:
-    - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
-  dependencies:
-    - "build"
-  script:
-    - echo "$CI_COMMIT_TAG" | grep -qE '^[0-9]+(\.[0-9]+){2}$'
-    - |
-        curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-            --header "Content-Type: application/gzip" \
-            --fail-with-body \
-            --upload-file "ethercat-${CI_COMMIT_TAG}.tar.gz" \
-            "${PACKAGE_REGISTRY_URL}/ethercat-${CI_COMMIT_TAG}.tar.gz"
-        curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-            --header "Content-Type: application/x-bzip2" \
-            --fail-with-body \
-            --upload-file "ethercat-${CI_COMMIT_TAG}.tar.bz2" \
-            "${PACKAGE_REGISTRY_URL}/ethercat-${CI_COMMIT_TAG}.tar.bz2"
-
+    stage: deploy
+    image: curlimages/curl:latest
+    rules:
+        - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
+    dependencies:
+        - "build"
+    script:
+        - echo "$CI_COMMIT_TAG" | grep -qE '^[0-9]+(\.[0-9]+){2}$'
+        - |
+            curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+                --header "Content-Type: application/gzip" \
+                --fail-with-body \
+                --upload-file "ethercat-${CI_COMMIT_TAG}.tar.gz" \
+                "${PACKAGE_REGISTRY_URL}/ethercat-${CI_COMMIT_TAG}.tar.gz"
+            curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+                --header "Content-Type: application/x-bzip2" \
+                --fail-with-body \
+                --upload-file "ethercat-${CI_COMMIT_TAG}.tar.bz2" \
+                "${PACKAGE_REGISTRY_URL}/ethercat-${CI_COMMIT_TAG}.tar.bz2"
 
 release:
-  stage: release
-  image: registry.gitlab.com/gitlab-org/release-cli:latest
-  rules:
-    - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
-  script:
-    - |
-      release-cli create --name "Release $CI_COMMIT_TAG" --tag-name $CI_COMMIT_TAG \
-        --assets-link "{\"name\":\"ethercat.tar.bz2\",\"url\":\"${PACKAGE_REGISTRY_URL}/ethercat-${CI_COMMIT_TAG}.tar.bz2\",\"link_type\":\"package\",\"filepath\":\"/dist-tarballs/ethercat.tar.bz2\"}" \
-        --assets-link "{\"name\":\"ethercat.tar.gz\",\"url\":\"${PACKAGE_REGISTRY_URL}/ethercat-${CI_COMMIT_TAG}.tar.gz\",\"link_type\":\"package\",\"filepath\":\"/dist-tarballs/ethercat.tar.gz\"}"
+    stage: release
+    image: registry.gitlab.com/gitlab-org/release-cli:latest
+    rules:
+        - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
+    script:
+        - |
+            release-cli create --name "Release $CI_COMMIT_TAG" --tag-name $CI_COMMIT_TAG \
+                --assets-link "{\"name\":\"ethercat.tar.bz2\",\"url\":\"${PACKAGE_REGISTRY_URL}/ethercat-${CI_COMMIT_TAG}.tar.bz2\",\"link_type\":\"package\",\"filepath\":\"/dist-tarballs/ethercat.tar.bz2\"}" \
+                --assets-link "{\"name\":\"ethercat.tar.gz\",\"url\":\"${PACKAGE_REGISTRY_URL}/ethercat-${CI_COMMIT_TAG}.tar.gz\",\"link_type\":\"package\",\"filepath\":\"/dist-tarballs/ethercat.tar.gz\"}"
 
 # from 'Workflows/MergeRequest-Pipelines.gitlab-ci.yml', but on all branches
 workflow:

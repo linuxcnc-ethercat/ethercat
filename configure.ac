@@ -492,6 +492,52 @@ fi
 AC_SUBST(KERNEL_GENET, [$kernelgenet])
 
 #-----------------------------------------------------------------------------
+# macb driver
+#-----------------------------------------------------------------------------
+
+AC_ARG_ENABLE([macb],
+    AS_HELP_STRING([--enable-macb],
+                   [Build macb driver for Raspi 5 [default=no]]),
+    [
+        case "${enableval}" in
+            yes) enablemacb=1
+                ;;
+            no) enablemacb=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-macb])
+                ;;
+        esac
+    ],
+    [enablemacb=0]
+)
+
+AM_CONDITIONAL(ENABLE_MACB, test "x$enablemacb" = "x1")
+AC_SUBST(ENABLE_MACB, [$enablemacb])
+
+AC_ARG_WITH([macb-kernel],
+    AS_HELP_STRING([--with-macb-kernel=<X.Y.Z>],
+                   [macb kernel (only if differing)]),
+    [
+        kernelmacb=[$withval]
+    ],
+    [
+        kernelmacb=$linuxversion
+    ]
+)
+
+if test "x${enablemacb}" = "x1"; then
+    AC_MSG_CHECKING([for kernel for macb driver])
+
+    if test ! -f "${srcdir}/devices/macb/macb_main-${kernelmacb}-orig.c"; then
+        AC_MSG_ERROR([kernel $kernelmacb not available for macb driver!])
+    fi
+
+    AC_MSG_RESULT([$kernelmacb])
+fi
+
+AC_SUBST(KERNEL_MACB, [$kernelmacb])
+
+#-----------------------------------------------------------------------------
 # igb driver
 #-----------------------------------------------------------------------------
 
@@ -1210,6 +1256,37 @@ fi
 AM_CONDITIONAL(ENABLE_FAKEUSERLIB, test "x$fakeuserlib" = "x1")
 
 #-----------------------------------------------------------------------------
+# example programs
+#-----------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether to build the examples])
+
+AC_ARG_ENABLE([examples],
+    AS_HELP_STRING([--enable-examples],
+                   [Generation of example modules (default: yes)]),
+    [
+        case "${enableval}" in
+            yes) examples=1
+                ;;
+            no) examples=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-examples])
+                ;;
+        esac
+    ],
+    [examples=1]
+)
+
+if test "x${examples}" = "x1"; then
+    AC_MSG_RESULT([yes])
+else
+    AC_MSG_RESULT([no])
+fi
+
+AM_CONDITIONAL(ENABLE_EXAMPLES, test "x$examples" = "x1")
+AC_SUBST(ENABLE_EXAMPLES,[$examples])
+
+#-----------------------------------------------------------------------------
 # TTY driver
 #-----------------------------------------------------------------------------
 
@@ -1443,6 +1520,8 @@ AC_CONFIG_FILES([
         devices/igb/Makefile
         devices/igc/Kbuild
         devices/igc/Makefile
+        devices/macb/Kbuild
+        devices/macb/Makefile
         devices/r8169/Kbuild
         devices/r8169/Makefile
         devices/stmmac/Kbuild

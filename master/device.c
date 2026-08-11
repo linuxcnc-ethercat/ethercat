@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -35,6 +35,7 @@
 #include "master.h"
 
 #ifdef EC_DEBUG_RING
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 #define timersub(a, b, result) \
     do { \
         (result)->tv_sec = (a)->tv_sec - (b)->tv_sec; \
@@ -44,6 +45,7 @@
             (result)->tv_usec += 1000000; \
         } \
     } while (0)
+#endif
 #endif
 
 /****************************************************************************/
@@ -85,7 +87,11 @@ int ec_device_init(
 #endif
 #ifdef EC_DEBUG_RING
     device->timeval_poll.tv_sec = 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+    device->timeval_poll.tv_nsec = 0;
+#else
     device->timeval_poll.tv_usec = 0;
+#endif
 #endif
     device->jiffies_poll = 0;
 
@@ -96,7 +102,11 @@ int ec_device_init(
         ec_debug_frame_t *df = &device->debug_frames[i];
         df->dir = TX;
         df->t.tv_sec = 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+        df->t.tv_nsec = 0;
+#else
         df->t.tv_usec = 0;
+#endif
         memset(df->data, 0, EC_MAX_DATA_SIZE);
         df->data_size = 0;
     }
@@ -124,8 +134,10 @@ int ec_device_init(
 #endif
 
     for (i = 0; i < EC_TX_RING_SIZE; i++) {
-        if (!(device->tx_skb[i] = dev_alloc_skb(ETH_FRAME_LEN + EXTRA_HEADROOM))) {
-            EC_MASTER_ERR(master, "Error allocating device socket buffer!\n");
+        if (!(device->tx_skb[i] =
+                    dev_alloc_skb(ETH_FRAME_LEN + EXTRA_HEADROOM))) {
+            EC_MASTER_ERR(master,
+                    "Error allocating device socket buffer!\n");
             ret = -ENOMEM;
             goto out_tx_ring;
         }
@@ -165,8 +177,11 @@ void ec_device_clear(
     if (device->open) {
         ec_device_close(device);
     }
-    for (i = 0; i < EC_TX_RING_SIZE; i++)
+
+    for (i = 0; i < EC_TX_RING_SIZE; i++) {
         dev_kfree_skb(device->tx_skb[i]);
+    }
+
 #ifdef EC_DEBUG_IF
     ec_debug_clear(&device->dbg);
 #endif
@@ -178,7 +193,7 @@ void ec_device_clear(
  */
 void ec_device_attach(
         ec_device_t *device, /**< EtherCAT device */
-        struct net_device *net_dev, /**< net_device structure */
+        struct net_device *net_dev, /**< The net_device structure */
         ec_pollfunc_t poll, /**< pointer to device's poll function */
         struct module *module /**< the device's module */
         )
@@ -201,7 +216,7 @@ void ec_device_attach(
 #ifdef EC_DEBUG_IF
     ec_debug_register(&device->dbg, net_dev);
 #endif
-}
+} // NOLINT(whitespace/indent) false positive
 
 /****************************************************************************/
 
@@ -397,7 +412,11 @@ void ec_device_debug_ring_append(
 
     df->dir = dir;
     if (dir == TX) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+        ktime_get_real_ts64(&df->t);
+#else
         do_gettimeofday(&df->t);
+#endif
     }
     else {
         df->t = device->timeval_poll;
@@ -422,7 +441,11 @@ void ec_device_debug_ring_print(
     int i;
     unsigned int ring_index;
     const ec_debug_frame_t *df;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+    struct timespec64 t0, diff;
+#else
     struct timeval t0, diff;
+#endif
 
     // calculate index of the newest frame in the ring to get its time
     ring_index = (device->debug_frame_index + EC_DEBUG_RING_SIZE - 1)
@@ -437,13 +460,25 @@ void ec_device_debug_ring_print(
 
     for (i = 0; i < device->debug_frame_count; i++) {
         df = &device->debug_frames[ring_index];
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+        diff = timespec64_sub(t0, df->t);
+#else
         timersub(&t0, &df->t, &diff);
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+        EC_MASTER_DBG(device->master, 1, "Frame %u, dt=%u.%06u s, %s:\n",
+                i + 1 - device->debug_frame_count,
+                (unsigned int) diff.tv_sec,
+                (unsigned int) (diff.tv_nsec / 1000),
+                (df->dir == TX) ? "TX" : "RX");
+#else
         EC_MASTER_DBG(device->master, 1, "Frame %u, dt=%u.%06u s, %s:\n",
                 i + 1 - device->debug_frame_count,
                 (unsigned int) diff.tv_sec,
                 (unsigned int) diff.tv_usec,
                 (df->dir == TX) ? "TX" : "RX");
+#endif
         ec_print_data(df->data, df->data_size);
 
         ring_index++;
@@ -469,7 +504,11 @@ void ec_device_poll(
 #endif
     device->jiffies_poll = jiffies;
 #ifdef EC_DEBUG_RING
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+    ktime_get_real_ts64(&device->timeval_poll);
+#else
     do_gettimeofday(&device->timeval_poll);
+#endif
 #endif
     device->poll(device->dev);
 }

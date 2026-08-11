@@ -68,6 +68,7 @@ noinst_HEADERS = \
 	sii_page.c sii_page.h \
 	slave.c slave.h \
 	slave_config.c slave_config.h \
+	smp.h \
 	soe_errors.c \
 	soe_request.c soe_request.h \
 	sync.c sync.h \

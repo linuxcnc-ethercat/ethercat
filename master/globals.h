@@ -24,8 +24,8 @@
 
 /****************************************************************************/
 
-#ifndef __EC_MASTER_GLOBALS_H__
-#define __EC_MASTER_GLOBALS_H__
+#ifndef MASTER_GLOBALS_H_
+#define MASTER_GLOBALS_H_
 
 #include "../globals.h"
 #include "../include/ecrt.h"
@@ -177,8 +177,7 @@ typedef struct {
  */
 typedef enum {
     EC_DC_32, /**< 32 bit. */
-    EC_DC_64 /*< 64 bit for system time, system time offset and
-               port 0 receive time. */
+    EC_DC_64 /*< 64 bit for system time, time offset and port receive time. */
 } ec_slave_dc_range_t;
 
 /** EtherCAT slave sync signal configuration.
@@ -317,4 +316,4 @@ typedef struct ec_slave ec_slave_t; /**< \see ec_slave. */
 
 /****************************************************************************/
 
-#endif
+#endif  // MASTER_GLOBALS_H_

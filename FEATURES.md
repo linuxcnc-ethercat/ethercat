@@ -1,8 +1,6 @@
-This is the FEATURES file of the IgH EtherCAT Master.
-
-vim: spelllang=en spell
-
 # General Features
+
+This is the FEATURES.md file of the IgH EtherCAT Master.
 
 - EtherCAT master implementation conforming to IEC/PAS 62407.
   - Runs as kernel module for Linux 2.6.
@@ -85,3 +83,5 @@ vim: spelllang=en spell
 
 - Virtual read-only network interface for debugging and traffic monitoring
   purposes (using Wireshark, etc.). No additional hardware necessary.
+
+vim: spelllang=en spell

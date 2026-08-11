@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------
 #
-#  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+#  Copyright (C) 2006-2017  Florian Pose, Ingenieurgemeinschaft IgH
 #
 #  This file is part of the IgH EtherCAT Master.
 #
@@ -17,23 +17,38 @@
 #  with the IgH EtherCAT Master; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-#  vi: syntax=make
+#  ---
+#
+#  vim: syntax=make
 #
 #-----------------------------------------------------------------------------
 
-obj-m := master/ devices/
+src := @abs_srcdir@
+ccflags-y := -I@abs_top_builddir@
 
-ifeq (@ENABLE_EXAMPLES@,1)
-	obj-m += examples/
+TOPDIR := $(src)/../..
+
+REV := $(shell if test -s $(TOPDIR)/revision; then \
+		cat $(TOPDIR)/revision; \
+	else \
+		git -C $(TOPDIR) describe 2>/dev/null || echo "unknown"; \
+	fi)
+
+ifeq (@ENABLE_MACB@,1)
+    obj-m += ec_macb.o
+    ec_macb-objs := \
+        macb_main-@KERNEL_MACB@-ethercat.o \
+        macb_ptp-@KERNEL_MACB@-ethercat.o
+
+ifeq (@ENABLE_DRIVER_RESOURCE_VERIFYING@,1)
+	ccflags-y := -DEC_ENABLE_DRIVER_RESOURCE_VERIFYING
 endif
 
-ifeq (@ENABLE_TTY@,1)
-	obj-m += tty/
+    CFLAGS_macb_main-@KERNEL_MACB@-ethercat.o = -DREV="\"$(REV)\""
 endif
 
-ifeq (@ENABLE_RTAI@, 1)
 KBUILD_EXTRA_SYMBOLS := \
-	@RTAI_MODULE_DIR@/Module.symvers
-endif
+	@abs_top_builddir@/$(LINUX_SYMVERS) \
+	@abs_top_builddir@/master/$(LINUX_SYMVERS)
 
 #-----------------------------------------------------------------------------

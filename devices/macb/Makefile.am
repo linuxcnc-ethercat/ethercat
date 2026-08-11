@@ -1,6 +1,6 @@
-#-----------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 #
-#  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+#  Copyright (C) 2006-2021  Florian Pose, Ingenieurgemeinschaft IgH
 #
 #  This file is part of the IgH EtherCAT Master.
 #
@@ -17,23 +17,17 @@
 #  with the IgH EtherCAT Master; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-#  vi: syntax=make
-#
-#-----------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
-obj-m := master/ devices/
+include $(top_srcdir)/Makefile.kbuild
 
-ifeq (@ENABLE_EXAMPLES@,1)
-	obj-m += examples/
-endif
+EXTRA_DIST = \
+	macb_main-6.18-ethercat.c \
+	macb_main-6.18-orig.c \
+	macb-6.18-ethercat.h \
+	macb-6.18-orig.h \
+	macb_ptp-6.18-ethercat.c \
+	macb_ptp-6.18-orig.c \
+	update.sh
 
-ifeq (@ENABLE_TTY@,1)
-	obj-m += tty/
-endif
-
-ifeq (@ENABLE_RTAI@, 1)
-KBUILD_EXTRA_SYMBOLS := \
-	@RTAI_MODULE_DIR@/Module.symvers
-endif
-
-#-----------------------------------------------------------------------------
+#------------------------------------------------------------------------------

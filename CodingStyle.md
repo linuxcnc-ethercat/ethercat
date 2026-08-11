@@ -1,15 +1,15 @@
-vim: spelllang=en tw=78
+# Coding Style
 
 This is a short introduction to the coding style that shall be used. The below
 rules are applicable for all C source files, except the Ethernet drivers, for
 which the Linux Kernel coding style shall be used to minimize the
 differences).
 
-# Line length
+## Line length
 
 - Lines shall not exceed 78 characters.
 
-# Whitespace
+## Whitespace
 
 - Indentation shall be done using 4 space characters
 
@@ -21,7 +21,7 @@ differences).
 - Binary operators (`=`, `==`, `~=`, `|`, `||`, etc.) shall be enclosed by 2 spaces
   (except `.` and `->`).
 
-# Placing braces
+## Placing braces
 
 - Braces shall be placed in the following way (K&R style):
 
@@ -40,7 +40,7 @@ int function(...)
 }
 ```
 
-# Defines and Macros
+## Defines and Macros
 
 - Defines and macros shall be named in CAPITAL letters. If a macro contains
   multiple statements, they should be enclosed by a 'do {} while (0)' loop.
@@ -54,3 +54,5 @@ int function(...)
             statement(B); \
         } while (0)
 ```
+
+vim: spelllang=en tw=78

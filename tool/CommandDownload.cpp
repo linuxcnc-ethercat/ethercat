@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2022  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -168,8 +168,8 @@ void CommandDownload::execute(const StringVector &args)
         data.data = new uint8_t[data.data_size + 1];
 
         try {
-            data.data_size = interpretAsType(
-                    dataType, contents, data.data, data.data_size);
+            data.data_size = interpretAsType(dataType, contents, data.data,
+                    data.data_size + 1);
         } catch (SizeException &e) {
             delete [] data.data;
             throwCommandException(e.what());
@@ -189,8 +189,8 @@ void CommandDownload::execute(const StringVector &args)
         data.data = new uint8_t[data.data_size + 1];
 
         try {
-            data.data_size = interpretAsType(
-                    dataType, args[valueIndex], data.data, data.data_size);
+            data.data_size = interpretAsType(dataType, args[valueIndex],
+                    data.data, data.data_size + 1);
         } catch (SizeException &e) {
             delete [] data.data;
             throwCommandException(e.what());

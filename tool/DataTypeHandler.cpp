@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2022  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -178,13 +178,14 @@ size_t DataTypeHandler::interpretAsType(
         case 0x000a: // octet_string
         case 0x000b: // unicode_string
             dataSize = str.str().size();
-            if (dataSize > targetSize) {
+            if (dataSize + 1 > targetSize) { // leave room for terminating \0
                 stringstream err;
                 err << "String too large ("
-                    << dataSize << " > " << targetSize << ")";
+                    << dataSize << " > " << targetSize - 1 << ")";
                 throw SizeException(err.str());
             }
-            str.read((char *) target, dataSize + 1); // including \0
+            str.read((char *) target, dataSize);
+            ((char *) target)[dataSize] = 0; // terminating \0
             break;
         case 0x0011: // double
             {

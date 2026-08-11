@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -125,7 +125,7 @@ void CommandRegWrite::execute(const StringVector &args)
 
         try {
             io.size = interpretAsType(
-                    dataType, args[1], io.data, io.size);
+                    dataType, args[1], io.data, io.size + 1);
         } catch (SizeException &e) {
             delete [] io.data;
             throwCommandException(e.what());

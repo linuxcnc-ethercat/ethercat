@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -143,7 +143,7 @@ void CommandSoeWrite::execute(const StringVector &args)
         memSize = dataType->byteSize;
     } else {
         // guess string type size
-        memSize = args[valueArgIndex].size() + 1;
+        memSize = args[valueArgIndex].size();
         if (!memSize) {
             err << "Empty argument not allowed.";
             throwInvalidUsageException(err);
@@ -154,7 +154,7 @@ void CommandSoeWrite::execute(const StringVector &args)
 
     try {
         ioctl.data_size = interpretAsType(
-                dataType, args[valueArgIndex], ioctl.data, memSize);
+                dataType, args[valueArgIndex], ioctl.data, memSize + 1);
     } catch (SizeException &e) {
         delete [] ioctl.data;
         throwCommandException(e.what());

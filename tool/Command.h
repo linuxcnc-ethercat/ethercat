@@ -41,8 +41,8 @@ class InvalidUsageException:
     protected:
         /** Constructor with stringstream parameter. */
         InvalidUsageException(
-                const std::stringstream &s /**< Message. */
-                ): std::runtime_error(s.str()) {}
+                const std::stringstream &s): /**< Message. */
+            std::runtime_error(s.str()) {}
 };
 
 /****************************************************************************/
@@ -55,13 +55,13 @@ class CommandException:
     protected:
         /** Constructor with char * parameter. */
         CommandException(
-                const std::string &msg /**< Message. */
-                ): std::runtime_error(msg) {}
+                const std::string &msg): /**< Message. */
+            std::runtime_error(msg) {}
 
         /** Constructor with stringstream parameter. */
         CommandException(
-                const std::stringstream &s /**< Message. */
-                ): std::runtime_error(s.str()) {}
+                const std::stringstream &s): /**< Message. */
+            std::runtime_error(s.str()) {}
 };
 
 /****************************************************************************/
@@ -78,7 +78,7 @@ class Command
         typedef std::list<unsigned int> MasterIndexList;
         void setMasters(const std::string &);
         MasterIndexList getMasterIndices() const;
-		unsigned int getSingleMasterIndex() const;
+        unsigned int getSingleMasterIndex() const;
 
         enum Verbosity {
             Quiet,

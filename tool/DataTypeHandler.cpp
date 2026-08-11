@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2022  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -21,17 +21,30 @@
 
 #define DEBUG 0
 
-#if DEBUG
-#include <iostream>
-#endif
-
-#include <iomanip>
-#include <sstream>
-using namespace std;
-
 #include "DataTypeHandler.h"
 
 #include "ecrt.h"
+
+#if DEBUG
+#include <iostream>
+#endif
+#include <iomanip>
+#include <sstream>
+
+using std::string;
+using std::stringstream;
+using std::ostream;
+using std::endl;
+using std::flush;
+using std::ios;
+using std::runtime_error;
+using std::hex;
+using std::dec;
+using std::setw;
+using std::setfill;
+#if DEBUG
+using std::cerr;
+#endif
 
 /****************************************************************************/
 
@@ -184,7 +197,8 @@ size_t DataTypeHandler::interpretAsType(
                     << dataSize << " > " << targetSize << ")";
                 throw SizeException(err.str());
             }
-            str >> (char *) target;
+            //str >> (char *) target;
+            str.read((char *) target, dataSize + 1); // including \0 FIXME
             break;
         case 0x0011: // double
             {

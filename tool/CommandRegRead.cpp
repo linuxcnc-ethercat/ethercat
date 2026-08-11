@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2024  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,12 +19,18 @@
  *
  ****************************************************************************/
 
+#include "CommandRegRead.h"
+
+#include "MasterDevice.h"
+
 #include <iostream>
 #include <iomanip>
-using namespace std;
 
-#include "CommandRegRead.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::ios;
+using std::cout;
 
 /****************************************************************************/
 

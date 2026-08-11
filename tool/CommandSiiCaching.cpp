@@ -1,5 +1,6 @@
 /*****************************************************************************
  *
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -18,14 +19,24 @@
  *
  ****************************************************************************/
 
+#include "CommandSiiCaching.h"
+
+#include "MasterDevice.h"
+
+#include <cstdlib>
+
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include <cstdlib>
-using namespace std;
 
-#include "CommandSiiCaching.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::cout;
+using std::hex;
+using std::dec;
+using std::setfill;
+using std::setw;
 
 /****************************************************************************/
 
@@ -44,9 +55,11 @@ string CommandCache::helpString(const string &binaryBaseName) const
         << endl
         << getBriefDescription() << endl
         << endl
-        << "This command configures cache level to speed up scanning process" << endl
+        << "This command configures cache level to speed up scanning process"
         << endl
-        << "Caching fields are specified as a decimal number that is a" << endl
+        << endl
+        << "Caching fields are specified as a decimal number that is a"
+        << endl
         << "combination of the following flags:" << endl
         << "  0 - Disable SII caching" << endl
         << "  1 - Use vendor ID" << endl

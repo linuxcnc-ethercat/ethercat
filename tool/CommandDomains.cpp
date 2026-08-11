@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,12 +19,21 @@
  *
  ****************************************************************************/
 
+#include "CommandDomains.h"
+
+#include "MasterDevice.h"
+
 #include <iostream>
 #include <iomanip>
-using namespace std;
 
-#include "CommandDomains.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::cout;
+using std::dec;
+using std::hex;
+using std::setw;
+using std::setfill;
 
 /****************************************************************************/
 
@@ -50,7 +59,8 @@ string CommandDomains::helpString(const string &binaryBaseName) const
         << endl << endl
         << "The domain's base address for the logical datagram" << endl
         << "(LRD/LWR/LRW) is displayed followed by the domain's" << endl
-        << "process data size in byte. The last values are the current" << endl
+        << "process data size in byte. The last values are the current"
+        << endl
         << "datagram working counter sum and the expected working" << endl
         << "counter sum. If the values are equal, all PDOs were" << endl
         << "exchanged during the last cycle." << endl
@@ -84,7 +94,7 @@ string CommandDomains::helpString(const string &binaryBaseName) const
 
 void CommandDomains::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
+    MasterIndexList masterIndices;
     bool doIndent;
     DomainList domains;
     DomainList::const_iterator di;
@@ -95,7 +105,7 @@ void CommandDomains::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
+    masterIndices = getMasterIndices();
     doIndent = masterIndices.size() > 1;
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();

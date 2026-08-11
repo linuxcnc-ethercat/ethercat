@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,12 +19,18 @@
  *
  ****************************************************************************/
 
+#include "CommandSoeWrite.h"
+
+#include "MasterDevice.h"
+
 #include <iostream>
 #include <iomanip>
-using namespace std;
 
-#include "CommandSoeWrite.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::ios;
+using std::runtime_error;
 
 /****************************************************************************/
 
@@ -58,11 +64,11 @@ string CommandSoeWrite::helpString(const string &binaryBaseName) const
         << "             Bit 11 - 0: Data block number" << endl
         << "           or a string like 'P-0-150'." << endl
         << "  VALUE    is the value to write (see below)." << endl
-		<< endl
-        << "The VALUE argument is interpreted as the given data type" << endl
-		<< "(--type is mandatory) and written to the selected slave." << endl
         << endl
-		<< typeInfo()
+        << "The VALUE argument is interpreted as the given data type" << endl
+        << "(--type is mandatory) and written to the selected slave." << endl
+        << endl
+        << typeInfo()
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl

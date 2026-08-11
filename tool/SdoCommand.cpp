@@ -21,6 +21,8 @@
 
 #include "SdoCommand.h"
 
+using std::string;
+
 /****************************************************************************/
 
 SdoCommand::SdoCommand(const string &name, const string &briefDesc):

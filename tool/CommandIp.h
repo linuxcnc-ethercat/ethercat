@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2014  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -32,13 +32,13 @@ class CommandIp:
     public:
         CommandIp();
 
-        string helpString(const string &) const;
+        std::string helpString(const std::string &) const;
         void execute(const StringVector &);
 
     protected:
-        void parseMac(unsigned char [6], const string &);
-        void parseIpv4Prefix(ec_ioctl_eoe_ip_t *, const string &);
-        void resolveIpv4(struct in_addr *, const string &);
+        void parseMac(unsigned char [6], const std::string &);
+        void parseIpv4Prefix(ec_ioctl_eoe_ip_t *, const std::string &);
+        void resolveIpv4(struct in_addr *, const std::string &);
 };
 
 /****************************************************************************/

@@ -1,5 +1,7 @@
 /*****************************************************************************
  *
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
+ *
  *  This file is part of the IgH EtherCAT Master.
  *
  *  The IgH EtherCAT Master is free software; you can redistribute it and/or
@@ -30,7 +32,7 @@ class CommandCache:
     public:
         CommandCache();
 
-        string helpString(const string &) const;
+        std::string helpString(const std::string &) const;
         void execute(const StringVector &);
 };
 

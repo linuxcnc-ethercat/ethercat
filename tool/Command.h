@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -26,7 +26,6 @@
 #include <vector>
 #include <list>
 #include <sstream>
-using namespace std;
 
 #include "../master/ioctl.h"
 
@@ -35,34 +34,34 @@ class MasterDevice;
 /****************************************************************************/
 
 class InvalidUsageException:
-    public runtime_error
+    public std::runtime_error
 {
     friend class Command;
 
     protected:
         /** Constructor with stringstream parameter. */
         InvalidUsageException(
-                const stringstream &s /**< Message. */
-                ): runtime_error(s.str()) {}
+                const std::stringstream &s): /**< Message. */
+            std::runtime_error(s.str()) {}
 };
 
 /****************************************************************************/
 
 class CommandException:
-    public runtime_error
+    public std::runtime_error
 {
     friend class Command;
 
     protected:
         /** Constructor with char * parameter. */
         CommandException(
-                const string &msg /**< Message. */
-                ): runtime_error(msg) {}
+                const std::string &msg): /**< Message. */
+            std::runtime_error(msg) {}
 
         /** Constructor with stringstream parameter. */
         CommandException(
-                const stringstream &s /**< Message. */
-                ): runtime_error(s.str()) {}
+                const std::stringstream &s): /**< Message. */
+            std::runtime_error(s.str()) {}
 };
 
 /****************************************************************************/
@@ -70,16 +69,16 @@ class CommandException:
 class Command
 {
     public:
-        Command(const string &, const string &);
+        Command(const std::string &, const std::string &);
         virtual ~Command();
 
-        const string &getName() const;
-        const string &getBriefDescription() const;
+        const std::string &getName() const;
+        const std::string &getBriefDescription() const;
 
-        typedef list<unsigned int> MasterIndexList;
-        void setMasters(const string &);
+        typedef std::list<unsigned int> MasterIndexList;
+        void setMasters(const std::string &);
         MasterIndexList getMasterIndices() const;
-		unsigned int getSingleMasterIndex() const;
+        unsigned int getSingleMasterIndex() const;
 
         enum Verbosity {
             Quiet,
@@ -89,15 +88,15 @@ class Command
         void setVerbosity(Verbosity);
         Verbosity getVerbosity() const;
 
-        void setAliases(const string &);
-        void setPositions(const string &);
+        void setAliases(const std::string &);
+        void setPositions(const std::string &);
 
-        void setDomains(const string &);
-        typedef list<unsigned int> DomainIndexList;
+        void setDomains(const std::string &);
+        typedef std::list<unsigned int> DomainIndexList;
         DomainIndexList getDomainIndices() const;
 
-        void setDataType(const string &);
-        const string &getDataType() const;
+        void setDataType(const std::string &);
+        const std::string &getDataType() const;
 
         void setEmergency(bool);
         bool getEmergency() const;
@@ -105,67 +104,67 @@ class Command
         void setForce(bool);
         bool getForce() const;
 
-        void setOutputFile(const string &);
-        const string &getOutputFile() const;
+        void setOutputFile(const std::string &);
+        const std::string &getOutputFile() const;
 
-        void setSkin(const string &);
-        const string &getSkin() const;
+        void setSkin(const std::string &);
+        const std::string &getSkin() const;
 
-        bool matchesSubstr(const string &) const;
-        bool matchesAbbrev(const string &) const;
+        bool matchesSubstr(const std::string &) const;
+        bool matchesAbbrev(const std::string &) const;
 
-        virtual string helpString(const string &) const = 0;
+        virtual std::string helpString(const std::string &) const = 0;
 
-        typedef vector<string> StringVector;
+        typedef std::vector<std::string> StringVector;
         virtual void execute(const StringVector &) = 0;
 
-        static string numericInfo();
+        static std::string numericInfo();
 
     protected:
         enum {BreakAfterBytes = 16};
 
-        void throwInvalidUsageException(const stringstream &) const;
-        void throwCommandException(const string &) const;
-        void throwCommandException(const stringstream &) const;
+        void throwInvalidUsageException(const std::stringstream &) const;
+        void throwCommandException(const std::string &) const;
+        void throwCommandException(const std::stringstream &) const;
         void throwSingleSlaveRequired(unsigned int) const;
 
-        typedef list<ec_ioctl_slave_t> SlaveList;
+        typedef std::list<ec_ioctl_slave_t> SlaveList;
         SlaveList selectedSlaves(MasterDevice &);
-        typedef list<ec_ioctl_config_t> ConfigList;
+        typedef std::list<ec_ioctl_config_t> ConfigList;
         ConfigList selectedConfigs(MasterDevice &);
-        typedef list<ec_ioctl_domain_t> DomainList;
+        typedef std::list<ec_ioctl_domain_t> DomainList;
         DomainList selectedDomains(MasterDevice &, const ec_ioctl_master_t &);
         int emergencySlave() const;
 
-        static string alStateString(uint8_t);
+        static std::string alStateString(uint8_t);
 
     private:
-        string name;
-        string briefDesc;
-        string masters;
+        std::string name;
+        std::string briefDesc;
+        std::string masters;
         Verbosity verbosity;
-        string aliases;
-        string positions;
-        string domains;
-        string dataType;
+        std::string aliases;
+        std::string positions;
+        std::string domains;
+        std::string dataType;
         bool emergency;
         bool force;
-        string outputFile;
-        string skin;
+        std::string outputFile;
+        std::string skin;
 
         Command();
 };
 
 /****************************************************************************/
 
-inline const string &Command::getName() const
+inline const std::string &Command::getName() const
 {
     return name;
 }
 
 /****************************************************************************/
 
-inline const string &Command::getBriefDescription() const
+inline const std::string &Command::getBriefDescription() const
 {
     return briefDesc;
 }
@@ -179,7 +178,7 @@ inline Command::Verbosity Command::getVerbosity() const
 
 /****************************************************************************/
 
-inline const string &Command::getDataType() const
+inline const std::string &Command::getDataType() const
 {
     return dataType;
 }
@@ -200,14 +199,14 @@ inline bool Command::getForce() const
 
 /****************************************************************************/
 
-inline const string &Command::getOutputFile() const
+inline const std::string &Command::getOutputFile() const
 {
     return outputFile;
 }
 
 /****************************************************************************/
 
-inline const string &Command::getSkin() const
+inline const std::string &Command::getSkin() const
 {
     return skin;
 }

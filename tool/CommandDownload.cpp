@@ -176,8 +176,8 @@ void CommandDownload::execute(const StringVector &args)
         data.data = new uint8_t[data.data_size + 1];
 
         try {
-            data.data_size = interpretAsType(
-                    dataType, contents, data.data, data.data_size);
+            data.data_size = interpretAsType(dataType, contents, data.data,
+                    data.data_size + 1);
         } catch (SizeException &e) {
             delete [] data.data;
             throwCommandException(e.what());
@@ -197,8 +197,8 @@ void CommandDownload::execute(const StringVector &args)
         data.data = new uint8_t[data.data_size + 1];
 
         try {
-            data.data_size = interpretAsType(
-                    dataType, args[valueIndex], data.data, data.data_size);
+            data.data_size = interpretAsType(dataType, args[valueIndex],
+                    data.data, data.data_size + 1);
         } catch (SizeException &e) {
             delete [] data.data;
             throwCommandException(e.what());

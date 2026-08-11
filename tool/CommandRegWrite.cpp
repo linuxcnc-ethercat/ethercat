@@ -131,11 +131,11 @@ void CommandRegWrite::execute(const StringVector &args)
             io.size = 1024; // FIXME
         }
 
-        io.data = new uint8_t[io.size];
+        io.data = new uint8_t[io.size + 1];
 
         try {
             io.size = interpretAsType(
-                    dataType, args[1], io.data, io.size);
+                    dataType, args[1], io.data, io.size + 1);
         } catch (SizeException &e) {
             delete [] io.data;
             throwCommandException(e.what());

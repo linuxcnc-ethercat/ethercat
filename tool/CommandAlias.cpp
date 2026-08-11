@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,14 +19,19 @@
  *
  ****************************************************************************/
 
+#include "CommandAlias.h"
+
+#include "sii_crc.h"
+#include "MasterDevice.h"
+
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-using namespace std;
 
-#include "CommandAlias.h"
-#include "sii_crc.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::cerr;
 
 /****************************************************************************/
 
@@ -83,7 +88,7 @@ void CommandAlias::execute(const StringVector &args)
 
     strAlias << args[0];
     strAlias
-        >> resetiosflags(ios::basefield) // guess base from prefix
+        >> resetiosflags(std::ios::basefield) // guess base from prefix
         >> number;
     if (strAlias.fail() || number < 0x0000 || number > 0xffff) {
         err << "Invalid alias '" << args[0] << "'!";

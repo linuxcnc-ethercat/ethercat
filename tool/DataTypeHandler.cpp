@@ -21,17 +21,30 @@
 
 #define DEBUG 0
 
-#if DEBUG
-#include <iostream>
-#endif
-
-#include <iomanip>
-#include <sstream>
-using namespace std;
-
 #include "DataTypeHandler.h"
 
 #include "ecrt.h"
+
+#if DEBUG
+#include <iostream>
+#endif
+#include <iomanip>
+#include <sstream>
+
+using std::string;
+using std::stringstream;
+using std::ostream;
+using std::endl;
+using std::flush;
+using std::ios;
+using std::runtime_error;
+using std::hex;
+using std::dec;
+using std::setw;
+using std::setfill;
+#if DEBUG
+using std::cerr;
+#endif
 
 /****************************************************************************/
 

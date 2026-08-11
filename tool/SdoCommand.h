@@ -32,7 +32,7 @@ class SdoCommand:
     public DataTypeHandler
 {
     public:
-        SdoCommand(const string &, const string &);
+        SdoCommand(const std::string &, const std::string &);
 
         static const char *abortText(uint32_t);
 

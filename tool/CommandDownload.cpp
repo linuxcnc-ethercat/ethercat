@@ -19,12 +19,20 @@
  *
  ****************************************************************************/
 
+#include "CommandDownload.h"
+
+#include "MasterDevice.h"
+
 #include <iostream>
 #include <iomanip>
-using namespace std;
 
-#include "CommandDownload.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::ios;
+using std::hex;
+using std::setfill;
+using std::setw;
 
 /****************************************************************************/
 
@@ -154,9 +162,9 @@ void CommandDownload::execute(const StringVector &args)
     }
 
     if (args[valueIndex] == "-") {
-        ostringstream tmp;
+        std::ostringstream tmp;
 
-        tmp << cin.rdbuf();
+        tmp << std::cin.rdbuf();
         string const &contents = tmp.str();
 
         if (!contents.size()) {

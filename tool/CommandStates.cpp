@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,12 +19,17 @@
  *
  ****************************************************************************/
 
+#include "CommandStates.h"
+
+#include "MasterDevice.h"
+
 #include <iostream>
 #include <algorithm>
-using namespace std;
 
-#include "CommandStates.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::transform;
 
 /****************************************************************************/
 
@@ -44,7 +49,8 @@ string CommandStates::helpString(const string &binaryBaseName) const
         << getBriefDescription() << endl
         << endl
         << "Arguments:" << endl
-        << "  STATE can be 'INIT', 'PREOP', 'BOOT', 'SAFEOP', or 'OP'." << endl
+        << "  STATE can be 'INIT', 'PREOP', 'BOOT', 'SAFEOP', or 'OP'."
+        << endl
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
@@ -60,7 +66,7 @@ string CommandStates::helpString(const string &binaryBaseName) const
 
 void CommandStates::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
+    MasterIndexList masterIndices;
     SlaveList slaves;
     SlaveList::const_iterator si;
     stringstream err;
@@ -74,7 +80,8 @@ void CommandStates::execute(const StringVector &args)
 
     stateStr = args[0];
     transform(stateStr.begin(), stateStr.end(),
-            stateStr.begin(), (int (*) (int)) std::toupper);
+            stateStr.begin(),
+            (int (*) (int)) std::toupper); // NOLINT(whitespace/parens)
 
     if (stateStr == "INIT") {
         state = 0x01;
@@ -91,7 +98,7 @@ void CommandStates::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
+    masterIndices = getMasterIndices();
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {

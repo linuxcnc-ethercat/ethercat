@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -18,14 +18,6 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  ****************************************************************************/
-
-#include <getopt.h>
-#include <libgen.h> // basename()
-#include <stdlib.h>
-
-#include <iostream>
-#include <iomanip>
-using namespace std;
 
 #include "CommandAlias.h"
 #include "CommandCStruct.h"
@@ -62,6 +54,22 @@ using namespace std;
 #include "CommandXml.h"
 
 #include "MasterDevice.h"
+
+#include <getopt.h>
+#include <libgen.h> // basename()
+#include <stdlib.h>
+
+#include <iostream>
+#include <iomanip>
+
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::list;
+using std::cout;
+using std::cerr;
+using std::left;
+using std::setw;
 
 /****************************************************************************/
 

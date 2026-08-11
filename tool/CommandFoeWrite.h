@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -32,11 +32,11 @@ class CommandFoeWrite:
     public:
         CommandFoeWrite();
 
-        string helpString(const string &) const;
+        std::string helpString(const std::string &) const;
         void execute(const StringVector &);
 
     protected:
-        void loadFoeData(ec_ioctl_slave_foe_t *, const istream &);
+        void loadFoeData(ec_ioctl_slave_foe_t *, const std::istream &);
 };
 
 /****************************************************************************/

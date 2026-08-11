@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,12 +19,21 @@
  *
  ****************************************************************************/
 
+#include "CommandSdos.h"
+
+#include "MasterDevice.h"
+
 #include <iostream>
 #include <iomanip>
-using namespace std;
 
-#include "CommandSdos.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::cout;
+using std::hex;
+using std::dec;
+using std::setfill;
+using std::setw;
 
 /****************************************************************************/
 
@@ -81,7 +90,7 @@ string CommandSdos::helpString(const string &binaryBaseName) const
 
 void CommandSdos::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
+    MasterIndexList masterIndices;
     SlaveList slaves;
     SlaveList::const_iterator si;
     bool showHeader, multiMaster;
@@ -92,7 +101,7 @@ void CommandSdos::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
+    masterIndices = getMasterIndices();
     multiMaster = masterIndices.size() > 1;
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
@@ -151,7 +160,8 @@ void CommandSdos::listSlaveSdos(
                 << (entry.read_access[EC_SDO_ENTRY_ACCESS_PREOP] ? "r" : "-")
                 << (entry.write_access[EC_SDO_ENTRY_ACCESS_PREOP] ? "w" : "-")
                 << (entry.read_access[EC_SDO_ENTRY_ACCESS_SAFEOP] ? "r" : "-")
-                << (entry.write_access[EC_SDO_ENTRY_ACCESS_SAFEOP] ? "w" : "-")
+                << (entry.write_access[EC_SDO_ENTRY_ACCESS_SAFEOP] ?
+                        "w" : "-")
                 << (entry.read_access[EC_SDO_ENTRY_ACCESS_OP] ? "r" : "-")
                 << (entry.write_access[EC_SDO_ENTRY_ACCESS_OP] ? "w" : "-")
                 << ", ";

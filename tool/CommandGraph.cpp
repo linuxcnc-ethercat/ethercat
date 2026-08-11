@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2024  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,13 +19,21 @@
  *
  ****************************************************************************/
 
+#include "CommandGraph.h"
+
+#include "MasterDevice.h"
+
 #include <iostream>
 #include <map>
 #include <algorithm>
-using namespace std;
 
-#include "CommandGraph.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::vector;
+using std::map;
+using std::cout;
+using std::cerr;
 
 /****************************************************************************/
 
@@ -111,7 +119,8 @@ void CommandGraph::execute(const StringVector &args)
     if (args.size() == 1) {
         string arg = args[0];
         transform(arg.begin(), arg.end(),
-                arg.begin(), (int (*) (int)) std::toupper);
+                arg.begin(),
+                (int (*) (int)) std::toupper); // NOLINT(whitespace/parens)
         if (arg == "DC") {
             info = DC;
         }
@@ -132,7 +141,6 @@ void CommandGraph::execute(const StringVector &args)
     for (unsigned int i = 0; i < master.slave_count; i++) {
         m.getSlave(&slave, i);
         slaves.push_back(slave);
-
     }
 
     if (info == CRC) {

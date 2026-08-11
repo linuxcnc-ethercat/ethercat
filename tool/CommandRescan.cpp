@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -21,12 +21,16 @@
  *
  ****************************************************************************/
 
+#include "CommandRescan.h"
+
+#include "MasterDevice.h"
+
 #include <sstream>
 #include <iomanip>
-using namespace std;
 
-#include "CommandRescan.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
 
 /****************************************************************************/
 
@@ -56,7 +60,7 @@ string CommandRescan::helpString(const string &binaryBaseName) const
 
 void CommandRescan::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
+    MasterIndexList masterIndices;
 
     if (args.size() != 0) {
         stringstream err;
@@ -64,7 +68,7 @@ void CommandRescan::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
+    masterIndices = getMasterIndices();
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {

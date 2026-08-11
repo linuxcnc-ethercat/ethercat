@@ -47,6 +47,7 @@
 #endif
 
 #ifdef EC_DEBUG_RING
+#include <linux/version.h>
 #define EC_DEBUG_RING_SIZE 10
 
 typedef enum {
@@ -55,7 +56,11 @@ typedef enum {
 
 typedef struct {
     ec_debug_frame_dir_t dir;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+    struct timespec64 t;
+#else
     struct timeval t;
+#endif
     uint8_t data[EC_MAX_DATA_SIZE];
     unsigned int data_size;
 } ec_debug_frame_t;
@@ -84,7 +89,11 @@ struct ec_device
     cycles_t cycles_poll; /**< cycles of last poll */
 #endif
 #ifdef EC_DEBUG_RING
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+    struct timespec64 timeval_poll;
+#else
     struct timeval timeval_poll;
+#endif
 #endif
     unsigned long jiffies_poll; /**< jiffies of last poll */
 

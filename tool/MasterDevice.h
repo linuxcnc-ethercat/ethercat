@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2024  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -24,7 +24,6 @@
 
 #include <stdexcept>
 #include <sstream>
-using namespace std;
 
 #include "ecrt.h"
 #include "ioctl.h"
@@ -32,20 +31,20 @@ using namespace std;
 /****************************************************************************/
 
 class MasterDeviceException:
-    public runtime_error
+    public std::runtime_error
 {
     friend class MasterDevice;
 
     protected:
         /** Constructor with string parameter. */
         MasterDeviceException(
-                const string &s /**< Message. */
-                ): runtime_error(s) {}
+                const std::string &s /**< Message. */
+                ): std::runtime_error(s) {}
 
         /** Constructor with stringstream parameter. */
         MasterDeviceException(
-                const stringstream &s /**< Message. */
-                ): runtime_error(s.str()) {}
+                const std::stringstream &s /**< Message. */
+                ): std::runtime_error(s.str()) {}
 };
 
 /****************************************************************************/

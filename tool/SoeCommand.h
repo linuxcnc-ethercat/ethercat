@@ -32,7 +32,7 @@
 class SoeCommand
 {
     protected:
-        static uint16_t parseIdn(const string &);
+        static uint16_t parseIdn(const std::string &);
         static std::string outputIdn(uint16_t);
         static std::string errorMsg(uint16_t);
 };

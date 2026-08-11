@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,13 +19,23 @@
  *
  ****************************************************************************/
 
+#include "CommandPdos.h"
+
+#include "MasterDevice.h"
+
+#include <cstring>
+
 #include <iostream>
 #include <iomanip>
-#include <cstring>
-using namespace std;
 
-#include "CommandPdos.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::cout;
+using std::hex;
+using std::setfill;
+using std::setw;
+using std::dec;
 
 /****************************************************************************/
 
@@ -91,7 +101,7 @@ string CommandPdos::helpString(const string &binaryBaseName) const
 
 void CommandPdos::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
+    MasterIndexList masterIndices;
     SlaveList slaves;
     SlaveList::const_iterator si;
     bool showHeader, multiMaster;

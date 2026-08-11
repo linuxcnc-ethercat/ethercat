@@ -29,7 +29,7 @@ class NumberListParser
         NumberListParser();
         virtual ~NumberListParser();
 
-        typedef list<unsigned int> List;
+        typedef std::list<unsigned int> List;
 
         List parse(const char *);
 

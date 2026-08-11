@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -21,12 +21,16 @@
  *
  ****************************************************************************/
 
+#include "CommandDebug.h"
+
+#include "MasterDevice.h"
+
 #include <sstream>
 #include <iomanip>
-using namespace std;
 
-#include "CommandDebug.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
 
 /****************************************************************************/
 
@@ -62,7 +66,7 @@ string CommandDebug::helpString(const string &binaryBaseName) const
 
 void CommandDebug::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
+    MasterIndexList masterIndices;
     stringstream str;
     int debugLevel;
 
@@ -73,7 +77,7 @@ void CommandDebug::execute(const StringVector &args)
     }
 
     str << args[0];
-    str >> resetiosflags(ios::basefield) // guess base from prefix
+    str >> resetiosflags(std::ios::basefield) // guess base from prefix
         >> debugLevel;
 
     if (str.fail()) {
@@ -82,7 +86,7 @@ void CommandDebug::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
+    masterIndices = getMasterIndices();
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {

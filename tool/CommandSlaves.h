@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -32,24 +32,24 @@ class CommandSlaves:
     public:
         CommandSlaves();
 
-        string helpString(const string &) const;
+        std::string helpString(const std::string &) const;
         void execute(const StringVector &);
 
     protected:
         struct Info {
-            string pos;
-            string alias;
-            string relPos;
-            string state;
-            string flag;
-            string name;
+            std::string pos;
+            std::string alias;
+            std::string relPos;
+            std::string state;
+            std::string flag;
+            std::string name;
             unsigned int device;
         };
 
         void listSlaves(MasterDevice &, const SlaveList &, bool);
         void showSlaves(MasterDevice &, const SlaveList &);
 
-        static bool slaveInList( const ec_ioctl_slave_t &, const SlaveList &);
+        static bool slaveInList(const ec_ioctl_slave_t &, const SlaveList &);
 };
 
 /****************************************************************************/

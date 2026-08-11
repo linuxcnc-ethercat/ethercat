@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2024  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -22,15 +22,27 @@
  ****************************************************************************/
 
 #include "CommandConfig.h"
+
 #include "MasterDevice.h"
+
+#include <arpa/inet.h>
 
 #include <list>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-using namespace std;
 
-#include <arpa/inet.h>
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::cout;
+using std::dec;
+using std::hex;
+using std::setw;
+using std::setfill;
+using std::min;
+using std::right;
+using std::left;
 
 /****************************************************************************/
 
@@ -55,11 +67,13 @@ string CommandConfig::helpString(const string &binaryBaseName) const
         << "1001:0  0x0000003b/0x02010000  3  OP" << endl
         << "|       |                      |  |" << endl
         << "|       |                      |  \\- Application-layer" << endl
-        << "|       |                      |     state of the attached" << endl
+        << "|       |                      |     state of the attached"
+        << endl
         << "|       |                      |     slave, or '-', if no" << endl
         << "|       |                      |     slave is attached." << endl
         << "|       |                      \\- Absolute decimal ring" << endl
-        << "|       |                         position of the attached" << endl
+        << "|       |                         position of the attached"
+        << endl
         << "|       |                         slave, or '-' if none" << endl
         << "|       |                         attached." << endl
         << "|       \\- Expected vendor ID and product code (both" << endl
@@ -157,7 +171,6 @@ void CommandConfig::showDetailedConfigs(
     for (configIter = configList.begin();
             configIter != configList.end();
             configIter++) {
-
         cout << indent
             << "Alias: "
             << dec << configIter->alias << endl << indent
@@ -377,7 +390,7 @@ void CommandConfig::listConfigs(
     ConfigList::const_iterator configIter;
     stringstream str;
     Info info;
-    typedef list<Info> InfoList;
+    typedef std::list<Info> InfoList;
     InfoList list;
     InfoList::const_iterator iter;
     unsigned int maxAliasWidth = 0, maxPosWidth = 0,
@@ -388,7 +401,6 @@ void CommandConfig::listConfigs(
     for (configIter = configList.begin();
             configIter != configList.end();
             configIter++) {
-
         str << dec << configIter->alias;
         info.alias = str.str();
         str.clear();

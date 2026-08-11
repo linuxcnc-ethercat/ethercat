@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,12 +19,17 @@
  *
  ****************************************************************************/
 
+#include "NumberListParser.h"
+
 #include <cstring>
+
 #include <sstream>
 #include <stdexcept>
-using namespace std;
 
-#include "NumberListParser.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::runtime_error;
 
 /****************************************************************************/
 

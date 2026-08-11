@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2024  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,6 +19,8 @@
  *
  ****************************************************************************/
 
+#include "MasterDevice.h"
+
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -28,9 +30,9 @@
 
 #include <sstream>
 #include <iomanip>
-using namespace std;
 
-#include "MasterDevice.h"
+using std::stringstream;
+using std::endl;
 
 /****************************************************************************/
 

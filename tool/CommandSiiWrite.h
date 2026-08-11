@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -32,11 +32,11 @@ class CommandSiiWrite:
     public:
         CommandSiiWrite();
 
-        string helpString(const string &) const;
+        std::string helpString(const std::string &) const;
         void execute(const StringVector &);
 
     protected:
-        void loadSiiData(ec_ioctl_slave_sii_t *, const istream &);
+        void loadSiiData(ec_ioctl_slave_sii_t *, const std::istream &);
         void checkSiiData(const ec_ioctl_slave_sii_t *data);
 };
 

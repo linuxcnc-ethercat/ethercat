@@ -55,6 +55,15 @@ fi
 
 #------------------------------------------------------------------------------
 
+std_module_name() {
+    case "${1}" in
+        ccat) echo "ec_bhf" ;; # standard driver has a different name
+        *) echo "${1}" ;;
+    esac
+}
+
+#------------------------------------------------------------------------------
+
 is_mac_address() {
     local x='[0-9a-fA-F]'
     echo "$1" | grep -qE "^($x$x:){5}$x$x\$" -
@@ -144,10 +153,16 @@ start)
             continue # ec_* module not found
         fi
 
-        if [ "${MODULE}" != "generic" ] && [ "${MODULE}" != "ccat" ]; then
+        if [ "${MODULE}" != "generic" ]; then
+            STDMODULE=$(std_module_name "${MODULE}")
             # unload standard module and check if unloading was successful
+<<<<<<< Updated upstream
             ${RMMOD} "${MODULE}" 2> /dev/null || true
             if ${LSMOD} | grep "^${MODULE//-/_} " > /dev/null; then
+=======
+            ${RMMOD} "${STDMODULE}" 2> /dev/null || true
+            if ${LSMOD} | grep "^${STDMODULE} " > /dev/null; then
+>>>>>>> Stashed changes
                 # could not unload module
                 ${RMMOD} ${LOADED_MODULES}
                 exit 1
@@ -155,8 +170,8 @@ start)
         fi
 
         if ! ${MODPROBE} ${MODPROBE_FLAGS} "${ECMODULE}"; then
-            if [ "${MODULE}" != "generic" ] && [ "${MODULE}" != "ccat" ]; then
-                ${MODPROBE} ${MODPROBE_FLAGS} "${MODULE}" # try to restore
+            if [ "${MODULE}" != "generic" ]; then
+                ${MODPROBE} ${MODPROBE_FLAGS} "${STDMODULE}" # try to restore
             fi
             ${RMMOD} ${LOADED_MODULES}
             exit 1
@@ -186,10 +201,10 @@ stop)
 
     # load standard modules again
     for MODULE in ${DEVICE_MODULES}; do
-        if [ "${MODULE}" == "generic" ] || [ "${MODULE}" == "ccat" ]; then
+        if [ "${MODULE}" == "generic" ]; then
             continue
         fi
-        ${MODPROBE} ${MODPROBE_FLAGS} "${MODULE}"
+        ${MODPROBE} ${MODPROBE_FLAGS} "$(std_module_name "${MODULE}")"
     done
 
     # bring down all updown interfaces

@@ -36,6 +36,9 @@
  * - Added ecrt_master_sii_caching() to set the SII caching method and added
  *   the feature flag EC_HAVE_SII_CACHING and the enum type
  *   ec_sii_caching_fields_t.
+ * - Added ecrt_slave_config_pdo_mode() to select whether a slave's PDO
+ *   assignment and PDO configuration are read from resp. written to it via
+ *   CoE, the enum type ec_pdo_mode_t and the feature flag EC_HAVE_PDO_MODE.
  *
  * Changes in version 1.6.0:
  *
@@ -252,6 +255,11 @@
  */
 #define EC_HAVE_SII_CACHING
 
+/** Defined, if the method ecrt_slave_config_pdo_mode() and the enum type
+ * ec_pdo_mode_t are available.
+ */
+#define EC_HAVE_PDO_MODE
+
 /****************************************************************************/
 
 /** Symbol visibility control macro.
@@ -394,7 +402,7 @@ typedef struct  {
                                  - 8: \a OP
 
                                  Note that each state is coded in a different
-                                 bit! */
+                                 bit. */
 } ec_slave_config_state_t;
 
 /****************************************************************************/
@@ -529,6 +537,42 @@ typedef enum {
     EC_WD_ENABLE, /**< Enable the watchdog. */
     EC_WD_DISABLE, /**< Disable the watchdog. */
 } ec_watchdog_mode_t;
+
+/****************************************************************************/
+
+/** PDO handling mode.
+ *
+ * Used for the \a assign_mode and \a config_mode parameters of
+ * ecrt_slave_config_pdo_mode() to select whether a slave's PDO assignment
+ * (which PDOs are mapped into a sync manager, CoE objects 0x1C10-0x1C13)
+ * resp. its PDO configuration (the entries mapped into an assigned PDO) are
+ * read from resp. written to the slave via CoE.
+ */
+typedef enum {
+    EC_PDO_MODE_FIXED, /**< Neither read nor write via CoE. Trust that the
+                          slave already matches the layout given via
+                          ecrt_slave_config_pdos() and friends. */
+    EC_PDO_MODE_WRITE, /**< Write the configured state via CoE every time
+                          the slave is configured, without reading the
+                          current state first ("blind write"). */
+    EC_PDO_MODE_READ_WRITE, /**< Read the current state via CoE while
+                               scanning the slave, and unconditionally
+                               (re-)write it every time the slave is
+                               configured. This is the default. */
+    EC_PDO_MODE_WRITE_IF_DIFFERENT, /**< Read the current state via CoE
+                                       while scanning the slave, and write
+                                       it back only if it differs from the
+                                       configured state. */
+} ec_pdo_mode_t;
+
+/** Default PDO handling mode: read via CoE while scanning, and
+ *  unconditionally (re-)write via CoE every time the slave is configured.
+ *  This is the behavior in effect if ecrt_slave_config_pdo_mode() is never
+ *  called.
+ *
+ *  \see ec_pdo_mode_t
+ */
+#define EC_PDO_MODE_DEFAULT EC_PDO_MODE_READ_WRITE
 
 /****************************************************************************/
 
@@ -1442,6 +1486,58 @@ EC_PUBLIC_API int ecrt_slave_config_watchdog(
                                       manager watchdog (register 0x0420). If
                                       set to zero, the value is not written,
                                       so the default is used. */
+        );
+
+/** Selects how a slave's PDO assignment and PDO configuration are read
+ * from resp. written to it via CoE.
+ *
+ * By default (i. e. if this method is not called), a slave's PDO
+ * assignment and PDO configuration are both read via CoE while the bus is
+ * scanned, and are both unconditionally (re-)written via CoE every time
+ * the slave is configured (e. g. after a state change or reconnect). For
+ * slaves with a fixed or otherwise well-known PDO structure, this can be
+ * relaxed independently for the assignment and the configuration, to save
+ * mailbox round trips during bus scanning and/or slave configuration.
+ *
+ * If \a assign_mode resp. \a config_mode is EC_PDO_MODE_FIXED or
+ * EC_PDO_MODE_WRITE, the corresponding aspect is not read from the slave
+ * while scanning; the master then relies solely on the PDO configuration
+ * made available through ecrt_slave_config_pdos(),
+ * ecrt_slave_config_sync_manager(), ecrt_slave_config_pdo_assign_add()
+ * and ecrt_slave_config_pdo_mapping_add(). The application is responsible
+ * for making sure this matches the slave's actual capabilities in that
+ * case.
+ *
+ * \note Reading the PDO configuration requires first discovering the PDO
+ * assignment (which PDOs exist), since the master must know a PDO's index
+ * before it can query its entries. Therefore, whenever \a config_mode is
+ * EC_PDO_MODE_READ_WRITE or EC_PDO_MODE_WRITE_IF_DIFFERENT, the PDO
+ * assignment is read while scanning the bus as well, regardless of \a
+ * assign_mode. This is harmless, but means that the mailbox traffic saved
+ * by choosing EC_PDO_MODE_FIXED or EC_PDO_MODE_WRITE for \a assign_mode is
+ * not realized in that particular combination.
+ *
+ * \attention Because bus scanning happens before slave configurations are
+ * attached to their slaves, a non-default \a assign_mode or \a
+ * config_mode is only guaranteed to take effect for the scanning of a
+ * slave if this method is called (i. e. the slave configuration is
+ * created via ecrt_master_slave_config()) before that slave is scanned
+ * for the first time. Otherwise, the scan falls back to the default
+ * (reading) behavior for that particular scan; a subsequent bus rescan
+ * (e. g. via the "ethercat rescan" command) will pick up the configured
+ * mode.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
+ * \apiusage{master_idle,blocking}
+ *
+ * \return 0 on success, otherwise negative error code.
+ */
+EC_PUBLIC_API int ecrt_slave_config_pdo_mode(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        ec_pdo_mode_t assign_mode, /**< Mode for the PDO assignment. */
+        ec_pdo_mode_t config_mode /**< Mode for the PDO configuration. */
         );
 
 /** Add a PDO to a sync manager's PDO assignment.

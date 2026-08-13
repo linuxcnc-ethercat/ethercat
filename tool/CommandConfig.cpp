@@ -46,6 +46,21 @@ using std::left;
 
 /****************************************************************************/
 
+/** Returns a human-readable string for a PDO handling mode.
+ */
+static string pdoModeString(ec_pdo_mode_t mode)
+{
+    switch (mode) {
+        case EC_PDO_MODE_FIXED: return "Fixed";
+        case EC_PDO_MODE_WRITE: return "Write";
+        case EC_PDO_MODE_READ_WRITE: return "Read+Write";
+        case EC_PDO_MODE_WRITE_IF_DIFFERENT: return "Write if different";
+        default: return "???";
+    }
+}
+
+/****************************************************************************/
+
 CommandConfig::CommandConfig():
     Command("config", "Show slave configurations.")
 {
@@ -204,6 +219,11 @@ void CommandConfig::showDetailedConfigs(
             cout << "(Default)";
         }
         cout << endl;
+
+        cout << indent << "PDO assignment mode: "
+            << pdoModeString(configIter->pdo_assign_mode) << endl
+            << indent << "PDO configuration mode: "
+            << pdoModeString(configIter->pdo_config_mode) << endl;
 
         for (j = 0; j < EC_MAX_SYNC_MANAGERS; j++) {
             if (configIter->syncs[j].pdo_count) {

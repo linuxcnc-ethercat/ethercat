@@ -119,4 +119,5 @@ LIBETHERCAT_1.6 {
 LIBETHERCAT_1.7 {
 	global:
 		ecrt_master_sii_caching;
+		ecrt_slave_config_pdo_mode;
 } LIBETHERCAT_1.6;

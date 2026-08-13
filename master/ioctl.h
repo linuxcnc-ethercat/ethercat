@@ -162,6 +162,7 @@
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x65, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x66, size_t)
 #define EC_IOCTL_SII_CACHING           EC_IOW(0x67, uint32_t)
+#define EC_IOCTL_SC_PDO_MODE           EC_IOW(0x68, ec_ioctl_config_t)
 
 /****************************************************************************/
 
@@ -501,6 +502,8 @@ typedef struct {
     } syncs[EC_MAX_SYNC_MANAGERS];
     uint16_t watchdog_divider;
     uint16_t watchdog_intervals;
+    ec_pdo_mode_t pdo_assign_mode;
+    ec_pdo_mode_t pdo_config_mode;
     uint32_t sdo_count;
     uint32_t idn_count;
     uint32_t flag_count;
@@ -645,11 +648,11 @@ typedef struct {
     struct in_addr dns;
     char name[EC_MAX_HOSTNAME_SIZE];
 
-	// output
-	uint16_t result;
+    // output
+    uint16_t result;
 } ec_ioctl_eoe_ip_t;
 
-/*****************************************************************************/
+/****************************************************************************/
 
 typedef struct {
     // outputs

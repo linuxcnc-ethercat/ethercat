@@ -639,6 +639,15 @@ int ecrt_slave_config_watchdog(
     return 0;
 }
 
+int ecrt_slave_config_pdo_mode(
+        ec_slave_config_t *sc,     /**< Slave configuration. */
+        ec_pdo_mode_t assign_mode, /**< Mode for the PDO assignment. */
+        ec_pdo_mode_t config_mode  /**< Mode for the PDO configuration. */
+)
+{
+    return 0;
+}
+
 int ecrt_slave_config_pdo_assign_add(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint8_t sync_index,    /**< Sync manager index. Must be less

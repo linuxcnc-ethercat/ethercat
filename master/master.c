@@ -1884,6 +1884,46 @@ const ec_slave_t *ec_master_find_slave_const(
     EC_FIND_SLAVE;
 }
 
+/** Finds the slave configuration that will be attached to the given slave.
+ *
+ * Unlike ec_slave_config_attach(), this does not actually attach the
+ * configuration; it just looks one up by alias/position (and, if given,
+ * matching vendor ID/product code), which also works before the bus scan
+ * has completed and configurations have been attached to their slaves.
+ *
+ * \return The matching slave configuration, or \a NULL, if none matches.
+ */
+ec_slave_config_t *ec_master_find_config_for_slave(
+        ec_master_t *master, /**< EtherCAT master. */
+        const ec_slave_t *slave /**< Slave to find a configuration for. */
+        )
+{
+    ec_slave_config_t *sc;
+
+    list_for_each_entry(sc, &master->configs, list) {
+        if (ec_master_find_slave(master, sc->alias, sc->position) != slave)
+            continue;
+
+#ifdef EC_IDENT_WILDCARDS
+        if (sc->vendor_id != 0xffffffff
+                && slave->sii.vendor_id != sc->vendor_id)
+            continue;
+        if (sc->product_code != 0xffffffff
+                && slave->sii.product_code != sc->product_code)
+            continue;
+#else
+        if (slave->sii.vendor_id != sc->vendor_id)
+            continue;
+        if (slave->sii.product_code != sc->product_code)
+            continue;
+#endif
+
+        return sc;
+    }
+
+    return NULL;
+}
+
 /****************************************************************************/
 
 /** Get the number of slave configurations provided by the application.

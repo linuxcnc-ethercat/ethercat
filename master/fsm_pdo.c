@@ -39,6 +39,7 @@ void ec_fsm_pdo_print(const ec_fsm_pdo_t *);
 int ec_fsm_pdo_running(const ec_fsm_pdo_t *);
 ec_pdo_t *ec_fsm_pdo_conf_action_next_pdo(const ec_fsm_pdo_t *,
         const struct list_head *);
+static int ec_pdo_mode_reads(ec_pdo_mode_t);
 
 /****************************************************************************/
 
@@ -118,10 +119,16 @@ void ec_fsm_pdo_print(
  */
 void ec_fsm_pdo_start_reading(
         ec_fsm_pdo_t *fsm, /**< PDO configuration state machine. */
-        ec_slave_t *slave /**< slave to configure */
+        ec_slave_t *slave, /**< slave to configure */
+        ec_pdo_mode_t assign_mode, /**< Whether/how to read the PDO
+                                      assignment. */
+        ec_pdo_mode_t config_mode /**< Whether/how to read the PDO
+                                     configuration. */
         )
 {
     fsm->slave = slave;
+    fsm->assign_mode = assign_mode;
+    fsm->config_mode = config_mode;
     fsm->state = ec_fsm_pdo_read_state_start;
 }
 
@@ -184,6 +191,18 @@ int ec_fsm_pdo_success(
     return fsm->state == ec_fsm_pdo_state_end;
 }
 
+/****************************************************************************/
+
+/** Returns, if the given PDO handling mode implies reading via CoE.
+ */
+static int ec_pdo_mode_reads(
+        ec_pdo_mode_t mode /**< PDO handling mode. */
+        )
+{
+    return mode == EC_PDO_MODE_READ_WRITE
+        || mode == EC_PDO_MODE_WRITE_IF_DIFFERENT;
+}
+
 /*****************************************************************************
  * Reading state funtions.
  ****************************************************************************/
@@ -216,6 +235,13 @@ void ec_fsm_pdo_read_action_next_sync(
     for (; fsm->sync_index < EC_MAX_SYNC_MANAGERS; fsm->sync_index++) {
         if (!(fsm->sync = ec_slave_get_sync(slave, fsm->sync_index)))
             continue;
+
+        // reading the PDO configuration requires first discovering the PDO
+        // assignment, so a read is done if either aspect is to be read
+        if (!ec_pdo_mode_reads(fsm->assign_mode)
+                && !ec_pdo_mode_reads(fsm->config_mode)) {
+            continue;
+        }
 
         EC_SLAVE_DBG(slave, 1, "Reading PDO assignment of SM%u.\n",
                 fsm->sync_index);
@@ -344,6 +370,14 @@ void ec_fsm_pdo_read_state_pdo(
 
     list_add_tail(&fsm->pdo->list, &fsm->pdos.list);
 
+    if (!ec_pdo_mode_reads(fsm->config_mode)) {
+        // PDO assignment only; the entries mapped into this PDO are not
+        // to be read
+        fsm->pdo_pos++;
+        ec_fsm_pdo_read_action_next_pdo(fsm, datagram);
+        return;
+    }
+
     fsm->state = ec_fsm_pdo_read_state_pdo_entries;
     ec_fsm_pdo_entry_start_reading(&fsm->fsm_pdo_entry, fsm->slave, fsm->pdo);
     fsm->state(fsm, datagram); // execute immediately
@@ -429,6 +463,9 @@ void ec_fsm_pdo_conf_action_next_sync(
             return;
         }
 
+        fsm->assign_mode = fsm->slave->config->pdo_assign_mode;
+        fsm->config_mode = fsm->slave->config->pdo_config_mode;
+
         if (ec_pdo_list_copy(&fsm->pdos,
                     &fsm->slave->config->sync_configs[fsm->sync_index].pdos))
         {
@@ -479,7 +516,8 @@ void ec_fsm_pdo_conf_action_pdo_mapping(
         ec_pdo_clear_entries(&fsm->slave_pdo);
     }
 
-    if (list_empty(&fsm->slave_pdo.entries)) {
+    if (list_empty(&fsm->slave_pdo.entries)
+            && ec_pdo_mode_reads(fsm->config_mode)) {
         EC_SLAVE_DBG(fsm->slave, 1, "Reading mapping of PDO 0x%04X.\n",
                 fsm->pdo->index);
 
@@ -528,12 +566,24 @@ void ec_fsm_pdo_conf_action_check_mapping(
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
+    if (fsm->config_mode == EC_PDO_MODE_FIXED) {
+        // PDO configuration is trusted to already match; do not touch it
+        ec_fsm_pdo_conf_action_next_pdo_mapping(fsm, datagram);
+        return;
+    }
+
     // check, if slave supports PDO configuration
     if ((fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
             && fsm->slave->sii.has_general
             && fsm->slave->sii.coe_details.enable_pdo_configuration) {
+        if (fsm->config_mode == EC_PDO_MODE_WRITE_IF_DIFFERENT
+                && ec_pdo_equal_entries(fsm->pdo, &fsm->slave_pdo)) {
+            // mapping already matches the desired configuration
+            ec_fsm_pdo_conf_action_next_pdo_mapping(fsm, datagram);
+            return;
+        }
 
-        // always write PDO mapping
+        // write PDO mapping
         ec_fsm_pdo_entry_start_configuration(&fsm->fsm_pdo_entry, fsm->slave,
                 fsm->pdo, &fsm->slave_pdo);
         fsm->state = ec_fsm_pdo_conf_state_mapping;
@@ -603,11 +653,23 @@ void ec_fsm_pdo_conf_action_check_assignment(
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
+    if (fsm->assign_mode == EC_PDO_MODE_FIXED) {
+        // PDO assignment is trusted to already match; do not touch it
+        ec_fsm_pdo_conf_action_next_sync(fsm, datagram);
+        return;
+    }
+
     if ((fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
             && fsm->slave->sii.has_general
             && fsm->slave->sii.coe_details.enable_pdo_assign) {
+        if (fsm->assign_mode == EC_PDO_MODE_WRITE_IF_DIFFERENT
+                && ec_pdo_list_equal(&fsm->sync->pdos, &fsm->pdos)) {
+            // assignment already matches the desired configuration
+            ec_fsm_pdo_conf_action_next_sync(fsm, datagram);
+            return;
+        }
 
-        // always write PDO assignment
+        // write PDO assignment
         if (fsm->slave->master->debug_level) {
             EC_SLAVE_DBG(fsm->slave, 1, "Setting PDO assignment of SM%u:\n",
                     fsm->sync_index);

@@ -2,6 +2,9 @@
 
 ## Version 1.7.0
 
+- Added `ecrt_slave_config_pdo_mode()` to select whether a slave's PDO
+  assignment and PDO configuration are read from resp. written to it via
+  CoE, for slaves with a fixed or otherwise well-known PDO layout.
 - Added SII caching functionality with
   - the kernel module parameter `sii_caching`,
   - the configuration variable `SII_CACHING`,

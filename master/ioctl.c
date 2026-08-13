@@ -63,7 +63,8 @@
 # define ec_ioctl_lock(lock)   rt_mutex_lock(lock)
 # define ec_ioctl_unlock(lock) rt_mutex_unlock(lock)
 #  if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0) || \
-      (defined(CONFIG_PREEMPT_RT_FULL) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
+      (defined(CONFIG_PREEMPT_RT_FULL) && \
+       LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 #   define ec_ioctl_lock_interruptible(lock) \
            rt_mutex_lock_interruptible(lock)
 #  else
@@ -650,7 +651,7 @@ static ATTRIBUTES int ec_ioctl_master_rescan(
         )
 {
     EC_MASTER_DBG(master, 1, "Got rescan command via ioctl()."
-		    " Re-scanning on next possibility.\n");
+            " Re-scanning on next possibility.\n");
     master->fsm.rescan_required = 1;
     return 0;
 }
@@ -896,8 +897,9 @@ static ATTRIBUTES int ec_ioctl_slave_sdo_download(
     }
 
     if (data.complete_access) {
-        retval = ecrt_master_sdo_download_complete(master, data.slave_position,
-                data.sdo_index, sdo_data, data.data_size, &data.abort_code);
+        retval = ecrt_master_sdo_download_complete(master,
+                data.slave_position, data.sdo_index, sdo_data, data.data_size,
+                &data.abort_code);
     } else {
         retval = ecrt_master_sdo_download(master, data.slave_position,
                 data.sdo_index, data.sdo_entry_subindex, sdo_data,
@@ -1262,6 +1264,8 @@ static ATTRIBUTES int ec_ioctl_config(
     }
     data.watchdog_divider = sc->watchdog_divider;
     data.watchdog_intervals = sc->watchdog_intervals;
+    data.pdo_assign_mode = sc->pdo_assign_mode;
+    data.pdo_config_mode = sc->pdo_config_mode;
     data.sdo_count = ec_slave_config_sdo_count(sc);
     data.idn_count = ec_slave_config_idn_count(sc);
     data.flag_count = ec_slave_config_flag_count(sc);
@@ -1716,6 +1720,7 @@ static ATTRIBUTES int ec_ioctl_eoe_handler(
 /****************************************************************************/
 
 #ifdef EC_EOE
+
 /** Request EoE IP parameter setting.
  *
  * \return Zero on success, otherwise a negative error code.
@@ -1796,9 +1801,10 @@ static ATTRIBUTES int ec_ioctl_slave_eoe_ip_param(
 
     return req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 }
+
 #endif
 
-/*****************************************************************************/
+/****************************************************************************/
 
 /** Request the master from userspace.
  *
@@ -2496,6 +2502,51 @@ static ATTRIBUTES int ec_ioctl_sc_watchdog(
 
     ret = ecrt_slave_config_watchdog(sc,
             data.watchdog_divider, data.watchdog_intervals);
+
+out_up:
+    up(&master->master_sem);
+out_return:
+    return ret;
+}
+
+/****************************************************************************/
+
+/** Configure a slave's PDO handling mode.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_sc_pdo_mode(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_config_t data;
+    ec_slave_config_t *sc;
+    int ret = 0;
+
+    if (unlikely(!ctx->requested)) {
+        ret = -EPERM;
+        goto out_return;
+    }
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        ret = -EFAULT;
+        goto out_return;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        ret = -EINTR;
+        goto out_return;
+    }
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        ret = -ENOENT;
+        goto out_up;
+    }
+
+    ret = ecrt_slave_config_pdo_mode(sc,
+            data.pdo_assign_mode, data.pdo_config_mode);
 
 out_up:
     up(&master->master_sem);
@@ -5452,6 +5503,13 @@ static long ec_ioctl_nrt
                 break;
             }
             ret = ec_ioctl_sc_watchdog(master, arg, ctx);
+            break;
+        case EC_IOCTL_SC_PDO_MODE:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_sc_pdo_mode(master, arg, ctx);
             break;
         case EC_IOCTL_SC_ADD_PDO:
             if (!ctx->writable) {

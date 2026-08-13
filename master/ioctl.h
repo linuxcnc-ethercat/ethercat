@@ -50,6 +50,7 @@
 #define EC_IOCTL_VERSION_MAGIC 38
 
 // Command-line tool
+// NOLINTBEGIN(whitespace/line_length)
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
 #define EC_IOCTL_MASTER                EC_IOR(0x01, ec_ioctl_master_t)
 #define EC_IOCTL_SLAVE                EC_IOWR(0x02, ec_ioctl_slave_t)
@@ -163,6 +164,7 @@
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x66, size_t)
 #define EC_IOCTL_SII_CACHING           EC_IOW(0x67, uint32_t)
 #define EC_IOCTL_SC_PDO_MODE           EC_IOW(0x68, ec_ioctl_config_t)
+// NOLINTEND
 
 /****************************************************************************/
 

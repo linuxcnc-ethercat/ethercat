@@ -9,6 +9,7 @@ repos:
     -   id: trailing-whitespace
     -   id: check-case-conflict
     -   id: check-merge-conflict
+        args: [--assume-in-merge]
     -   id: check-symlinks
     -   id: fix-byte-order-marker
     -   id: mixed-line-ending

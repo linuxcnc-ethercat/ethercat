@@ -156,13 +156,8 @@ start)
         if [ "${MODULE}" != "generic" ]; then
             STDMODULE=$(std_module_name "${MODULE}")
             # unload standard module and check if unloading was successful
-<<<<<<< Updated upstream
-            ${RMMOD} "${MODULE}" 2> /dev/null || true
-            if ${LSMOD} | grep "^${MODULE//-/_} " > /dev/null; then
-=======
             ${RMMOD} "${STDMODULE}" 2> /dev/null || true
-            if ${LSMOD} | grep "^${STDMODULE} " > /dev/null; then
->>>>>>> Stashed changes
+            if ${LSMOD} | grep "^${STDMODULE//-/_} " > /dev/null; then
                 # could not unload module
                 ${RMMOD} ${LOADED_MODULES}
                 exit 1

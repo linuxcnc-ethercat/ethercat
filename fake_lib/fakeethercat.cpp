@@ -199,7 +199,7 @@ ec_slave_config_t *ec_master::slave_config(
         }
     }
     else {
-        return &slaves.insert(std::make_pair<ec_address, ec_slave_config>(
+        return &slaves.insert(std::make_pair(
                                       ec_address {address},
                                       ec_slave_config {
                                               address,

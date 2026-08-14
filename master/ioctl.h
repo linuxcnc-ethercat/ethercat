@@ -50,6 +50,7 @@
 #define EC_IOCTL_VERSION_MAGIC 38
 
 // Command-line tool
+// NOLINTBEGIN(whitespace/line_length)
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
 #define EC_IOCTL_MASTER                EC_IOR(0x01, ec_ioctl_master_t)
 #define EC_IOCTL_SLAVE                EC_IOWR(0x02, ec_ioctl_slave_t)
@@ -162,6 +163,8 @@
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x65, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x66, size_t)
 #define EC_IOCTL_SII_CACHING           EC_IOW(0x67, uint32_t)
+#define EC_IOCTL_SC_PDO_MODE           EC_IOW(0x68, ec_ioctl_config_t)
+// NOLINTEND
 
 /****************************************************************************/
 
@@ -501,6 +504,8 @@ typedef struct {
     } syncs[EC_MAX_SYNC_MANAGERS];
     uint16_t watchdog_divider;
     uint16_t watchdog_intervals;
+    ec_pdo_mode_t pdo_assign_mode;
+    ec_pdo_mode_t pdo_config_mode;
     uint32_t sdo_count;
     uint32_t idn_count;
     uint32_t flag_count;
@@ -645,11 +650,11 @@ typedef struct {
     struct in_addr dns;
     char name[EC_MAX_HOSTNAME_SIZE];
 
-	// output
-	uint16_t result;
+    // output
+    uint16_t result;
 } ec_ioctl_eoe_ip_t;
 
-/*****************************************************************************/
+/****************************************************************************/
 
 typedef struct {
     // outputs

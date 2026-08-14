@@ -58,6 +58,14 @@ struct ec_fsm_pdo
     ec_pdo_t *pdo; /**< Current PDO. */
     unsigned int pdo_pos; /**< Assignment position of current PDOs. */
     unsigned int pdo_count; /**< Number of assigned PDOs. */
+
+    ec_pdo_mode_t assign_mode; /**< Whether/how to read resp. write the PDO
+                                  assignment. Set once by
+                                  ec_fsm_pdo_start_reading() for reading, or
+                                  refreshed from fsm->slave->config for each
+                                  sync manager while writing. */
+    ec_pdo_mode_t config_mode; /**< Whether/how to read resp. write the PDO
+                                  configuration. See \a assign_mode. */
 };
 
 /****************************************************************************/
@@ -65,7 +73,8 @@ struct ec_fsm_pdo
 void ec_fsm_pdo_init(ec_fsm_pdo_t *, ec_fsm_coe_t *);
 void ec_fsm_pdo_clear(ec_fsm_pdo_t *);
 
-void ec_fsm_pdo_start_reading(ec_fsm_pdo_t *, ec_slave_t *);
+void ec_fsm_pdo_start_reading(ec_fsm_pdo_t *, ec_slave_t *,
+        ec_pdo_mode_t, ec_pdo_mode_t);
 void ec_fsm_pdo_start_configuration(ec_fsm_pdo_t *, ec_slave_t *);
 
 int ec_fsm_pdo_exec(ec_fsm_pdo_t *, ec_datagram_t *);

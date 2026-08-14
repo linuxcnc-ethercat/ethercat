@@ -202,7 +202,7 @@ struct ec_master {
 #if EC_MAX_NUM_DEVICES > 1
     unsigned int num_devices; /**< Number of devices. Access this always via
                                 ec_master_num_devices(), because it may be
-                                optimized! */
+                                optimized. */
 #endif
     struct semaphore device_sem; /**< Device semaphore. */
     ec_device_stats_t device_stats; /**< Device statistics. */
@@ -352,6 +352,8 @@ void ec_master_attach_slave_configs(ec_master_t *);
 ec_slave_t *ec_master_find_slave(ec_master_t *, uint16_t, uint16_t);
 const ec_slave_t *ec_master_find_slave_const(const ec_master_t *, uint16_t,
         uint16_t);
+ec_slave_config_t *ec_master_find_config_for_slave(ec_master_t *,
+        const ec_slave_t *);
 void ec_master_output_stats(ec_master_t *);
 #ifdef EC_EOE
 void ec_master_clear_eoe_handlers(ec_master_t *);
@@ -369,7 +371,8 @@ const ec_domain_t *ec_master_find_domain_const(const ec_master_t *,
         unsigned int);
 #ifdef EC_EOE
 uint16_t ec_master_eoe_handler_count(const ec_master_t *);
-const ec_eoe_t *ec_master_get_eoe_handler_const(const ec_master_t *, uint16_t);
+const ec_eoe_t *ec_master_get_eoe_handler_const(const ec_master_t *,
+        uint16_t);
 #endif
 
 int ec_master_debug_level(ec_master_t *, unsigned int);

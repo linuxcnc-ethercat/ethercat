@@ -1056,10 +1056,32 @@ void ec_fsm_slave_scan_enter_pdos(
         )
 {
     ec_slave_t *slave = fsm->slave;
+    ec_pdo_mode_t assign_mode = EC_PDO_MODE_DEFAULT;
+    ec_pdo_mode_t config_mode = EC_PDO_MODE_DEFAULT;
+    const ec_slave_config_t *sc;
+
+    // Look up a not-yet-attached configuration for this slave (attaching
+    // only happens after the whole bus has been scanned) to find out if
+    // the application requested non-default PDO scanning behavior.
+    if ((sc = ec_master_find_config_for_slave(slave->master, slave))) {
+        assign_mode = sc->pdo_assign_mode;
+        config_mode = sc->pdo_config_mode;
+    }
+
+    if (assign_mode == EC_PDO_MODE_FIXED
+            || assign_mode == EC_PDO_MODE_WRITE) {
+        if (config_mode == EC_PDO_MODE_FIXED
+                || config_mode == EC_PDO_MODE_WRITE) {
+            EC_SLAVE_DBG(slave, 1, "Skipping PDO scanning"
+                    " (fixed PDO assignment/configuration).\n");
+            fsm->state = ec_fsm_slave_scan_state_end;
+            return;
+        }
+    }
 
     EC_SLAVE_DBG(slave, 1, "Scanning PDO assignment and mapping.\n");
     fsm->state = ec_fsm_slave_scan_state_pdos;
-    ec_fsm_pdo_start_reading(fsm->fsm_pdo, slave);
+    ec_fsm_pdo_start_reading(fsm->fsm_pdo, slave, assign_mode, config_mode);
     ec_fsm_pdo_exec(fsm->fsm_pdo, fsm->datagram); // execute immediately
 }
 

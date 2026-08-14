@@ -123,6 +123,13 @@ struct ec_slave_config {
     uint16_t watchdog_intervals; /**< Process data watchdog intervals (see
                                    spec. reg. 0x0420). */
 
+    ec_pdo_mode_t pdo_assign_mode; /**< Whether/how to read resp. write the
+                                      PDO assignment via CoE. \see
+                                      ecrt_slave_config_pdo_mode(). */
+    ec_pdo_mode_t pdo_config_mode; /**< Whether/how to read resp. write the
+                                      PDO configuration via CoE. \see
+                                      ecrt_slave_config_pdo_mode(). */
+
     ec_slave_t *slave; /**< Slave pointer. This is \a NULL, if the slave is
                          offline. */
 

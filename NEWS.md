@@ -13,8 +13,15 @@
   - Protected `rec_size` calculation in FoE.
   - Check for malicious EoE frame details.
 - Avoid writing invalid MAC onto r8169 NIC on removal
-- Fixed insufficient re-allocation of SoE request buffer.
-- Protect datagram receiving mechanism against re-ordering.
+- Fixed insufficient re-allocation of SoE request buffer
+- Protect datagram receiving mechanism against re-ordering
+- Prevent creating datagrams that are too large for one frame
+- Reacted to stmmac API changed during Linux 6.12
+- Adapted debug ring to kernel 5.6+ time API changes
+- Use str.read() to read into char* (deprecated in C++20)
+- Unload `ec_bhf` before loading CCAT
+- Added cpplint checks in pre-commit and CI tests.
+- Improved and formatted markdown documents and added pre-commit checks
 
 ## Version 1.6.9
 

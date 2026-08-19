@@ -5,10 +5,22 @@
 #include <linux/clk-provider.h>
 #include <linux/pci.h>
 #include <linux/dmi.h>
+#include <linux/version.h>
 #include "dwmac-intel-6.12-ethercat.h"
 #include "dwmac4-6.12-ethercat.h"
 #include "stmmac-6.12-ethercat.h"
 #include "stmmac_ptp-6.12-ethercat.h"
+
+/* struct plat_stmmacenet_data had a member msi_lpi_vec (separate MSI
+ * vector for the LPI IRQ) up to and including Linux v6.12.77. It was
+ * removed from the 6.12.y stable branch as of v6.12.78 by stable
+ * commit cd19a32de5d0 ("net: stmmac: remove support for lpi_intr_o",
+ * upstream commit 14eb64db8ff0). Select the correct interface purely
+ * by kernel version so this file builds against both variants.
+ */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 78)
+#define EC_STMMAC_HAS_MSI_LPI_VEC
+#endif
 
 struct intel_priv_data {
 	int mdio_adhoc_addr;	/* mdio address for serdes & etc */
@@ -612,7 +624,9 @@ static int intel_mgbe_common_data(struct pci_dev *pdev,
 
 	/* Setup MSI vector offset specific to Intel mGbE controller */
 	plat->msi_mac_vec = 29;
+#ifdef EC_STMMAC_HAS_MSI_LPI_VEC
 	plat->msi_lpi_vec = 28;
+#endif
 	plat->msi_sfty_ce_vec = 27;
 	plat->msi_sfty_ue_vec = 26;
 	plat->msi_rx_base_vec = 0;
@@ -998,8 +1012,10 @@ static int stmmac_config_multi_msi(struct pci_dev *pdev,
 		res->irq = pci_irq_vector(pdev, plat->msi_mac_vec);
 	if (plat->msi_wol_vec < STMMAC_MSI_VEC_MAX)
 		res->wol_irq = pci_irq_vector(pdev, plat->msi_wol_vec);
+#ifdef EC_STMMAC_HAS_MSI_LPI_VEC
 	if (plat->msi_lpi_vec < STMMAC_MSI_VEC_MAX)
 		res->lpi_irq = pci_irq_vector(pdev, plat->msi_lpi_vec);
+#endif
 	if (plat->msi_sfty_ce_vec < STMMAC_MSI_VEC_MAX)
 		res->sfty_ce_irq = pci_irq_vector(pdev, plat->msi_sfty_ce_vec);
 	if (plat->msi_sfty_ue_vec < STMMAC_MSI_VEC_MAX)
@@ -1081,7 +1097,9 @@ static int intel_eth_pci_probe(struct pci_dev *pdev,
 	 */
 	plat->msi_mac_vec = STMMAC_MSI_VEC_MAX;
 	plat->msi_wol_vec = STMMAC_MSI_VEC_MAX;
+#ifdef EC_STMMAC_HAS_MSI_LPI_VEC
 	plat->msi_lpi_vec = STMMAC_MSI_VEC_MAX;
+#endif
 	plat->msi_sfty_ce_vec = STMMAC_MSI_VEC_MAX;
 	plat->msi_sfty_ue_vec = STMMAC_MSI_VEC_MAX;
 	plat->msi_rx_base_vec = STMMAC_MSI_VEC_MAX;
@@ -1256,6 +1274,7 @@ static void __exit dwmac_exit(void)
 module_init(dwmac_init);
 module_exit(dwmac_exit);
 
-MODULE_DESCRIPTION("INTEL 10/100/1000 Ethernet PCI driver (EtherCAT-enabled)");
+MODULE_DESCRIPTION(
+        "INTEL 10/100/1000 Ethernet PCI driver (EtherCAT-enabled)");
 MODULE_AUTHOR("Voon Weifeng <weifeng.voon@intel.com>");
 MODULE_LICENSE("GPL v2");

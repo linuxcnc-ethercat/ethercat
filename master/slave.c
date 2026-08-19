@@ -447,7 +447,6 @@ int ec_slave_analyze_sii_data(
     // evaluate category data
     cat_word = slave->sii_page.words + EC_FIRST_SII_CATEGORY_OFFSET;
     while (EC_READ_U16(cat_word) != 0xFFFF) {
-
         // type and size words must fit
         if (cat_word + 2 - slave->sii_page.words
                 > slave->sii_page.word_count) {

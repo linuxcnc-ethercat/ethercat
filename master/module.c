@@ -505,7 +505,6 @@ ec_device_t *ecdev_offer(
             if (!master->devices[dev_idx].dev
                 && (ec_mac_equal(master->macs[dev_idx], net_dev->dev_addr)
                     || ec_mac_is_broadcast(master->macs[dev_idx]))) {
-
                 EC_INFO("Accepting %s as %s device for master %u.\n",
                         str, ec_device_names[dev_idx != 0], master->index);
 

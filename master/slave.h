@@ -129,9 +129,9 @@ typedef struct {
     uint32_t product_code; /**< Vendor-specific product code. */
     uint32_t revision_number; /**< Revision number. */
     uint32_t serial_number; /**< Serial number. */
-    uint16_t boot_rx_mailbox_offset; /**< Bootstrap receive mailbox address. */
+    uint16_t boot_rx_mailbox_offset; /**< Bootstrap rx mailbox address. */
     uint16_t boot_rx_mailbox_size; /**< Bootstrap receive mailbox size. */
-    uint16_t boot_tx_mailbox_offset; /**< Bootstrap transmit mailbox address. */
+    uint16_t boot_tx_mailbox_offset; /**< Bootstrap tx mailbox address. */
     uint16_t boot_tx_mailbox_size; /**< Bootstrap transmit mailbox size. */
     uint16_t std_rx_mailbox_offset; /**< Standard receive mailbox address. */
     uint16_t std_rx_mailbox_size; /**< Standard receive mailbox size. */

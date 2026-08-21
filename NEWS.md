@@ -23,6 +23,8 @@
 - Added cpplint checks in pre-commit and CI tests.
 - Improved and formatted markdown documents and added pre-commit checks
 - Backported CCAT fixes from Beckhoff
+- Added macb (Cadence GEM / RP1) driver for kernel 6.18
+- Improved macb driver performance
 
 ## Version 1.6.9
 

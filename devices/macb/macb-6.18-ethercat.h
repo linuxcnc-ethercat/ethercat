@@ -14,6 +14,9 @@
 #include <linux/interrupt.h>
 #include <linux/phy/phy.h>
 #include <linux/workqueue.h>
+#include <linux/completion.h>
+#include <linux/mutex.h>
+#include <linux/refcount.h>
 
 /* EtherCAT header file */
 #include "../ecdev.h"
@@ -1238,6 +1241,26 @@ struct tsu_incr {
 	u32 ns;
 };
 
+enum macb_ec_timing_stage {
+	MACB_EC_TIMING_TX_COMPLETE,
+	MACB_EC_TIMING_RX_DRAIN,
+	MACB_EC_TIMING_DMA_SYNC_FOR_CPU,
+	MACB_EC_TIMING_ECDEV_RECEIVE,
+	MACB_EC_TIMING_RX_REARM,
+	MACB_EC_TIMING_STAGE_COUNT,
+};
+
+struct macb_ec_timing_counter {
+	u64 count;
+	u64 total_ns;
+	u64 max_ns;
+};
+
+struct macb_ec_timing {
+	raw_spinlock_t lock;
+	struct macb_ec_timing_counter stage[MACB_EC_TIMING_STAGE_COUNT];
+};
+
 struct macb_queue {
 	struct macb		*bp;
 	int			irq;
@@ -1274,6 +1297,7 @@ struct macb_queue {
 	void			*rx_buffers;
 	struct napi_struct	napi_rx;
 	struct queue_stats stats;
+	struct macb_ec_timing ec_timing;
 };
 
 struct ethtool_rx_fs_item {
@@ -1380,6 +1404,12 @@ struct macb {
 	/* EtherCAT device variables */
 	ec_device_t *ecdev_;
 	bool ecdev_initialized;
+	bool ecdev_opened;
+	struct dentry		*ec_timing_debugfs;
+	struct mutex		ec_timing_debugfs_lock;
+	struct completion	ec_timing_debugfs_zero;
+	refcount_t		ec_timing_debugfs_users;
+	bool			ec_timing_debugfs_dying;
 };
 
 static inline ec_device_t *get_ecdev(struct macb *bp)

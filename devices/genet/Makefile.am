@@ -38,6 +38,10 @@ EXTRA_DIST = \
 	bcmgenet-6.12-ethercat.h \
 	bcmgenet-6.12-orig.c \
 	bcmgenet-6.12-orig.h \
+	bcmgenet-6.18-ethercat.c \
+	bcmgenet-6.18-ethercat.h \
+	bcmgenet-6.18-orig.c \
+	bcmgenet-6.18-orig.h \
 	bcmgenet-6.4-ethercat.c \
 	bcmgenet-6.4-ethercat.h \
 	bcmgenet-6.4-orig.c \
@@ -50,6 +54,8 @@ EXTRA_DIST = \
 	bcmgenet_wol-6.1-orig.c \
 	bcmgenet_wol-6.12-ethercat.c \
 	bcmgenet_wol-6.12-orig.c \
+	bcmgenet_wol-6.18-ethercat.c \
+	bcmgenet_wol-6.18-orig.c \
 	bcmgenet_wol-6.4-ethercat.c \
 	bcmgenet_wol-6.4-orig.c \
 	bcmmii-5.10-ethercat.c \
@@ -60,6 +66,8 @@ EXTRA_DIST = \
 	bcmmii-6.1-orig.c \
 	bcmmii-6.12-ethercat.c \
 	bcmmii-6.12-orig.c \
+	bcmmii-6.18-ethercat.c \
+	bcmmii-6.18-orig.c \
 	bcmmii-6.4-ethercat.c \
 	bcmmii-6.4-orig.c \
 	unimac-5.14-ethercat.h \
@@ -68,6 +76,8 @@ EXTRA_DIST = \
 	unimac-6.1-orig.h \
 	unimac-6.12-ethercat.h \
 	unimac-6.12-orig.h \
+	unimac-6.18-ethercat.h \
+	unimac-6.18-orig.h \
 	unimac-6.4-ethercat.h \
 	unimac-6.4-orig.h \
 	update.sh

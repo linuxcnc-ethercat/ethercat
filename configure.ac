@@ -797,10 +797,32 @@ if test "x${enablestmmac}" = "x1"; then
         AC_MSG_RESULT([no])
         has_stmmac_est=0
     fi
+
+    AC_MSG_CHECKING([for stmmac_fpe.c])
+
+    if test -r "${srcdir}/devices/stmmac/stmmac_fpe-${kernelstmmac}-ethercat.c"; then
+        AC_MSG_RESULT([yes])
+        has_stmmac_fpe=1
+    else
+        AC_MSG_RESULT([no])
+        has_stmmac_fpe=0
+    fi
+
+    AC_MSG_CHECKING([for stmmac_vlan.c])
+
+    if test -r "${srcdir}/devices/stmmac/stmmac_vlan-${kernelstmmac}-ethercat.c"; then
+        AC_MSG_RESULT([yes])
+        has_stmmac_vlan=1
+    else
+        AC_MSG_RESULT([no])
+        has_stmmac_vlan=0
+    fi
 fi
 
 AC_SUBST(KERNEL_STMMAC, [$kernelstmmac])
 AC_SUBST(HAS_STMMAC_EST, [$has_stmmac_est])
+AC_SUBST(HAS_STMMAC_FPE, [$has_stmmac_fpe])
+AC_SUBST(HAS_STMMAC_VLAN, [$has_stmmac_vlan])
 
 #-----------------------------------------------------------------------------
 # CCAT driver

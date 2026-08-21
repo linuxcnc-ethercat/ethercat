@@ -80,6 +80,14 @@ ifeq (@HAS_STMMAC_EST@,1)
 	EC_STMMAC_OBJS += stmmac_est-@KERNEL_STMMAC@-ethercat.o
 endif
 
+ifeq (@HAS_STMMAC_FPE@,1)
+	EC_STMMAC_OBJS += stmmac_fpe-@KERNEL_STMMAC@-ethercat.o
+endif
+
+ifeq (@HAS_STMMAC_VLAN@,1)
+	EC_STMMAC_OBJS += stmmac_vlan-@KERNEL_STMMAC@-ethercat.o
+endif
+
 ec_stmmac-$(CONFIG_STMMAC_SELFTESTS) = \
 	stmmac_selftests-@KERNEL_STMMAC@-ethercat.o
 

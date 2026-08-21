@@ -38,6 +38,7 @@ DRIVER_MAP=(
     (".", "r8169", "r8169"),
     ("r8169", "r8169", "r8169_main"),
     ("stmmac", "stmmac-pci", "stmmac_pci"),
+    ("macb", "macb", "macb_main"),
 )
 
 

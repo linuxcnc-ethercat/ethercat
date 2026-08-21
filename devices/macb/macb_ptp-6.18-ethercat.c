@@ -23,6 +23,8 @@
 
 #include "macb-6.18-ethercat.h"
 
+#ifdef CONFIG_MACB_USE_HWSTAMP
+
 #define  GEM_PTP_TIMER_NAME "gem-ptp-timer"
 
 static struct macb_dma_desc_ptp *macb_ptp_desc(struct macb *bp,
@@ -466,3 +468,5 @@ int gem_set_hwtst(struct net_device *dev,
 	return 0;
 }
 
+
+#endif /* CONFIG_MACB_USE_HWSTAMP */

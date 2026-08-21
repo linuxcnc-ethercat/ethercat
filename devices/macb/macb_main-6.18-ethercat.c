@@ -15,7 +15,6 @@
 #include <linux/etherdevice.h>
 #include <linux/firmware/xlnx-zynqmp.h>
 #include <linux/inetdevice.h>
-#include <linux/inetdevice.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
@@ -225,6 +224,7 @@ static void *macb_rx_buffer(struct macb_queue *queue, unsigned int index)
 	return queue->rx_buffers + queue->bp->rx_buffer_size *
 	       macb_rx_ring_wrap(queue->bp, index);
 }
+
 static void macb_ec_timing_init(struct macb_queue *queue)
 {
 	raw_spin_lock_init(&queue->ec_timing.lock);
@@ -429,7 +429,6 @@ static void macb_ec_timing_debugfs_remove(struct macb *bp)
 	macb_ec_timing_debugfs_put(bp);
 	wait_for_completion(&bp->ec_timing_debugfs_zero);
 }
-
 
 /* I/O accessors */
 static u32 hw_readl_native(struct macb *bp, int offset)
@@ -912,10 +911,12 @@ static void macb_mac_link_down(struct phylink_config *config, unsigned int mode,
 	ctrl = macb_readl(bp, NCR) & ~(MACB_BIT(RE) | MACB_BIT(TE));
 	macb_writel(bp, NCR, ctrl);
 
-	if (get_ecdev(bp))
+	if (get_ecdev(bp)) {
 		ecdev_set_link(get_ecdev(bp), 0);
-	else
+	}
+	else {
 		netif_tx_stop_all_queues(ndev);
+	}
 }
 
 /* Use juggling algorithm to left rotate tx ring and tx skb array */
@@ -1075,10 +1076,12 @@ static void macb_mac_link_up(struct phylink_config *config,
 
 	macb_writel(bp, NCR, ctrl | MACB_BIT(RE) | MACB_BIT(TE));
 
-	if (get_ecdev(bp))
+	if (get_ecdev(bp)) {
 		ecdev_set_link(get_ecdev(bp), 1);
-	else
+	}
+	else {
 		netif_tx_wake_all_queues(ndev);
+	}
 }
 
 static struct phylink_pcs *macb_mac_select_pcs(struct phylink_config *config,
@@ -1138,11 +1141,13 @@ static int macb_phylink_connect(struct macb *bp)
 	/* EtherCAT: ecdev_open() drives ndo_open() directly, without the
 	 * RTNL lock the normal netdev open path holds. phylink_start()
 	 * asserts RTNL, so take it here in EtherCAT mode (cf. stmmac). */
-	if (get_ecdev(bp))
+	if (get_ecdev(bp)) {
 		rtnl_lock();
+	}
 	phylink_start(bp->phylink);
-	if (get_ecdev(bp))
+	if (get_ecdev(bp)) {
 		rtnl_unlock();
+	}
 
 	return 0;
 }
@@ -1336,8 +1341,9 @@ static void macb_tx_unmap(struct macb *bp, struct macb_tx_skb *tx_skb, int budge
 		/* EtherCAT mode: the master owns and reuses a persistent ring of
 		 * TX skbs (ec_device_tx_data); unmap but never free them.
 		 */
-		if (!get_ecdev(bp))
+		if (!get_ecdev(bp)) {
 			dev_consume_skb_any(tx_skb->skb);
+		}
 		tx_skb->skb = NULL;
 	}
 }
@@ -1543,8 +1549,9 @@ static int macb_tx_complete(struct macb_queue *queue, int budget)
 	bool ecdev = get_ecdev(bp);
 	u64 start;
 
-	if (ecdev)
+	if (ecdev) {
 		start = ktime_get_mono_fast_ns();
+	}
 
 	spin_lock_irqsave(&queue->tx_ptr_lock, flags);
 	head = queue->tx_head;
@@ -1601,9 +1608,10 @@ static int macb_tx_complete(struct macb_queue *queue, int budget)
 		}
 	}
 
-	if (!ecdev)
+	if (!ecdev) {
 		netdev_tx_completed_queue(netdev_get_tx_queue(bp->dev, queue_index),
 					  packets, bytes);
+	}
 
 	queue->tx_tail = tail;
 	if (!ecdev &&
@@ -1612,8 +1620,9 @@ static int macb_tx_complete(struct macb_queue *queue, int budget)
 		     bp->tx_ring_size) <= MACB_TX_WAKEUP_THRESH(bp))
 		netif_wake_subqueue(bp->dev, queue_index);
 	spin_unlock_irqrestore(&queue->tx_ptr_lock, flags);
-	if (ecdev)
+	if (ecdev) {
 		macb_ec_timing_record(queue, MACB_EC_TIMING_TX_COMPLETE, start);
+	}
 
 	return packets;
 }
@@ -1668,11 +1677,12 @@ static void gem_rx_refill(struct macb_queue *queue)
 			/* properly align Ethernet header */
 			skb_reserve(skb, NET_IP_ALIGN);
 		} else {
-			if (get_ecdev(bp))
+			if (get_ecdev(bp)) {
 				dma_sync_single_for_device(&bp->pdev->dev,
 							    macb_get_addr(bp, desc),
 							    bp->rx_buffer_size,
 							    DMA_FROM_DEVICE);
+			}
 			desc->ctrl = 0;
 			dma_wmb();
 			desc->addr &= ~MACB_BIT(RX_USED);
@@ -1686,6 +1696,7 @@ static void gem_rx_refill(struct macb_queue *queue)
 	netdev_vdbg(bp->dev, "rx ring: queue: %p, prepared head %d, tail %d\n",
 			queue, queue->rx_prepared_head, queue->rx_tail);
 }
+
 static void gem_ecdev_rearm_rx_desc(struct macb_queue *queue,
 				    struct macb_dma_desc *desc, dma_addr_t addr)
 {
@@ -1721,7 +1732,6 @@ static int gem_ecdev_verify_rx_buffers(struct macb *bp)
 	return 0;
 }
 
-
 /* Mark DMA descriptors from begin up to and not including end as unused */
 static void discard_partial_frame(struct macb_queue *queue, unsigned int begin,
 				  unsigned int end)
@@ -1731,11 +1741,12 @@ static void discard_partial_frame(struct macb_queue *queue, unsigned int begin,
 	for (frag = begin; frag != end; frag++) {
 		struct macb_dma_desc *desc = macb_rx_desc(queue, frag);
 
-		if (get_ecdev(queue->bp))
+		if (get_ecdev(queue->bp)) {
 			dma_sync_single_for_device(&queue->bp->pdev->dev,
 						    macb_get_addr(queue->bp, desc),
 						    queue->bp->rx_buffer_size,
 						    DMA_FROM_DEVICE);
+		}
 		desc->addr &= ~MACB_BIT(RX_USED);
 	}
 
@@ -1760,8 +1771,9 @@ static int gem_rx(struct macb_queue *queue, struct napi_struct *napi,
 	bool ecdev = get_ecdev(bp);
 	u64 start;
 
-	if (ecdev)
+	if (ecdev) {
 		start = ktime_get_mono_fast_ns();
+	}
 
 	while (count < budget) {
 		u32 ctrl;
@@ -1868,11 +1880,12 @@ static int gem_rx(struct macb_queue *queue, struct napi_struct *napi,
 		napi_gro_receive(napi, skb);
 	}
 
-	if (!ecdev)
-		gem_rx_refill(queue);
-
-	if (ecdev)
+	if (ecdev) {
 		macb_ec_timing_record(queue, MACB_EC_TIMING_RX_DRAIN, start);
+	}
+	else {
+		gem_rx_refill(queue);
+	}
 	return count;
 }
 
@@ -2077,8 +2090,9 @@ static int macb_rx_poll(struct napi_struct *napi, int budget)
 	int work_done;
 
 	/* EtherCAT mode polls via ec_poll(); NAPI must never run here. */
-	if (get_ecdev(bp))
+	if (get_ecdev(bp)) {
 		return 0;
+	}
 
 	work_done = bp->macbgem_ops.mog_rx(queue, napi, budget);
 
@@ -2162,8 +2176,9 @@ static int macb_tx_poll(struct napi_struct *napi, int budget)
 	int work_done;
 
 	/* EtherCAT mode polls via ec_poll(); NAPI must never run here. */
-	if (get_ecdev(bp))
+	if (get_ecdev(bp)) {
 		return 0;
+	}
 
 	work_done = macb_tx_complete(queue, budget);
 
@@ -2781,14 +2796,16 @@ static netdev_tx_t macb_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	netdev_tx_t ret = NETDEV_TX_OK;
 
 	if (macb_clear_csum(skb)) {
-		if (!get_ecdev(bp))
+		if (!get_ecdev(bp)) {
 			dev_kfree_skb_any(skb);
+		}
 		return ret;
 	}
 
 	if (macb_pad_and_fcs(&skb, dev)) {
-		if (!get_ecdev(bp))
+		if (!get_ecdev(bp)) {
 			dev_kfree_skb_any(skb);
+		}
 		return ret;
 	}
 
@@ -2853,17 +2870,19 @@ static netdev_tx_t macb_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	/* Map socket buffer for DMA transfer */
 	if (!macb_tx_map(bp, queue, skb, hdrlen)) {
-		if (!get_ecdev(bp))
+		if (!get_ecdev(bp)) {
 			dev_kfree_skb_any(skb);
+		}
 		goto unlock;
 	}
 
 	/* Make newly initialized descriptor visible to hardware */
 	wmb();
 	skb_tx_timestamp(skb);
-	if (!get_ecdev(bp))
+	if (!get_ecdev(bp)) {
 		netdev_tx_sent_queue(netdev_get_tx_queue(bp->dev, queue_index),
 				     skb->len);
+	}
 
 	spin_lock(&bp->lock);
 	macb_writel(bp, NCR, macb_readl(bp, NCR) | MACB_BIT(TSTART));
@@ -3500,18 +3519,21 @@ static int macb_open(struct net_device *dev)
 	if (err)
 		goto phy_off;
 
-	if (!get_ecdev(bp))
+	if (!get_ecdev(bp)) {
 		netif_tx_start_all_queues(dev);
+	}
 
 	/* EtherCAT: skip NIC PTP/PHC bring-up. The netdev is never
 	 * registered in EtherCAT mode, so gem_ptp_init()'s posix-clock
 	 * registration WARNs and fails (-ENOENT); IgH uses bus DC, not
 	 * the MAC's hardware clock, so this path is pure noise here. */
-	if (bp->ptp_info && !get_ecdev(bp))
+	if (bp->ptp_info && !get_ecdev(bp)) {
 		bp->ptp_info->ptp_init(dev);
+	}
 
-	if (get_ecdev(bp))
+	if (get_ecdev(bp)) {
 		bp->ecdev_opened = true;
+	}
 
 	return 0;
 
@@ -3542,8 +3564,9 @@ static int macb_close(struct net_device *dev)
 	bp->ecdev_opened = false;
 
 
-	if (!get_ecdev(bp))
+	if (!get_ecdev(bp)) {
 		netif_tx_stop_all_queues(dev);
+	}
 
 	if (!get_ecdev(bp)) {
 		for (q = 0, queue = bp->queues; q < bp->num_queues; ++q, ++queue) {
@@ -3554,11 +3577,13 @@ static int macb_close(struct net_device *dev)
 	}
 
 	/* EtherCAT: ndo_stop() runs without RTNL here (see macb_open). */
-	if (get_ecdev(bp))
+	if (get_ecdev(bp)) {
 		rtnl_lock();
+	}
 	phylink_stop(bp->phylink);
-	if (get_ecdev(bp))
+	if (get_ecdev(bp)) {
 		rtnl_unlock();
+	}
 	phylink_disconnect_phy(bp->phylink);
 
 	phy_power_off(bp->sgmii_phy);
@@ -6146,6 +6171,8 @@ static int macb_probe(struct platform_device *pdev)
 			bp->ecdev_ = NULL;
 			goto err_out_unregister_mdio;
 		}
+
+		macb_ec_timing_debugfs_create(bp);
 	} else {
 		err = register_netdev(dev);
 		if (err) {
@@ -6153,9 +6180,6 @@ static int macb_probe(struct platform_device *pdev)
 			goto err_out_unregister_mdio;
 		}
 	}
-	if (get_ecdev(bp))
-		macb_ec_timing_debugfs_create(bp);
-
 
 	INIT_WORK(&bp->hresp_err_bh_work, macb_hresp_error_task);
 
@@ -6203,8 +6227,9 @@ static void macb_remove(struct platform_device *pdev)
 		bp = netdev_priv(dev);
 		if (get_ecdev(bp)) {
 			macb_ec_timing_debugfs_remove(bp);
-			if (bp->ecdev_opened)
+			if (bp->ecdev_opened) {
 				ecdev_close(get_ecdev(bp));
+			}
 			ecdev_withdraw(get_ecdev(bp));
 			bp->ecdev_ = NULL;
 		} else {
@@ -6300,6 +6325,9 @@ static int __maybe_unused macb_suspend(struct device *dev)
 		}
 		spin_unlock_irqrestore(&bp->lock, flags);
 
+		/* Change interrupt handler and
+		 * Enable WoL IRQ on queue 0
+		 */
 		devm_free_irq(dev, bp->queues[0].irq, bp->queues);
 		if (macb_is_gem(bp)) {
 			err = devm_request_irq(dev, bp->queues[0].irq, gem_wol_interrupt,
@@ -6392,10 +6420,12 @@ static int __maybe_unused macb_resume(struct device *dev)
 			queue_writel(bp->queues, IDR, MACB_BIT(WOL));
 			macb_writel(bp, WOL, 0);
 		}
+		/* Clear ISR on queue 0 */
 		queue_readl(bp->queues, ISR);
 		if (bp->caps & MACB_CAPS_ISR_CLEAR_ON_WRITE)
 			queue_writel(bp->queues, ISR, -1);
 		spin_unlock_irqrestore(&bp->lock, flags);
+
 		/* Replace interrupt handler on queue 0 */
 		devm_free_irq(dev, bp->queues[0].irq, bp->queues);
 		err = devm_request_irq(dev, bp->queues[0].irq, macb_interrupt,

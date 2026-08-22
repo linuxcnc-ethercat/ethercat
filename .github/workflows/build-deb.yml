@@ -9,12 +9,16 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.distro }}
-    runs-on: ubuntu-latest
+    name: ${{ matrix.distro }}${{ matrix.arch == 'arm64' && ' (arm64)' || '' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
         distro: [debian-11, debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]
+        # arm64 runs on GitHub's native arm64 runners; the distro container
+        # images are multi-arch, so the same image names just resolve to
+        # arm64 variants there.
+        arch: [amd64, arm64]
         include:
           - distro: debian-11
             image: debian:bullseye
@@ -91,6 +95,8 @@ jobs:
 
       - name: Collect artefacts
         shell: bash
+        env:
+          ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           mkdir -p artifacts
@@ -99,13 +105,19 @@ jobs:
                      ../libethercat*_*.deb; do
               [ -f "$src" ] || continue
               case "$src" in *-dbgsym*) continue ;; esac
+              # ethercat-dkms is arch:all - identical bytes from every arch
+              # job. Only ship it from amd64 so the release step never sees
+              # two assets with the same filename.
+              if [ "$ARCH" != "amd64" ]; then
+                  case "$src" in *ethercat-dkms*) continue ;; esac
+              fi
               cp "$src" "artifacts/$(basename "$src")"
           done
 
       - name: Upload artefacts
         uses: actions/upload-artifact@v7
         with:
-          name: ethercat-deb-${{ matrix.distro }}
+          name: ethercat-deb-${{ matrix.distro }}${{ matrix.arch == 'arm64' && '-arm64' || '' }}
           path: artifacts/*.deb
           if-no-files-found: error
 

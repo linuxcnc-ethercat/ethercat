@@ -1428,6 +1428,7 @@ AC_SUBST(ipcmd, [$ipcmd])
 AC_CONFIG_FILES([
         Doxyfile
         Kbuild
+        dkms.conf
         Makefile
         devices/Kbuild
         devices/Makefile

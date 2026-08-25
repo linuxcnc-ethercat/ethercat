@@ -21,8 +21,8 @@
 #
 #-----------------------------------------------------------------------------
 
-PACKAGE_NAME=ethercat_git
-PACKAGE_VERSION=master
+PACKAGE_NAME=ethercat
+PACKAGE_VERSION=@PACKAGE_VERSION@
 AUTOINSTALL=yes
 
 BUILT_MODULE_NAME[0]=ec_master

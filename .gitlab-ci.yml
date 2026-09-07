@@ -55,6 +55,20 @@ kernel 3.4:
         - ./configure --enable-8139too --enable-e100 --enable-e1000 --enable-e1000e --enable-r8169 --with-linux-dir=/usr/src/linux-obj/x86_64/0304rt
         - make -j8 all modules
 
+kernel 6.18:
+    stage: build
+    image: registry.gitlab.com/etherlab.org/build-container-factory/ethercat-kernels:k6.18-rt
+    variables:
+        # The kernel tree in this image is only prepared with
+        # 'make prepare'/'make modules_prepare', not fully built, so
+        # Module.symvers is incomplete and modpost would otherwise fail
+        # with unresolved-symbol errors on every core kernel symbol.
+        KBUILD_MODPOST_WARN: "1"
+    script:
+        - ./bootstrap
+        - ./configure --enable-macb --enable-ccat --with-linux-dir=/usr/src/linux-6.18.45-rt
+        - make -j8 all modules
+
 xenomai3:
     stage: build
     image: registry.gitlab.com/etherlab.org/build-container-factory/ethercat-kernels:xenomai3

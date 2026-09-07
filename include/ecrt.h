@@ -1756,8 +1756,63 @@ EC_PUBLIC_API int ecrt_slave_config_reg_pdo_entry_pos(
  * signals.
  *
  * The AssignActivate word is vendor-specific and can be taken from the XML
- * device description file (Device -> Dc -> AssignActivate). Set this to zero,
- * if the slave shall be operated without distributed clocks (default).
+ * device description file (ESI, Device -> Dc -> AssignActivate). Set this to
+ * zero, if the slave shall be operated without distributed clocks (default).
+ *
+ * The \a sync0_cycle and \a sync1_cycle parameters correspond to the
+ * \c CycleTimeSync0 and \c CycleTimeSync1 elements of the slave's XML device
+ * description (ESI) file, respectively, but have to be given here as
+ * absolute values in nanoseconds instead of relying on the \c Factor
+ * elements offered by the ESI. If the ESI only specifies a
+ * \c CycleTimeSync0Factor (and no \c CycleTimeSync0), the actual cycle time
+ * has to be derived from the application's own cycle time \a T (i. e. the
+ * period at which the application calls ecrt_master_application_time() /
+ * ecrt_master_send(), in nanoseconds) as follows:
+ *
+ * \code
+ * if CycleTimeSync0 != 0:
+ *     sync0_cycle = CycleTimeSync0
+ * else if CycleTimeSync0Factor > 0:
+ *     sync0_cycle = T * CycleTimeSync0Factor
+ * else if CycleTimeSync0Factor < 0:
+ *     sync0_cycle = T / -CycleTimeSync0Factor
+ * else:
+ *     sync0_cycle = 0
+ * \endcode
+ *
+ * A negative \c CycleTimeSync0Factor therefore selects a SYNC0 cycle time
+ * shorter than the application's cycle time (typically used for
+ * oversampling), while a positive factor selects a multiple of it (a factor
+ * greater than 1 is unusual). \a sync1_cycle is derived similarly, but
+ * additionally depends on the already calculated \a sync0_cycle:
+ *
+ * \code
+ * if CycleTimeSync1 != 0:
+ *     T1 = CycleTimeSync1
+ * else if CycleTimeSync1Factor > 0:
+ *     T1 = sync0_cycle * CycleTimeSync1Factor
+ * else if CycleTimeSync1Factor < 0:
+ *     T1 = T * -CycleTimeSync1Factor
+ * else:
+ *     T1 = max(T, sync0_cycle)
+ *
+ * sync1_cycle = T1 - sync0_cycle + ShiftTimeSync1
+ * \endcode
+ *
+ * Note how the sign of \c CycleTimeSync1Factor chooses between the
+ * application's cycle time and \a sync0_cycle as the base value. Usually,
+ * \c CycleTimeSync1Factor is set to -1 (thus selecting the application's
+ * cycle time) whenever \c CycleTimeSync0Factor is negative (oversampling),
+ * and to 1 whenever \c CycleTimeSync0Factor is 1. If
+ * \c CycleTimeSync1Factor is left at zero, a value is chosen automatically
+ * as shown above. In any case, make sure that
+ * \a sync0_cycle + \a sync1_cycle is greater than zero.
+ *
+ * \a sync0_shift can be taken directly from the ESI's \c ShiftTimeSync0
+ * element. If you get PLL errors, start with zero shift time, then try one
+ * third and two thirds of the application cycle time. Make sure that the
+ * application time is passed like in the dc_user example (only cyclic, fixed
+ * phase).
  *
  * This method has to be called in non-realtime context before
  * ecrt_master_activate().

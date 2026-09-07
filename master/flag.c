@@ -47,7 +47,7 @@ int ec_flag_init(
         return -ENOMEM;
     }
 
-    strcpy(flag->key, key); // no strncpy, buffer is alloc'ed with strlen
+    strcpy(flag->key, key); // no strscpy, buffer is alloc'ed with strlen
     flag->value = value;
     return 0;
 }

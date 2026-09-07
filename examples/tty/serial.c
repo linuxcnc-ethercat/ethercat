@@ -95,7 +95,6 @@ typedef struct {
     u8 current_data_frame;
 
     unsigned int config_error;
-
 } el60xx_port_t;
 
 #define EL6002_PORTS 2
@@ -382,7 +381,7 @@ static int el60xx_port_init(el60xx_port_t *port, ec_slave_config_t *sc,
 {
     int ret = 0;
 
-    strncpy(port->name, name, EL6002_PORT_NAME_SIZE);
+    strscpy(port->name, name, EL6002_PORT_NAME_SIZE);
 
     port->tty = ectty_create(&el60xx_tty_ops, port);
     if (IS_ERR(port->tty)) {

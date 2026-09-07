@@ -14,10 +14,17 @@ variables:
 
 pre-commit:
     stage: lint
-    image: python:3.12
+    image: registry.gitlab.com/etherlab.org/build-container-factory/pre-commit:latest
 
-    before_script:
-      - pip install pre-commit
+    variables:
+      PRE_COMMIT_HOME: "${CI_PROJECT_DIR}/.cache/pre-commit"
+
+    cache:
+      key:
+        files:
+          - .pre-commit-config.yaml
+      paths:
+        - .cache/pre-commit
 
     script:
       - |
@@ -66,7 +73,21 @@ kernel 6.18:
         KBUILD_MODPOST_WARN: "1"
     script:
         - ./bootstrap
-        - ./configure --enable-8139too --enable-e100 --enable-e1000 --enable-e1000e --enable-igb --enable-igc --enable-r8169 --enable-genet --enable-macb --enable-stmmac-pci --enable-dwmac-intel --enable-ccat --with-linux-dir=/usr/src/linux-6.18.45-rt
+        - |
+          ./configure \
+            --with-linux-dir=/usr/src/linux-6.18.45-rt \
+            --enable-8139too \
+            --enable-ccat \
+            --enable-dwmac-intel \
+            --enable-e100 \
+            --enable-e1000 \
+            --enable-e1000e \
+            --enable-genet \
+            --enable-igb \
+            --enable-igc \
+            --enable-macb \
+            --enable-r8169 \
+            --enable-stmmac-pci
         - make -j8 all modules
 
 xenomai3:

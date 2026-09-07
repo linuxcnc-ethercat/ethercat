@@ -63,8 +63,8 @@
 # define ec_ioctl_lock(lock)   rt_mutex_lock(lock)
 # define ec_ioctl_unlock(lock) rt_mutex_unlock(lock)
 #  if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0) || \
-      (defined(CONFIG_PREEMPT_RT_FULL) && \
-       LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
+      (defined(CONFIG_PREEMPT_RT_FULL) \
+       && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 #   define ec_ioctl_lock_interruptible(lock) \
            rt_mutex_lock_interruptible(lock)
 #  else
@@ -85,7 +85,7 @@ static void ec_ioctl_strcpy(
         )
 {
     if (source) {
-        strncpy(target, source, EC_IOCTL_STRING_SIZE);
+        strscpy(target, source, EC_IOCTL_STRING_SIZE);
         target[EC_IOCTL_STRING_SIZE - 1] = 0;
     } else {
         target[0] = 0;
@@ -1648,7 +1648,7 @@ static ATTRIBUTES int ec_ioctl_config_ip(
     ioctl->subnet_mask = req->subnet_mask;
     ioctl->gateway = req->gateway;
     ioctl->dns = req->dns;
-    strncpy(ioctl->name, req->name, EC_MAX_HOSTNAME_SIZE);
+    strscpy(ioctl->name, req->name, EC_MAX_HOSTNAME_SIZE);
 
     up(&master->master_sem);
 

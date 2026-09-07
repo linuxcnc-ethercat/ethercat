@@ -41,7 +41,7 @@
 
 #define EC_GEN_RX_BUF_SIZE 1600
 
-#if defined(CONFIG_SUSE_KERNEL) \\
+#if defined(CONFIG_SUSE_KERNEL) \
     && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
 #include <linux/suse_version.h>
 #else
@@ -269,7 +269,7 @@ int ec_gen_device_offer(
     int ret = 0;
 
     dev->used_netdev = desc->netdev;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) \\
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) \
     || (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
     eth_hw_addr_set(dev->netdev, desc->dev_addr);
 #else

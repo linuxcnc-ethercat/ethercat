@@ -41,7 +41,8 @@
 
 #define EC_GEN_RX_BUF_SIZE 1600
 
-#if defined(CONFIG_SUSE_KERNEL) && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
+#if defined(CONFIG_SUSE_KERNEL) \\
+    && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
 #include <linux/suse_version.h>
 #else
 #  ifndef SUSE_VERSION
@@ -235,7 +236,8 @@ int ec_gen_device_create_socket(
     sa.sll_protocol = htons(ETH_P_ETHERCAT);
     sa.sll_ifindex = desc->ifindex;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
-    ret = kernel_bind(dev->socket, (struct sockaddr_unsized *) &sa, sizeof(sa));
+    ret = kernel_bind(dev->socket, (struct sockaddr_unsized *) &sa,
+            sizeof(sa));
 #else
     ret = kernel_bind(dev->socket, (struct sockaddr *) &sa, sizeof(sa));
 #endif
@@ -262,7 +264,8 @@ int ec_gen_device_offer(
     int ret = 0;
 
     dev->used_netdev = desc->netdev;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) \\
+    || (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
     eth_hw_addr_set(dev->netdev, desc->dev_addr);
 #else
     memcpy(dev->netdev->dev_addr, desc->dev_addr, ETH_ALEN);
@@ -277,7 +280,8 @@ int ec_gen_device_offer(
             ecdev_withdraw(dev->ecdev);
             dev->ecdev = NULL;
         } else {
-            ecdev_set_link(dev->ecdev, netif_carrier_ok(dev->used_netdev)); // FIXME
+            // FIXME
+            ecdev_set_link(dev->ecdev, netif_carrier_ok(dev->used_netdev));
             ret = 1;
         }
     }
@@ -421,8 +425,8 @@ int __init ec_gen_init_module(void)
     struct net_device *netdev;
     ec_gen_interface_desc_t *desc, *next;
 
-    printk(KERN_INFO PFX "EtherCAT master generic Ethernet device module %s\n",
-            EC_MASTER_VERSION);
+    printk(KERN_INFO PFX "EtherCAT master generic Ethernet device"
+            " module %s\n", EC_MASTER_VERSION);
 
     INIT_LIST_HEAD(&generic_devices);
     INIT_LIST_HEAD(&descs);

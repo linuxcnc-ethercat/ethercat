@@ -22,6 +22,8 @@
 #include "FoeCommand.h"
 #include "foe.h"
 
+using std::string;
+
 /****************************************************************************/
 
 FoeCommand::FoeCommand(const string &name, const string &briefDesc):

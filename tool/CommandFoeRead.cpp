@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2024  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,15 +19,23 @@
  *
  ****************************************************************************/
 
+#include "CommandFoeRead.h"
+
+#include "MasterDevice.h"
+#include "foe.h"
+
 #include <string.h>
 
 #include <iostream>
 #include <iomanip>
-using namespace std;
 
-#include "CommandFoeRead.h"
-#include "foe.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::setw;
+using std::setfill;
+using std::hex;
+using std::cout;
 
 /****************************************************************************/
 
@@ -118,10 +126,10 @@ void CommandFoeRead::execute(const StringVector &args)
         }
     }
 
-    // TODO --output-file
+    // TODO(fp) --output-file
     for (i = 0; i < data.data_size; i++) {
         uint8_t *w = data.buffer + i;
-        cout << *(uint8_t *) w ;
+        cout << *(uint8_t *) w;
     }
 
     delete [] data.buffer;

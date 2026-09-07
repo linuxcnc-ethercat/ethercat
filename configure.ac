@@ -28,7 +28,7 @@ AC_PREREQ([2.59])
 # - Check for complete Doxygen comments
 # - Update version number below
 #
-AC_INIT([ethercat], [1.6.12], [fp@igh.de])
+AC_INIT([ethercat], [1.7.0], [fp@igh.de])
 AC_CONFIG_AUX_DIR([autoconf])
 AM_INIT_AUTOMAKE([-Wall -Wno-override -Werror dist-bzip2 subdir-objects foreign])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -1254,6 +1254,37 @@ else
 fi
 
 AM_CONDITIONAL(ENABLE_FAKEUSERLIB, test "x$fakeuserlib" = "x1")
+
+#-----------------------------------------------------------------------------
+# example programs
+#-----------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether to build the examples])
+
+AC_ARG_ENABLE([examples],
+    AS_HELP_STRING([--enable-examples],
+                   [Generation of example modules (default: yes)]),
+    [
+        case "${enableval}" in
+            yes) examples=1
+                ;;
+            no) examples=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-examples])
+                ;;
+        esac
+    ],
+    [examples=1]
+)
+
+if test "x${examples}" = "x1"; then
+    AC_MSG_RESULT([yes])
+else
+    AC_MSG_RESULT([no])
+fi
+
+AM_CONDITIONAL(ENABLE_EXAMPLES, test "x$examples" = "x1")
+AC_SUBST(ENABLE_EXAMPLES,[$examples])
 
 #-----------------------------------------------------------------------------
 # TTY driver

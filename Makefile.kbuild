@@ -5,6 +5,7 @@
 # ```
 KBUILD = $(MAKE) -C "$(LINUX_SOURCE_DIR)" M="$(abs_builddir)" INSTALL_MOD_DIR="$(INSTALL_MOD_DIR)"
 
+if ENABLE_KERNEL
 
 modules:
 	+$(KBUILD) modules
@@ -26,3 +27,5 @@ kbuild-clean:
 	$(KBUILD) clean
 
 .PHONY: kbuild-clean
+
+endif

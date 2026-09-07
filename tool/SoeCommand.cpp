@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,11 +19,19 @@
  *
  ****************************************************************************/
 
-#include <iomanip>
-using namespace std;
-
 #include "SoeCommand.h"
-#include "../master/soe_errors.c"
+
+#include "../master/soe_errors.c" // NOLINT(build/include)
+
+#include <iomanip>
+
+using std::string;
+using std::stringstream;
+using std::ios;
+using std::runtime_error;
+using std::hex;
+using std::setfill;
+using std::setw;
 
 /****************************************************************************/
 
@@ -111,19 +119,19 @@ string SoeCommand::outputIdn(uint16_t idn)
 std::string SoeCommand::errorMsg(uint16_t code)
 {
     const ec_code_msg_t *error_msg;
-	stringstream str;
+    stringstream str;
 
-	str << "0x" << hex << setfill('0') << setw(4) << code << ": ";
+    str << "0x" << hex << setfill('0') << setw(4) << code << ": ";
 
     for (error_msg = soe_error_codes; error_msg->code; error_msg++) {
         if (error_msg->code == code) {
-			str << error_msg->message;
-			return str.str();
+            str << error_msg->message;
+            return str.str();
         }
     }
 
-	str << "(Unknown)";
-	return str.str();
+    str << "(Unknown)";
+    return str.str();
 }
 
 /****************************************************************************/

@@ -19,14 +19,24 @@
  *
  ****************************************************************************/
 
+#include "CommandRegWrite.h"
+
+#include "sii_crc.h"
+#include "MasterDevice.h"
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-using namespace std;
 
-#include "CommandRegWrite.h"
-#include "sii_crc.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::ostringstream;
+using std::endl;
+using std::ios;
+using std::ifstream;
+using std::istream;
+using std::cin;
+using std::cerr;
 
 /****************************************************************************/
 

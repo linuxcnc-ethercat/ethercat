@@ -139,6 +139,28 @@ int ecrt_slave_config_watchdog(ec_slave_config_t *sc,
 
 /****************************************************************************/
 
+int ecrt_slave_config_pdo_mode(ec_slave_config_t *sc,
+        ec_pdo_mode_t assign_mode, ec_pdo_mode_t config_mode)
+{
+    ec_ioctl_config_t data;
+    int ret;
+
+    memset(&data, 0x00, sizeof(ec_ioctl_config_t));
+    data.config_index = sc->index;
+    data.pdo_assign_mode = assign_mode;
+    data.pdo_config_mode = config_mode;
+
+    ret = ioctl(sc->master->fd, EC_IOCTL_SC_PDO_MODE, &data);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        fprintf(stderr, "Failed to set PDO mode: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+        return -EC_IOCTL_ERRNO(ret);
+    }
+    return 0;
+}
+
+/****************************************************************************/
+
 int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
         uint8_t sync_index, uint16_t pdo_index)
 {
@@ -258,7 +280,6 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
         ecrt_slave_config_pdo_assign_clear(sc, sync_info->index);
 
         if (sync_info->n_pdos && sync_info->pdos) {
-
             for (j = 0; j < sync_info->n_pdos; j++) {
                 pdo_info = &sync_info->pdos[j];
 
@@ -846,7 +867,8 @@ int ecrt_slave_config_state(const ec_slave_config_t *sc,
 /****************************************************************************/
 
 int ecrt_slave_config_idn(ec_slave_config_t *sc, uint8_t drive_no,
-        uint16_t idn, ec_al_state_t al_state, const uint8_t *data, size_t size)
+        uint16_t idn, ec_al_state_t al_state, const uint8_t *data,
+        size_t size)
 {
     ec_ioctl_sc_idn_t io;
     int ret;

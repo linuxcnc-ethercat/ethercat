@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,17 +19,26 @@
  *
  ****************************************************************************/
 
+#include "CommandFoeWrite.h"
+
+#include "MasterDevice.h"
+#include "foe.h"
+
 #include <libgen.h> // basename()
 #include <string.h>
 
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-using namespace std;
 
-#include "CommandFoeWrite.h"
-#include "foe.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::ifstream;
+using std::setw;
+using std::setfill;
+using std::hex;
+using std::cerr;
 
 /****************************************************************************/
 
@@ -87,7 +96,7 @@ void CommandFoeWrite::execute(const StringVector &args)
     }
 
     if (args[0] == "-") {
-        loadFoeData(&data, cin);
+        loadFoeData(&data, std::cin);
         if (getOutputFile().empty()) {
             err << "Please specify a filename for the slave side"
                 << " with --output-file!";
@@ -167,11 +176,11 @@ void CommandFoeWrite::execute(const StringVector &args)
 
 void CommandFoeWrite::loadFoeData(
         ec_ioctl_slave_foe_t *data,
-        const istream &in
+        const std::istream &in
         )
 {
     stringstream err;
-    ostringstream tmp;
+    std::ostringstream tmp;
 
     tmp << in.rdbuf();
     string const &contents = tmp.str();

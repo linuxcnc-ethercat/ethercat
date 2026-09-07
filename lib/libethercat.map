@@ -115,3 +115,9 @@ LIBETHERCAT_1.6 {
 		ecrt_slave_config_eoe_hostname;
 		ecrt_slave_config_state_timeout;
 } LIBETHERCAT_1.5.3;
+
+LIBETHERCAT_1.7 {
+	global:
+		ecrt_master_sii_caching;
+		ecrt_slave_config_pdo_mode;
+} LIBETHERCAT_1.6;

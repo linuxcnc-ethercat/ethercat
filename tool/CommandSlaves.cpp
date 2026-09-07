@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,14 +19,27 @@
  *
  ****************************************************************************/
 
+#include "CommandSlaves.h"
+
+#include "MasterDevice.h"
+
+#include <string.h>
+
 #include <iostream>
 #include <iomanip>
 #include <list>
-#include <string.h>
-using namespace std;
 
-#include "CommandSlaves.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::cout;
+using std::list;
+using std::hex;
+using std::dec;
+using std::setfill;
+using std::setw;
+using std::left;
+using std::right;
 
 /****************************************************************************/
 
@@ -100,7 +113,7 @@ string CommandSlaves::helpString(const string &binaryBaseName) const
 
 void CommandSlaves::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
+    MasterIndexList masterIndices;
     SlaveList slaves;
     bool doIndent;
 
@@ -110,7 +123,7 @@ void CommandSlaves::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
+    masterIndices = getMasterIndices();
     doIndent = masterIndices.size() > 1;
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
@@ -255,7 +268,16 @@ void CommandSlaves::showSlaves(
             << "  Revision number: 0x"
             << setw(8) << si->revision_number << endl
             << "  Serial number:   0x"
-            << setw(8) << si->serial_number << endl;
+            << setw(8) << si->serial_number << endl
+            << "SII:" << endl
+            << "  Parallel read: ";
+        if (si->sii_parallel_words) {
+            cout << si->sii_parallel_words << " words";
+        }
+        else {
+            cout << " n/a";
+        }
+        cout << endl;
 
         cout << "DL information:" << endl
             << "  FMMU bit operation: "

@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -21,12 +21,17 @@
  *
  ****************************************************************************/
 
-#include <map>
-using namespace std;
-
 #include "Command.h"
-#include "MasterDevice.h"
+
 #include "NumberListParser.h"
+#include "MasterDevice.h"
+
+#include <map>
+
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::map;
 
 /****************************************************************************/
 
@@ -82,7 +87,7 @@ class ConfigAliasParser:
     public NumberListParser
 {
     public:
-        ConfigAliasParser(unsigned int maxAlias):
+        explicit ConfigAliasParser(unsigned int maxAlias):
             maxAlias(maxAlias) {}
 
     protected:
@@ -98,7 +103,7 @@ class PositionParser:
     public NumberListParser
 {
     public:
-        PositionParser(unsigned int count):
+        explicit PositionParser(unsigned int count):
             count(count) {}
 
     protected:
@@ -116,7 +121,7 @@ class AliasPositionParser:
     public NumberListParser
 {
     public:
-        AliasPositionParser(const AliasMap &aliasMap):
+        explicit AliasPositionParser(const AliasMap &aliasMap):
             aliasMap(aliasMap) {}
 
     protected:
@@ -306,7 +311,7 @@ Command::MasterIndexList Command::getMasterIndices() const
         stringstream err;
         err << "Failed to obtain number of masters: " << e.what();
         throwCommandException(err);
-    } catch (runtime_error &e) {
+    } catch (std::runtime_error &e) {
         stringstream err;
         err << "Invalid master argument '" << masters << "': " << e.what();
         throwInvalidUsageException(err);
@@ -358,10 +363,9 @@ Command::SlaveList Command::selectedSlaves(MasterDevice &m)
         NumberListParser::List::const_iterator ai;
 
         for (ai = aliasList.begin(); ai != aliasList.end(); ai++) {
-
             // gather slaves with that alias (and following)
             uint16_t lastAlias = 0;
-            vector<ec_ioctl_slave_t> aliasSlaves;
+            std::vector<ec_ioctl_slave_t> aliasSlaves;
 
             for (i = 0; i < master.slave_count; i++) {
                 m.getSlave(&slave, i);
@@ -440,7 +444,6 @@ Command::ConfigList Command::selectedConfigs(MasterDevice &m)
         NumberListParser::List::const_iterator ai;
 
         for (ai = aliasList.begin(); ai != aliasList.end(); ai++) {
-
             ConfigMap::iterator ci = configs.find(*ai);
             if (ci == configs.end()) {
                 continue;

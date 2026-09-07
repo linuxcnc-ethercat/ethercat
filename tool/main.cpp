@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,18 +19,10 @@
  *
  ****************************************************************************/
 
-#include <getopt.h>
-#include <libgen.h> // basename()
-#include <stdlib.h>
-
-#include <iostream>
-#include <iomanip>
-using namespace std;
-
 #include "CommandAlias.h"
+#include "CommandCStruct.h"
 #include "CommandConfig.h"
 #include "CommandCrc.h"
-#include "CommandCStruct.h"
 #include "CommandData.h"
 #include "CommandDebug.h"
 #include "CommandDomains.h"
@@ -50,6 +42,7 @@ using namespace std;
 #include "CommandRegWrite.h"
 #include "CommandRescan.h"
 #include "CommandSdos.h"
+#include "CommandSiiCaching.h"
 #include "CommandSiiRead.h"
 #include "CommandSiiWrite.h"
 #include "CommandSlaves.h"
@@ -61,6 +54,22 @@ using namespace std;
 #include "CommandXml.h"
 
 #include "MasterDevice.h"
+
+#include <getopt.h>
+#include <libgen.h> // basename()
+#include <stdlib.h>
+
+#include <iostream>
+#include <iomanip>
+
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::list;
+using std::cout;
+using std::cerr;
+using std::left;
+using std::setw;
 
 /****************************************************************************/
 
@@ -294,6 +303,7 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandRegWrite());
     commandList.push_back(new CommandRescan());
     commandList.push_back(new CommandSdos());
+    commandList.push_back(new CommandCache());
     commandList.push_back(new CommandSiiRead());
     commandList.push_back(new CommandSiiWrite());
     commandList.push_back(new CommandSlaves());

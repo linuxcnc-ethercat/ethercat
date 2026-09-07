@@ -19,20 +19,18 @@
  *
  ****************************************************************************/
 
-#ifndef __COMMANDCRC_H__
-#define __COMMANDCRC_H__
+#ifndef __COMMANDCACHE_H__
+#define __COMMANDCACHE_H__
 
 #include "Command.h"
-#include "DataTypeHandler.h"
 
 /****************************************************************************/
 
-class CommandCrc:
-    public Command,
-    public DataTypeHandler
+class CommandCache:
+    public Command
 {
     public:
-        CommandCrc();
+        CommandCache();
 
         std::string helpString(const std::string &) const;
         void execute(const StringVector &);

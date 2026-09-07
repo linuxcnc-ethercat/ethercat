@@ -21,7 +21,11 @@
 #
 #-----------------------------------------------------------------------------
 
-obj-m := examples/ master/ devices/
+obj-m := master/ devices/
+
+ifeq (@ENABLE_EXAMPLES@,1)
+	obj-m += examples/
+endif
 
 ifeq (@ENABLE_TTY@,1)
 	obj-m += tty/

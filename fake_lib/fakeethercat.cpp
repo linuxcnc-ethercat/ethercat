@@ -199,7 +199,7 @@ ec_slave_config_t *ec_master::slave_config(
         }
     }
     else {
-        return &slaves.insert(std::make_pair<ec_address, ec_slave_config>(
+        return &slaves.insert(std::make_pair(
                                       ec_address {address},
                                       ec_slave_config {
                                               address,
@@ -634,6 +634,15 @@ int ecrt_slave_config_watchdog(
                                       manager watchdog (register 0x0420). If
                                       set to zero, the value is not written,
                                       so the default is used. */
+)
+{
+    return 0;
+}
+
+int ecrt_slave_config_pdo_mode(
+        ec_slave_config_t *sc,     /**< Slave configuration. */
+        ec_pdo_mode_t assign_mode, /**< Mode for the PDO assignment. */
+        ec_pdo_mode_t config_mode  /**< Mode for the PDO configuration. */
 )
 {
     return 0;

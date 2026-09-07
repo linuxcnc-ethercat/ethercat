@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,12 +19,24 @@
  *
  ****************************************************************************/
 
+#include "CommandSiiRead.h"
+
+#include "MasterDevice.h"
+
 #include <iostream>
 #include <iomanip>
-using namespace std;
+#include <algorithm>
 
-#include "CommandSiiRead.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::cout;
+using std::hex;
+using std::dec;
+using std::flush;
+using std::setfill;
+using std::setw;
+using std::min;
 
 /****************************************************************************/
 

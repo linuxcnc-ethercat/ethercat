@@ -89,6 +89,9 @@ void ec_slave_config_init(
     sc->watchdog_divider = 0; // use default
     sc->watchdog_intervals = 0; // use default
 
+    sc->pdo_assign_mode = EC_PDO_MODE_DEFAULT;
+    sc->pdo_config_mode = EC_PDO_MODE_DEFAULT;
+
     sc->slave = NULL;
 
     for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++)
@@ -711,6 +714,30 @@ int ecrt_slave_config_watchdog(ec_slave_config_t *sc,
 
     sc->watchdog_divider = divider;
     sc->watchdog_intervals = intervals;
+    return 0;
+}
+
+/****************************************************************************/
+
+int ecrt_slave_config_pdo_mode(ec_slave_config_t *sc,
+        ec_pdo_mode_t assign_mode, ec_pdo_mode_t config_mode)
+{
+    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, assign_mode = %u,"
+            " config_mode = %u)\n", __func__, sc, assign_mode, config_mode);
+
+    if (assign_mode > EC_PDO_MODE_WRITE_IF_DIFFERENT) {
+        EC_CONFIG_ERR(sc, "Invalid PDO assignment mode %u!\n", assign_mode);
+        return -EINVAL;
+    }
+
+    if (config_mode > EC_PDO_MODE_WRITE_IF_DIFFERENT) {
+        EC_CONFIG_ERR(sc, "Invalid PDO configuration mode %u!\n",
+                config_mode);
+        return -EINVAL;
+    }
+
+    sc->pdo_assign_mode = assign_mode;
+    sc->pdo_config_mode = config_mode;
     return 0;
 }
 
@@ -1612,6 +1639,7 @@ int ecrt_slave_config_state_timeout(ec_slave_config_t *sc,
 
 EXPORT_SYMBOL(ecrt_slave_config_sync_manager);
 EXPORT_SYMBOL(ecrt_slave_config_watchdog);
+EXPORT_SYMBOL(ecrt_slave_config_pdo_mode);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_clear);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_add);

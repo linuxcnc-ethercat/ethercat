@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2024  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,6 +19,8 @@
  *
  ****************************************************************************/
 
+#include "MasterDevice.h"
+
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -28,9 +30,9 @@
 
 #include <sstream>
 #include <iomanip>
-using namespace std;
 
-#include "MasterDevice.h"
+using std::stringstream;
+using std::endl;
 
 /****************************************************************************/
 
@@ -494,6 +496,17 @@ void MasterDevice::rescan()
     if (ioctl(fd, EC_IOCTL_MASTER_RESCAN, 0) < 0) {
         stringstream err;
         err << "Failed to command rescan: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
+void MasterDevice::setSiiCaching(unsigned int fields)
+{
+    if (ioctl(fd, EC_IOCTL_SII_CACHING, fields) < 0) {
+        stringstream err;
+        err << "Failed to set SII caching: " << strerror(errno);
         throw MasterDeviceException(err);
     }
 }

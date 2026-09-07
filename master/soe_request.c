@@ -204,7 +204,7 @@ int ec_soe_request_append_data(
 
     if (new_total_size > req->mem_size) {
         size_t new_size;
-        uint8_t *new_data;
+        uint8_t *new_data = NULL;
 
         if (req->mem_size * 2 >= new_total_size) {
             // just double it to reduce the number of re-allocations

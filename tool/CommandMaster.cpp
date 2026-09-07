@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,14 +19,25 @@
  *
  ****************************************************************************/
 
-#include <iostream>
-#include <iomanip>
-using namespace std;
-
 #include "CommandMaster.h"
+
 #include "MasterDevice.h"
 
+#include <iostream>
+#include <iomanip>
+
 #define MAX_TIME_STR_SIZE 50
+
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::cout;
+using std::hex;
+using std::dec;
+using std::setw;
+using std::setfill;
+using std::setprecision;
+using std::fixed;
 
 /****************************************************************************/
 
@@ -46,7 +57,8 @@ string CommandMaster::helpString(const string &binaryBaseName) const
         << getBriefDescription() << endl
         << endl
         << "Command-specific options:" << endl
-        << "  --master -m <indices>  Master indices. A comma-separated" << endl
+        << "  --master -m <indices>  Master indices. A comma-separated"
+        << endl
         << "                         list with ranges is supported." << endl
         << "                         Example: 1,4,5,7-9. Default: - (all)."
         << endl << endl
@@ -59,7 +71,7 @@ string CommandMaster::helpString(const string &binaryBaseName) const
 
 void CommandMaster::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
+    MasterIndexList masterIndices;
     ec_ioctl_master_t data;
     stringstream err;
     unsigned int dev_idx, j;
@@ -72,7 +84,7 @@ void CommandMaster::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
+    masterIndices = getMasterIndices();
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {
@@ -94,7 +106,46 @@ void CommandMaster::execute(const StringVector &args)
         cout << endl
             << "  Active: " << (data.active ? "yes" : "no") << endl
             << "  Slaves: " << data.slave_count << endl
-            << "  Ethernet devices:" << endl;
+            << "  SII caching: ";
+
+        bool first{true};
+        if (data.sii_caching & EC_SII_VENDOR) {
+            cout << "Vendor";
+            first = false;
+        }
+        if (data.sii_caching & EC_SII_PRODUCT) {
+            if (not first) {
+                cout << " | ";
+            }
+            first = false;
+            cout << "Product";
+        }
+        if (data.sii_caching & EC_SII_REVISION) {
+            if (not first) {
+                cout << " | ";
+            }
+            first = false;
+            cout << "Revision";
+        }
+        if (data.sii_caching & EC_SII_SERIAL) {
+            if (not first) {
+                cout << " | ";
+            }
+            first = false;
+            cout << "Serial";
+        }
+        if (data.sii_caching & EC_SII_ALIAS) {
+            if (not first) {
+                cout << " | ";
+            }
+            first = false;
+            cout << "Alias";
+        }
+        if (first) {
+            cout << "disabled";
+        }
+
+        cout << endl << "  Ethernet devices:" << endl;
 
         for (dev_idx = EC_DEVICE_MAIN; dev_idx < data.num_devices;
                 dev_idx++) {

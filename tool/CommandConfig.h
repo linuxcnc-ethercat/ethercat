@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -23,7 +23,6 @@
 #define __COMMANDCONFIG_H__
 
 #include <list>
-using namespace std;
 
 #include "Command.h"
 #include "SoeCommand.h"
@@ -37,16 +36,16 @@ class CommandConfig:
     public:
         CommandConfig();
 
-        string helpString(const string &) const;
+        std::string helpString(const std::string &) const;
         void execute(const StringVector &);
 
     protected:
         struct Info {
-            string alias;
-            string pos;
-            string ident;
-            string slavePos;
-            string state;
+            std::string alias;
+            std::string pos;
+            std::string ident;
+            std::string slavePos;
+            std::string state;
         };
 
         void showDetailedConfigs(MasterDevice &, const ConfigList &, bool);

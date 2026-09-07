@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -19,14 +19,22 @@
  *
  ****************************************************************************/
 
+#include "CommandEoe.h"
+
+#include "MasterDevice.h"
+
+#include <string.h>
+
 #include <iostream>
 #include <iomanip>
 #include <list>
-#include <string.h>
-using namespace std;
 
-#include "CommandEoe.h"
-#include "MasterDevice.h"
+using std::string;
+using std::stringstream;
+using std::endl;
+using std::cout;
+using std::dec;
+using std::setw;
 
 /****************************************************************************/
 
@@ -55,7 +63,7 @@ string CommandEoe::helpString(const string &binaryBaseName) const
 
 void CommandEoe::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
+    MasterIndexList masterIndices;
     ec_ioctl_master_t master;
     unsigned int i;
     ec_ioctl_eoe_handler_t eoe;
@@ -68,7 +76,7 @@ void CommandEoe::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
+    masterIndices = getMasterIndices();
     doIndent = masterIndices.size();
     indent = doIndent ? "  " : "";
     MasterIndexList::const_iterator mi;

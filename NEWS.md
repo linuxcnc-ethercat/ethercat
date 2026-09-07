@@ -1,15 +1,19 @@
 # Version History
 
-## Since 1.6.12
+## Version 1.7.0
 
-- Improved macb driver performance
-
-## Version 1.6.12
-
-- Backported CCAT fixes from Beckhoff
-
-## Version 1.6.11
-
+- Added `ecrt_slave_config_pdo_mode()` to select whether a slave's PDO
+  assignment and PDO configuration are read from resp. written to it via
+  CoE, for slaves with a fixed or otherwise well-known PDO layout.
+- Added SII caching functionality with
+  - the kernel module parameter `sii_caching`,
+  - the configuration variable `SII_CACHING`,
+  - and the API method `ecrt_master_sii_caching()`.
+- Security fixes against malicious subdevices
+  - Protected `rec_size` calculation in FoE.
+  - Check for malicious EoE frame details.
+- Avoid writing invalid MAC onto r8169 NIC on removal
+- Fixed insufficient re-allocation of SoE request buffer
 - Protect datagram receiving mechanism against re-ordering
 - Prevent creating datagrams that are too large for one frame
 - Reacted to stmmac API changed during Linux 6.12
@@ -18,16 +22,9 @@
 - Unload `ec_bhf` before loading CCAT
 - Added cpplint checks in pre-commit and CI tests.
 - Improved and formatted markdown documents and added pre-commit checks
-
-## Version 1.6.10
-
-- Added RasPi 5 macb (Cadence GEM / RP1) driver for kernel 6.18.
-- Added igb and igc for kernel 6.8
-- Security fixes against malicious subdevices
-  - Protected `rec_size` calculation in FoE.
-  - Check for malicious EoE frame details.
-- Avoid writing invalid MAC onto r8169 NIC on removal
-- Fixed insufficient re-allocation of SoE request buffer.
+- Backported CCAT fixes from Beckhoff
+- Added macb (Cadence GEM / RP1) driver for kernel 6.18
+- Improved macb driver performance
 
 ## Version 1.6.9
 
@@ -120,8 +117,8 @@
     requests.
   - Added interface to select the reference clock and to sync to it.
   - Exported `ecrt_domain_size()` to userspace.
-  - Added `ecrt_slave_config_reg_so_entry_pos()` to register non-unique
-    PDO entries.
+  - Added `ecrt_slave_config_reg_so_entry_pos()` to register non-unique PDO
+    entries.
 - Ethernet drivers
   - Added 8139too driver for 3.0, 3.2, 3.4.
   - Added r8169 driver for 2.6.36 (J. Kunz), 3.2 (J. Kunz), 3.4 (F. Pose).
@@ -301,20 +298,19 @@
   - Added `ec_slave_config_state_t` for the new method
     `ecrt_slave_config_state()`.
   - Process data memory for a domain can now be allocated externally. This
-    offers the possibility to use a shared-memory region. Therefore,
-    added the domain methods `ecrt_domain_size()` and
-    `ecrt_domain_external_memory()`.
-  - PDO entry registration functions do not return a process data pointer,
-    but an offset in the domain's process data. In addition, an optional bit
+    offers the possibility to use a shared-memory region. Therefore, added the
+    domain methods `ecrt_domain_size()` and `ecrt_domain_external_memory()`.
+  - PDO entry registration functions do not return a process data pointer, but
+    an offset in the domain's process data. In addition, an optional bit
     position can be requested. This was necessary for the external domain
     memory. An additional advantage is, that the returned offset is
     immediately valid. If the domain's process data is allocated internally,
     the start address can be retrieved with `ecrt_domain_data()`.
   - Replaced `ecrt_slave_pdo_mapping/add/clear()` with
-    `ecrt_slave_config_pdo_assign_add()` to add a PDO to a sync manager's
-    PDO assignment and `ecrt_slave_config_pdo_mapping_add()` to add a PDO
-    entry to a PDO's mapping. `ecrt_slave_config_pdos()` is a convenience
-    function for both, that uses the new data types `ec_pdo_info_t` and
+    `ecrt_slave_config_pdo_assign_add()` to add a PDO to a sync manager's PDO
+    assignment and `ecrt_slave_config_pdo_mapping_add()` to add a PDO entry to
+    a PDO's mapping. `ecrt_slave_config_pdos()` is a convenience function for
+    both, that uses the new data types `ec_pdo_info_t` and
     `ec_pdo_entry_info_t`. PDO entries, that are mapped with these functions
     can now immediately be registered, even if the bus is offline.
   - Renamed `ec_bus_status_t`, `ec_master_status_t` to `ec_bus_state_t` and
@@ -333,8 +329,7 @@
     scheduled for reading and writing during realtime operation.
   - Exported `ecrt_slave_config_sdo()`, the generic SDO configuration
     function.
-  - Removed the `bus_state` and `bus_tainted` flags from
-    `ec_master_state_t`.
+  - Removed the `bus_state` and `bus_tainted` flags from `ec_master_state_t`.
 - Device interface changes:
   - Moved device output parameter of `ecdev_offer()` to return value.
 - Replaced the Sysfs interface with a new `ethercat` command-line tool, that

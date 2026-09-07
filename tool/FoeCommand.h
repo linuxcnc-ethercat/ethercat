@@ -30,7 +30,7 @@ class FoeCommand:
     public Command
 {
     public:
-        FoeCommand(const string &, const string &);
+        FoeCommand(const std::string &, const std::string &);
 
     protected:
         static std::string resultText(int);

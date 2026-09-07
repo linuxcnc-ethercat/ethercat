@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  Copyright (C) 2006-2024  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2026  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -202,7 +202,7 @@ struct ec_master {
 #if EC_MAX_NUM_DEVICES > 1
     unsigned int num_devices; /**< Number of devices. Access this always via
                                 ec_master_num_devices(), because it may be
-                                optimized! */
+                                optimized. */
 #endif
     struct semaphore device_sem; /**< Device semaphore. */
     ec_device_stats_t device_stats; /**< Device statistics. */
@@ -219,6 +219,8 @@ struct ec_master {
 
     ec_slave_t *slaves; /**< Array of slaves on the bus. */
     unsigned int slave_count; /**< Number of slaves on the bus. */
+
+    struct list_head sii_cache; /**< List of cached SII pages. */
 
     /* Configuration applied by the application. */
     struct list_head configs; /**< List of slave configurations. */
@@ -273,7 +275,8 @@ struct ec_master {
     unsigned int fsm_exec_count; /**< Number of entries in execution list. */
 
     unsigned int debug_level; /**< Master debug level. */
-    unsigned int run_on_cpu;  /**< bind kernel threads to this cpu */
+    unsigned int run_on_cpu;  /**< Bind kernel threads to this cpu. */
+    unsigned int sii_caching;  /**< SII caching mode. */
     ec_stats_t stats; /**< Cyclic statistics. */
 
     struct task_struct *thread; /**< Master thread. */
@@ -300,7 +303,8 @@ struct ec_master {
 
     wait_queue_head_t request_queue; /**< Wait queue for external requests
                                        from user space. */
-    struct work_struct sc_reset_work; /**< Task to reset slave configuration. */
+    struct work_struct sc_reset_work; /**< Task to reset slave configuration.
+                                       */
     struct irq_work sc_reset_work_kicker; /**< NMI-Safe kicker to trigger
                                             reset task above. */
 };
@@ -312,7 +316,8 @@ void ec_master_init_static(void);
 
 // master creation/deletion
 int ec_master_init(ec_master_t *, unsigned int, const uint8_t *,
-        const uint8_t *, dev_t, struct class *, unsigned int, unsigned int);
+        const uint8_t *, dev_t, struct class *, unsigned int, unsigned int,
+        unsigned int);
 void ec_master_clear(ec_master_t *);
 
 /** Number of Ethernet devices.
@@ -347,6 +352,8 @@ void ec_master_attach_slave_configs(ec_master_t *);
 ec_slave_t *ec_master_find_slave(ec_master_t *, uint16_t, uint16_t);
 const ec_slave_t *ec_master_find_slave_const(const ec_master_t *, uint16_t,
         uint16_t);
+ec_slave_config_t *ec_master_find_config_for_slave(ec_master_t *,
+        const ec_slave_t *);
 void ec_master_output_stats(ec_master_t *);
 #ifdef EC_EOE
 void ec_master_clear_eoe_handlers(ec_master_t *);
@@ -364,7 +371,8 @@ const ec_domain_t *ec_master_find_domain_const(const ec_master_t *,
         unsigned int);
 #ifdef EC_EOE
 uint16_t ec_master_eoe_handler_count(const ec_master_t *);
-const ec_eoe_t *ec_master_get_eoe_handler_const(const ec_master_t *, uint16_t);
+const ec_eoe_t *ec_master_get_eoe_handler_const(const ec_master_t *,
+        uint16_t);
 #endif
 
 int ec_master_debug_level(ec_master_t *, unsigned int);
@@ -372,6 +380,10 @@ int ec_master_debug_level(ec_master_t *, unsigned int);
 ec_domain_t *ecrt_master_create_domain_err(ec_master_t *);
 ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
         uint16_t, uint32_t, uint32_t);
+
+int ec_master_cache_sii_page(ec_master_t *, const ec_sii_page_t *);
+ec_sii_page_t *ec_master_find_cached_sii_page(const ec_master_t *,
+        uint32_t, uint32_t, uint32_t, uint32_t, uint16_t);
 
 void ec_master_calc_dc(ec_master_t *);
 void ec_master_request_op(ec_master_t *);

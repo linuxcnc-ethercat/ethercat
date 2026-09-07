@@ -95,7 +95,6 @@ typedef struct {
     u8 current_data_frame;
 
     unsigned int config_error;
-
 } el60xx_port_t;
 
 #define EL6002_PORTS 2

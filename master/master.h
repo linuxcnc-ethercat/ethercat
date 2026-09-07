@@ -209,7 +209,7 @@ struct ec_master {
 #if EC_MAX_NUM_DEVICES > 1
     unsigned int num_devices; /**< Number of devices. Access this always via
                                 ec_master_num_devices(), because it may be
-                                optimized! */
+                                optimized. */
 #endif
     struct semaphore device_sem; /**< Device semaphore. */
     ec_device_stats_t device_stats; /**< Device statistics. */
@@ -307,7 +307,8 @@ struct ec_master {
 
     wait_queue_head_t request_queue; /**< Wait queue for external requests
                                        from user space. */
-    struct work_struct sc_reset_work; /**< Task to reset slave configuration. */
+    struct work_struct sc_reset_work; /**< Task to reset slave configuration.
+                                       */
     struct irq_work sc_reset_work_kicker; /**< NMI-Safe kicker to trigger
                                             reset task above. */
 };
@@ -371,7 +372,8 @@ const ec_domain_t *ec_master_find_domain_const(const ec_master_t *,
         unsigned int);
 #ifdef EC_EOE
 uint16_t ec_master_eoe_handler_count(const ec_master_t *);
-const ec_eoe_t *ec_master_get_eoe_handler_const(const ec_master_t *, uint16_t);
+const ec_eoe_t *ec_master_get_eoe_handler_const(const ec_master_t *,
+        uint16_t);
 #endif
 
 int ec_master_debug_level(ec_master_t *, unsigned int);

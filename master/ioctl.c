@@ -63,7 +63,8 @@
 # define ec_ioctl_lock(lock)   rt_mutex_lock(lock)
 # define ec_ioctl_unlock(lock) rt_mutex_unlock(lock)
 #  if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0) || \
-      (defined(CONFIG_PREEMPT_RT_FULL) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
+      (defined(CONFIG_PREEMPT_RT_FULL) \
+       && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 #   define ec_ioctl_lock_interruptible(lock) \
            rt_mutex_lock_interruptible(lock)
 #  else
@@ -648,7 +649,7 @@ static ATTRIBUTES int ec_ioctl_master_rescan(
         )
 {
     EC_MASTER_DBG(master, 1, "Got rescan command via ioctl()."
-		    " Re-scanning on next possibility.\n");
+            " Re-scanning on next possibility.\n");
     master->fsm.rescan_required = 1;
     return 0;
 }
@@ -894,8 +895,9 @@ static ATTRIBUTES int ec_ioctl_slave_sdo_download(
     }
 
     if (data.complete_access) {
-        retval = ecrt_master_sdo_download_complete(master, data.slave_position,
-                data.sdo_index, sdo_data, data.data_size, &data.abort_code);
+        retval = ecrt_master_sdo_download_complete(master,
+                data.slave_position, data.sdo_index, sdo_data, data.data_size,
+                &data.abort_code);
     } else {
         retval = ecrt_master_sdo_download(master, data.slave_position,
                 data.sdo_index, data.sdo_entry_subindex, sdo_data,
@@ -1795,7 +1797,7 @@ static ATTRIBUTES int ec_ioctl_slave_eoe_ip_param(
 }
 #endif
 
-/*****************************************************************************/
+/****************************************************************************/
 
 /** Request the master from userspace.
  *

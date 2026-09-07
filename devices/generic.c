@@ -41,7 +41,7 @@
 
 #define EC_GEN_RX_BUF_SIZE 1600
 
-#if defined(CONFIG_SUSE_KERNEL) \\
+#if defined(CONFIG_SUSE_KERNEL) \
     && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
 #include <linux/suse_version.h>
 #else
@@ -51,6 +51,11 @@
 #  ifndef SUSE_PATCHLEVEL
 #    define SUSE_PATCHLEVEL 0
 #  endif
+#endif
+
+// Support old kernels by providing a fallback for `strscpy`
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
+#define strscpy strncpy
 #endif
 
 /****************************************************************************/
@@ -264,7 +269,7 @@ int ec_gen_device_offer(
     int ret = 0;
 
     dev->used_netdev = desc->netdev;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) \\
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) \
     || (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
     eth_hw_addr_set(dev->netdev, desc->dev_addr);
 #else
@@ -441,7 +446,7 @@ int __init ec_gen_init_module(void)
             rcu_read_unlock();
             goto out_err;
         }
-        strncpy(desc->name, netdev->name, IFNAMSIZ);
+        strscpy(desc->name, netdev->name, IFNAMSIZ);
         desc->netdev = netdev;
         desc->ifindex = netdev->ifindex;
         memcpy(desc->dev_addr, netdev->dev_addr, ETH_ALEN);

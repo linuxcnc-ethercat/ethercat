@@ -200,7 +200,6 @@ int shall_count(
     for (; first_fmmu != cur_fmmu;
             first_fmmu = list_entry(first_fmmu->list.next,
                 ec_fmmu_config_t, list)) {
-
         if (first_fmmu->sc == cur_fmmu->sc
                 && first_fmmu->dir == cur_fmmu->dir) {
             return 0; // was already counted
@@ -217,7 +216,13 @@ int shall_count(
  * This allocates the necessary datagrams and writes the correct logical
  * addresses to every configured FMMU.
  *
- * \todo Check for FMMUs that do not fit into any datagram.
+ * An FMMU always covers a sync manager's complete logical address range and
+ * is never split itself; its configuration does not change here. If that
+ * range alone exceeds the maximum datagram size, though, it is addressed by
+ * several consecutive, disjoint datagrams that read/write the sync
+ * manager's data in multiple steps. The last of these datagrams then covers
+ * the sync manager's last byte, so that a buffer flip is triggered as
+ * usual.
  *
  * \retval  0 Success
  * \retval <0 Error code.
@@ -264,13 +269,17 @@ int ec_domain_finish(
     }
 
     list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
+        size_t fmmu_remaining;
 
         // Correct logical FMMU address
         fmmu->logical_start_address += base_address;
 
         // If the current FMMU's data do not fit in the current datagram,
-        // allocate a new one.
-        if (datagram_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
+        // allocate a new one (unless the current datagram is already empty,
+        // e.g. because the FMMU's data alone exceed the maximum datagram
+        // size; that case is handled below).
+        if (datagram_size > 0 &&
+                datagram_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
             ret = ec_domain_add_datagram_pair(domain,
                     domain->logical_base_address + datagram_offset,
                     datagram_size, domain->data + datagram_offset,
@@ -292,7 +301,44 @@ int ec_domain_finish(
             datagram_used[fmmu->dir]++;
         }
 
-        datagram_size += fmmu->data_size;
+        // Usually, the sync manager's data covered by this (unsplit) FMMU
+        // fits completely into the (possibly just started) datagram. If it
+        // alone exceeds the maximum datagram size, though, address it via
+        // multiple consecutive datagrams that each cover a disjoint part
+        // of the sync manager's data; the FMMU configuration itself stays
+        // a single, unmodified mapping of the sync manager's full range.
+        fmmu_remaining = fmmu->data_size;
+
+        while (datagram_size + fmmu_remaining > EC_MAX_DATA_SIZE) {
+            size_t chunk = EC_MAX_DATA_SIZE - datagram_size;
+
+            datagram_size += chunk;
+            fmmu_remaining -= chunk;
+
+            ret = ec_domain_add_datagram_pair(domain,
+                    domain->logical_base_address + datagram_offset,
+                    datagram_size, domain->data + datagram_offset,
+                    datagram_used);
+            if (ret < 0)
+                return ret;
+
+            datagram_offset += datagram_size;
+            datagram_size = 0;
+            datagram_count++;
+            datagram_used[EC_DIR_OUTPUT] = 0;
+            datagram_used[EC_DIR_INPUT] = 0;
+            datagram_first_fmmu = fmmu;
+
+            // The remaining part of the sync manager's data is still
+            // covered by the same (unsplit) FMMU, hence the same slave
+            // config/direction, so it has to be counted again for the new
+            // datagram.
+            if (shall_count(fmmu, datagram_first_fmmu)) {
+                datagram_used[fmmu->dir]++;
+            }
+        }
+
+        datagram_size += fmmu_remaining;
     }
 
     /* Allocate last datagram pair, if data are left (this is also the case if
@@ -651,7 +697,6 @@ int ecrt_domain_queue(ec_domain_t *domain)
     ec_device_index_t dev_idx;
 
     list_for_each_entry(datagram_pair, &domain->datagram_pairs, list) {
-
 #if EC_MAX_NUM_DEVICES > 1
         /* copy main data to send buffer */
         memcpy(datagram_pair->send_buffer,

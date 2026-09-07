@@ -14,10 +14,17 @@ variables:
 
 pre-commit:
     stage: lint
-    image: python:3.12
+    image: registry.gitlab.com/etherlab.org/build-container-factory/pre-commit:latest
 
-    before_script:
-      - pip install pre-commit
+    variables:
+      PRE_COMMIT_HOME: "${CI_PROJECT_DIR}/.cache/pre-commit"
+
+    cache:
+      key:
+        files:
+          - .pre-commit-config.yaml
+      paths:
+        - .cache/pre-commit
 
     script:
       - |

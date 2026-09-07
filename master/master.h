@@ -180,6 +180,13 @@ typedef struct {
 
 /****************************************************************************/
 
+// Support old kernels by providing a fallback for `strscpy`
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
+#define strscpy strncpy
+#endif
+
+/****************************************************************************/
+
 /** EtherCAT master.
  *
  * Manages slaves, domains and IO.

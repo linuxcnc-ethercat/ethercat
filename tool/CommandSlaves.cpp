@@ -542,17 +542,21 @@ void CommandSlaves::showSlavesJson(
             << "        \"fmmu_bit_operation\": "
             << (si->fmmu_bit ? "true" : "false") << "," << endl
             << "        \"distributed_clocks\": {" << endl
-            << "          \"supported\": "
-            << (si->dc_supported ? "true" : "false");
-        if (si->dc_supported) {
+            << "          \"support\": \"";
+        if (!si->dc_supported) {
+            cout << "no";
+        } else if (!si->has_dc_system_time) {
+            cout << "delay_measurement_only";
+        } else {
+            cout << "full";
+        }
+        cout << "\"";
+        if (si->dc_supported && si->has_dc_system_time) {
             cout << "," << endl
-                << "          \"system_time\": "
-                << (si->has_dc_system_time ? "true" : "false");
-            if (si->has_dc_system_time) {
-                cout << "," << endl
-                    << "          \"range_bits\": "
-                    << (si->dc_range == EC_DC_64 ? 64 : 32);
-            }
+                << "          \"range_bits\": "
+                << (si->dc_range == EC_DC_64 ? 64 : 32);
+        }
+        if (si->dc_supported) {
             cout << "," << endl
                 << "          \"transmission_delay_ns\": "
                 << si->transmission_delay;

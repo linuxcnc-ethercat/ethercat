@@ -550,8 +550,8 @@ void CommandSlaves::showSlavesJson(
                 << (si->has_dc_system_time ? "true" : "false");
             if (si->has_dc_system_time) {
                 cout << "," << endl
-                    << "          \"range\": \""
-                    << (si->dc_range == EC_DC_64 ? "64bit" : "32bit") << "\"";
+                    << "          \"range_bits\": "
+                    << (si->dc_range == EC_DC_64 ? 64 : 32);
             }
             cout << "," << endl
                 << "          \"transmission_delay_ns\": "

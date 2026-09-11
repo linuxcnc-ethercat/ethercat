@@ -85,6 +85,11 @@ string CommandDomains::helpString(const string &binaryBaseName) const
         << "  --verbose -v          Show FMMUs and process data" << endl
         << "                        in addition." << endl
         << endl
+        << "The global --json option outputs the same summary" << endl
+        << "information as JSON, regardless of --verbose. For a" << endl
+        << "structured, JSON breakdown of the FMMUs and process data," << endl
+        << "see the 'data' command's --json option instead." << endl
+        << endl
         << numericInfo();
 
     return str.str();
@@ -139,7 +144,7 @@ void CommandDomains::execute(const StringVector &args)
                     cout << "," << endl;
                 }
                 firstDomain = false;
-                showDomainJson(m, io, *di, getVerbosity() == Verbose);
+                showDomainJson(io, *di);
             }
 
             cout << endl
@@ -255,17 +260,10 @@ void CommandDomains::showDomain(
 /****************************************************************************/
 
 void CommandDomains::showDomainJson(
-        MasterDevice &m,
         const ec_ioctl_master_t &master,
-        const ec_ioctl_domain_t &domain,
-        bool verbose
+        const ec_ioctl_domain_t &domain
         )
 {
-    unsigned char *processData;
-    ec_ioctl_domain_data_t data;
-    unsigned int i, j;
-    ec_ioctl_domain_fmmu_t fmmu;
-    unsigned int dataOffset;
     unsigned int dev_idx, wc_sum = 0;
 
     for (dev_idx = EC_DEVICE_MAIN; dev_idx < master.num_devices; dev_idx++) {
@@ -287,69 +285,7 @@ void CommandDomains::showDomainJson(
             cout << ", ";
         }
     }
-    cout << "]";
-
-    if (!domain.data_size || !verbose) {
-        cout << endl << "      }";
-        return;
-    }
-
-    processData = new unsigned char[domain.data_size];
-
-    try {
-        m.getData(&data, domain.index, domain.data_size, processData);
-    } catch (MasterDeviceException &e) {
-        delete [] processData;
-        throw e;
-    }
-
-    cout << "," << endl
-        << "        \"fmmus\": [" << endl;
-
-    for (i = 0; i < domain.fmmu_count; i++) {
-        m.getFmmu(&fmmu, domain.index, i);
-
-        dataOffset = fmmu.logical_address - domain.logical_base_address;
-        if (dataOffset + fmmu.data_size > domain.data_size) {
-            delete [] processData;
-            stringstream err;
-            err << "Fmmu information corrupted!";
-            throwCommandException(err);
-        }
-
-        cout << "          {" << endl
-            << "            \"slave_config_alias\": "
-            << fmmu.slave_config_alias << "," << endl
-            << "            \"slave_config_position\": "
-            << fmmu.slave_config_position << "," << endl
-            << "            \"sync_manager\": "
-            << (unsigned int) fmmu.sync_index << "," << endl
-            << "            \"direction\": \""
-            << (fmmu.dir == EC_DIR_INPUT ? "input" : "output") << "\","
-            << endl
-            << "            \"logical_address\": "
-            << fmmu.logical_address << "," << endl
-            << "            \"size\": " << fmmu.data_size << "," << endl
-            << "            \"data\": [";
-
-        for (j = 0; j < fmmu.data_size; j++) {
-            if (j) {
-                cout << ", ";
-            }
-            cout << (unsigned int) *(processData + dataOffset + j);
-        }
-
-        cout << "]" << endl
-            << "          }";
-        if (i + 1 < domain.fmmu_count) {
-            cout << ",";
-        }
-        cout << endl;
-    }
-
-    delete [] processData;
-
-    cout << "        ]" << endl
+    cout << "]" << endl
         << "      }";
 }
 

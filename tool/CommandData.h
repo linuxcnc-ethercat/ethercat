@@ -37,6 +37,7 @@ class CommandData:
 
     protected:
         void outputDomainData(MasterDevice &, const ec_ioctl_domain_t &);
+        void outputDomainDataJson(MasterDevice &, const ec_ioctl_domain_t &);
 };
 
 /****************************************************************************/

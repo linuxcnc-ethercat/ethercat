@@ -98,6 +98,10 @@ string CommandConfig::helpString(const string &binaryBaseName) const
         << "With the --verbose option given, the configured PDOs and" << endl
         << "SDOs are output in addition." << endl
         << endl
+        << "The global --json option outputs the same information as"
+        << endl
+        << "JSON, honoring --verbose the same way." << endl
+        << endl
         << "Configuration selection:" << endl
         << "  Slave configurations can be selected with" << endl
         << "  the --alias and --position parameters as follows:" << endl
@@ -132,6 +136,7 @@ void CommandConfig::execute(const StringVector &args)
     MasterIndexList masterIndices;
     bool doIndent;
     ConfigList configs;
+    bool firstMaster = true;
 
     if (args.size()) {
         stringstream err;
@@ -141,12 +146,36 @@ void CommandConfig::execute(const StringVector &args)
 
     masterIndices = getMasterIndices();
     doIndent = masterIndices.size() > 1;
+
+    if (getJson()) {
+        cout << "[" << endl;
+    }
+
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
         m.open(MasterDevice::Read);
         configs = selectedConfigs(m);
+
+        if (getJson()) {
+            if (!firstMaster) {
+                cout << "," << endl;
+            }
+            firstMaster = false;
+
+            cout << "  {" << endl
+                << "    \"master\": " << dec << m.getIndex() << ","
+                << endl
+                << "    \"configs\": [" << endl;
+
+            showConfigsJson(m, configs);
+
+            cout << endl
+                << "    ]" << endl
+                << "  }";
+            continue;
+        }
 
         if (configs.size() && doIndent) {
             cout << "Master" << dec << m.getIndex() << endl;
@@ -157,6 +186,10 @@ void CommandConfig::execute(const StringVector &args)
         } else {
             listConfigs(m, configs, doIndent);
         }
+    }
+
+    if (getJson()) {
+        cout << endl << "]" << endl;
     }
 }
 
@@ -207,14 +240,14 @@ void CommandConfig::showDetailedConfigs(
 
         cout << indent << "Watchdog divider: ";
         if (configIter->watchdog_divider) {
-            cout << dec << configIter->watchdog_divider;
+            cout << configIter->watchdog_divider;
         } else {
             cout << "(Default)";
         }
         cout << endl << indent
             << "Watchdog intervals: ";
         if (configIter->watchdog_intervals) {
-            cout << dec << configIter->watchdog_intervals;
+            cout << configIter->watchdog_intervals;
         } else {
             cout << "(Default)";
         }
@@ -482,6 +515,385 @@ void CommandConfig::listConfigs(
             << setw(maxSlavePosWidth) << iter->slavePos << "  "
             << setw(maxStateWidth) << iter->state << "  "
             << endl;
+    }
+}
+
+/****************************************************************************/
+
+/** Lists the bus configuration as JSON.
+ */
+void CommandConfig::showConfigsJson(
+        MasterDevice &m,
+        const ConfigList &configList
+        )
+{
+    ConfigList::const_iterator configIter;
+    ec_ioctl_slave_t slave;
+    bool firstConfig = true;
+
+    for (configIter = configList.begin();
+            configIter != configList.end();
+            configIter++) {
+        if (!firstConfig) {
+            cout << "," << endl;
+        }
+        firstConfig = false;
+
+        cout << "      {" << endl
+            << "        \"alias\": " << configIter->alias << ","
+            << endl
+            << "        \"position\": " << configIter->position << ","
+            << endl
+            << "        \"vendor_id\": " << configIter->vendor_id << ","
+            << endl
+            << "        \"product_code\": " << configIter->product_code
+            << "," << endl
+            << "        \"attached_slave\": ";
+
+        if (configIter->slave_position != -1) {
+            m.getSlave(&slave, configIter->slave_position);
+            cout << "{\"position\": " << configIter->slave_position
+                << ", \"state\": \"" << alStateBaseString(slave.al_state)
+                << "\"}";
+        } else {
+            cout << "null";
+        }
+
+        cout << "," << endl
+            << "        \"watchdog\": {\"divider\": ";
+        if (configIter->watchdog_divider) {
+            cout << dec << configIter->watchdog_divider;
+        } else {
+            cout << "null";
+        }
+        cout << ", \"intervals\": ";
+        if (configIter->watchdog_intervals) {
+            cout << dec << configIter->watchdog_intervals;
+        } else {
+            cout << "null";
+        }
+        cout << "}," << endl
+            << "        \"pdo_assignment_mode\": \""
+            << pdoModeString(configIter->pdo_assign_mode) << "\"," << endl
+            << "        \"pdo_configuration_mode\": \""
+            << pdoModeString(configIter->pdo_config_mode) << "\","
+            << endl
+            << "        \"sync_managers\": [";
+
+        {
+            ec_ioctl_config_pdo_t pdo;
+            ec_ioctl_config_pdo_entry_t entry;
+            unsigned int j, k, l;
+            bool firstSync = true;
+
+            for (j = 0; j < EC_MAX_SYNC_MANAGERS; j++) {
+                bool firstPdo = true;
+
+                if (!configIter->syncs[j].pdo_count) {
+                    continue;
+                }
+
+                if (!firstSync) {
+                    cout << ",";
+                }
+                firstSync = false;
+
+                cout << endl << "          {" << endl
+                    << "            \"index\": " << j << ","
+                    << endl
+                    << "            \"direction\": \""
+                    << (configIter->syncs[j].dir == EC_DIR_INPUT
+                            ? "input" : "output") << "\"," << endl
+                    << "            \"watchdog_mode\": \"";
+                switch (configIter->syncs[j].watchdog_mode) {
+                    case EC_WD_DEFAULT: cout << "default"; break;
+                    case EC_WD_ENABLE:  cout << "enable"; break;
+                    case EC_WD_DISABLE: cout << "disable"; break;
+                    default:            cout << "unknown"; break;
+                }
+                cout << "\"," << endl
+                    << "            \"pdos\": [";
+
+                for (k = 0; k < configIter->syncs[j].pdo_count; k++) {
+                    bool firstEntry = true;
+
+                    m.getConfigPdo(&pdo, configIter->config_index, j, k);
+
+                    if (!firstPdo) {
+                        cout << ",";
+                    }
+                    firstPdo = false;
+
+                    cout << endl << "              {" << endl
+                        << "                \"index\": " << pdo.index
+                        << "," << endl
+                        << "                \"entries\": [";
+
+                    for (l = 0; l < pdo.entry_count; l++) {
+                        m.getConfigPdoEntry(&entry,
+                                configIter->config_index, j, k, l);
+
+                        if (!firstEntry) {
+                            cout << ",";
+                        }
+                        firstEntry = false;
+
+                        cout << endl << "                  {"
+                            << "\"index\": " << entry.index << ", "
+                            << "\"subindex\": "
+                            << (unsigned int) entry.subindex << ", "
+                            << "\"bit_length\": "
+                            << (unsigned int) entry.bit_length << "}";
+                    }
+                    if (!firstEntry) {
+                        cout << endl << "                ";
+                    }
+                    cout << "]" << endl
+                        << "              }";
+                }
+                if (!firstPdo) {
+                    cout << endl << "            ";
+                }
+                cout << "]" << endl
+                    << "          }";
+            }
+            if (!firstSync) {
+                cout << endl << "        ";
+            }
+        }
+        cout << "]," << endl
+            << "        \"sdo_configuration\": [";
+
+        {
+            ec_ioctl_config_sdo_t sdo;
+            unsigned int j;
+            bool firstSdo = true;
+
+            for (j = 0; j < configIter->sdo_count; j++) {
+                unsigned int b, n;
+
+                m.getConfigSdo(&sdo, configIter->config_index, j);
+
+                if (!firstSdo) {
+                    cout << ",";
+                }
+                firstSdo = false;
+
+                n = min((uint32_t) sdo.size,
+                        (uint32_t) EC_MAX_SDO_DATA_SIZE);
+
+                cout << endl << "          {" << endl
+                    << "            \"index\": " << sdo.index << ","
+                    << endl
+                    << "            \"complete_access\": "
+                    << (sdo.complete_access ? "true" : "false") << ","
+                    << endl
+                    << "            \"subindex\": ";
+                if (sdo.complete_access) {
+                    cout << "null";
+                } else {
+                    cout << (unsigned int) sdo.subindex;
+                }
+                cout << "," << endl
+                    << "            \"size\": " << sdo.size << "," << endl
+                    << "            \"data\": [";
+                for (b = 0; b < n; b++) {
+                    if (b) {
+                        cout << ", ";
+                    }
+                    cout << (unsigned int) sdo.data[b];
+                }
+                cout << "]";
+                if (sdo.size > EC_MAX_SDO_DATA_SIZE) {
+                    cout << "," << endl
+                        << "            \"truncated\": true";
+                }
+                cout << endl
+                    << "          }";
+            }
+            if (!firstSdo) {
+                cout << endl << "        ";
+            }
+        }
+        cout << "]," << endl
+            << "        \"idn_configuration\": [";
+
+        {
+            ec_ioctl_config_idn_t idn;
+            unsigned int j;
+            bool firstIdn = true;
+
+            for (j = 0; j < configIter->idn_count; j++) {
+                unsigned int b, n;
+
+                m.getConfigIdn(&idn, configIter->config_index, j);
+
+                if (!firstIdn) {
+                    cout << ",";
+                }
+                firstIdn = false;
+
+                n = min((uint32_t) idn.size,
+                        (uint32_t) EC_MAX_IDN_DATA_SIZE);
+
+                cout << endl << "          {" << endl
+                    << "            \"drive_no\": "
+                    << (unsigned int) idn.drive_no << "," << endl
+                    << "            \"idn\": \"" << outputIdn(idn.idn)
+                    << "\"," << endl
+                    << "            \"size\": " << idn.size << "," << endl
+                    << "            \"data\": [";
+                for (b = 0; b < n; b++) {
+                    if (b) {
+                        cout << ", ";
+                    }
+                    cout << (unsigned int) idn.data[b];
+                }
+                cout << "]";
+                if (idn.size > EC_MAX_IDN_DATA_SIZE) {
+                    cout << "," << endl
+                        << "            \"truncated\": true";
+                }
+                cout << endl
+                    << "          }";
+            }
+            if (!firstIdn) {
+                cout << endl << "        ";
+            }
+        }
+        cout << "]," << endl
+            << "        \"feature_flags\": [";
+
+        {
+            ec_ioctl_config_flag_t flag;
+            unsigned int j;
+            bool firstFlag = true;
+
+            for (j = 0; j < configIter->flag_count; j++) {
+                m.getConfigFlag(&flag, configIter->config_index, j);
+
+                if (!firstFlag) {
+                    cout << ",";
+                }
+                firstFlag = false;
+
+                cout << endl << "          {\"key\": \""
+                    << jsonEscape(flag.key) << "\", \"value\": "
+                    << flag.value << "}";
+            }
+            if (!firstFlag) {
+                cout << endl << "        ";
+            }
+        }
+        cout << "]";
+
+#ifdef EC_EOE
+        {
+            ec_ioctl_eoe_ip_t ip;
+            m.getIpParam(&ip, configIter->config_index);
+
+            if (ip.mac_address_included or ip.ip_address_included or
+                    ip.subnet_mask_included or ip.gateway_included or
+                    ip.dns_included or ip.name_included) {
+                char addr[32];
+                bool firstField = true;
+
+                cout << "," << endl
+                    << "        \"eoe_ip_parameters\": {";
+
+                if (ip.mac_address_included) {
+                    cout << endl << "          \"mac_address\": \""
+                        << hex << setfill('0')
+                        << setw(2) << (unsigned int) ip.mac_address[0]
+                        << ":"
+                        << setw(2) << (unsigned int) ip.mac_address[1]
+                        << ":"
+                        << setw(2) << (unsigned int) ip.mac_address[2]
+                        << ":"
+                        << setw(2) << (unsigned int) ip.mac_address[3]
+                        << ":"
+                        << setw(2) << (unsigned int) ip.mac_address[4]
+                        << ":"
+                        << setw(2) << (unsigned int) ip.mac_address[5]
+                        << dec << setfill(' ') << "\"";
+                    firstField = false;
+                }
+                if (ip.ip_address_included) {
+                    inet_ntop(AF_INET, &ip.ip_address, addr, sizeof(addr));
+                    if (!firstField) {
+                        cout << ",";
+                    }
+                    cout << endl << "          \"ip_address\": \""
+                        << addr << "\"";
+                    firstField = false;
+                }
+                if (ip.subnet_mask_included) {
+                    inet_ntop(AF_INET, &ip.subnet_mask, addr, sizeof(addr));
+                    if (!firstField) {
+                        cout << ",";
+                    }
+                    cout << endl << "          \"subnet_mask\": \""
+                        << addr << "\"";
+                    firstField = false;
+                }
+                if (ip.gateway_included) {
+                    inet_ntop(AF_INET, &ip.gateway, addr, sizeof(addr));
+                    if (!firstField) {
+                        cout << ",";
+                    }
+                    cout << endl << "          \"gateway\": \""
+                        << addr << "\"";
+                    firstField = false;
+                }
+                if (ip.dns_included) {
+                    inet_ntop(AF_INET, &ip.dns, addr, sizeof(addr));
+                    if (!firstField) {
+                        cout << ",";
+                    }
+                    cout << endl << "          \"dns\": \""
+                        << addr << "\"";
+                    firstField = false;
+                }
+                if (ip.name_included) {
+                    if (!firstField) {
+                        cout << ",";
+                    }
+                    cout << endl << "          \"hostname\": \""
+                        << jsonEscape(ip.name) << "\"";
+                    firstField = false;
+                }
+
+                cout << endl << "        }";
+            }
+        }
+#endif
+
+        if (configIter->dc_assign_activate) {
+            int si;
+
+            cout << "," << endl
+                << "        \"dc\": {" << endl
+                << "          \"assign_activate\": "
+                << configIter->dc_assign_activate << ","
+                << endl
+                << "          \"sync\": [";
+
+            for (si = 0; si < EC_SYNC_SIGNAL_COUNT; si++) {
+                if (si) {
+                    cout << ",";
+                }
+                cout << endl << "            {\"cycle_time_ns\": "
+                    << configIter->dc_sync[si].cycle_time
+                    << ", \"shift_time_ns\": "
+                    << configIter->dc_sync[si].shift_time << "}";
+            }
+
+            cout << endl << "          ]" << endl
+                << "        }";
+        }
+
+        cout << endl
+            << "      }";
     }
 }
 

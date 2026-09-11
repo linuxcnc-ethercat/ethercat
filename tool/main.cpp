@@ -92,6 +92,7 @@ bool emergency = false;
 bool helpRequested = false;
 string outputFile;
 string skin;
+bool json = false;
 
 /****************************************************************************/
 
@@ -125,6 +126,8 @@ string usage()
         << "                         Default: '-' (all)."
         << endl
         << "  --force   -f           Force a command." << endl
+        << "  --json    -j           Output in JSON format" << endl
+        << "                         (where supported)." << endl
         << "  --quiet   -q           Output less information." << endl
         << "  --verbose -v           Output more information." << endl
         << "  --help    -h           Show this help." << endl
@@ -157,6 +160,7 @@ void getOptions(int argc, char **argv)
         {"skin",        required_argument, NULL, 's'},
         {"emergency",   no_argument,       NULL, 'e'},
         {"force",       no_argument,       NULL, 'f'},
+        {"json",        no_argument,       NULL, 'j'},
         {"quiet",       no_argument,       NULL, 'q'},
         {"verbose",     no_argument,       NULL, 'v'},
         {"help",        no_argument,       NULL, 'h'},
@@ -164,7 +168,8 @@ void getOptions(int argc, char **argv)
     };
 
     do {
-        c = getopt_long(argc, argv, "m:a:p:d:t:o:s:efqvh", longOptions, NULL);
+        c = getopt_long(argc, argv, "m:a:p:d:t:o:s:efjqvh", longOptions,
+                NULL);
 
         switch (c) {
             case 'm':
@@ -201,6 +206,10 @@ void getOptions(int argc, char **argv)
 
             case 'f':
                 force = true;
+                break;
+
+            case 'j':
+                json = true;
                 break;
 
             case 'q':
@@ -333,6 +342,7 @@ int main(int argc, char **argv)
                     cmd->setSkin(skin);
                     cmd->setEmergency(emergency);
                     cmd->setForce(force);
+                    cmd->setJson(json);
                     cmd->execute(commandArgs);
                 } catch (InvalidUsageException &e) {
                     cerr << e.what() << endl << endl;

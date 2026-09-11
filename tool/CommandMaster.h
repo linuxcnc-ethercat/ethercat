@@ -37,6 +37,9 @@ class CommandMaster:
 
     private:
         enum {ColWidth = 6};
+
+        void showMaster(MasterDevice &, const ec_ioctl_master_t &);
+        void showMasterJson(MasterDevice &, const ec_ioctl_master_t &);
 };
 
 /****************************************************************************/

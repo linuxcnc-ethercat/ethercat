@@ -50,6 +50,7 @@ class CommandConfig:
 
         void showDetailedConfigs(MasterDevice &, const ConfigList &, bool);
         void listConfigs(MasterDevice &m, const ConfigList &, bool);
+        void showConfigsJson(MasterDevice &, const ConfigList &);
 };
 
 /****************************************************************************/

@@ -110,6 +110,9 @@ class Command
         void setSkin(const std::string &);
         const std::string &getSkin() const;
 
+        void setJson(bool);
+        bool getJson() const;
+
         bool matchesSubstr(const std::string &) const;
         bool matchesAbbrev(const std::string &) const;
 
@@ -137,6 +140,8 @@ class Command
         int emergencySlave() const;
 
         static std::string alStateString(uint8_t);
+        static std::string alStateBaseString(uint8_t);
+        static std::string jsonEscape(const std::string &);
 
     private:
         std::string name;
@@ -151,6 +156,7 @@ class Command
         bool force;
         std::string outputFile;
         std::string skin;
+        bool json;
 
         Command();
 };
@@ -209,6 +215,13 @@ inline const std::string &Command::getOutputFile() const
 inline const std::string &Command::getSkin() const
 {
     return skin;
+}
+
+/****************************************************************************/
+
+inline bool Command::getJson() const
+{
+    return json;
 }
 
 /****************************************************************************/

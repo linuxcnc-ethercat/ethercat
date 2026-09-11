@@ -84,6 +84,10 @@ string CommandPdos::helpString(const string &binaryBaseName) const
         << "The \"etherlab\" skin outputs a template configuration" << endl
         << "for EtherLab's generic EtherCAT slave block." << endl
         << endl
+        << "The global --json option outputs the same information as" << endl
+        << "the default skin as JSON and cannot be combined with a" << endl
+        << "skin other than \"default\"." << endl
+        << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
@@ -110,6 +114,39 @@ void CommandPdos::execute(const StringVector &args)
         stringstream err;
         err << "'" << getName() << "' takes no arguments!";
         throwInvalidUsageException(err);
+    }
+
+    if (getJson()) {
+        if (!getSkin().empty() && getSkin() != "default") {
+            stringstream err;
+            err << "'--json' cannot be combined with skin '"
+                << getSkin() << "'!";
+            throwInvalidUsageException(err);
+        }
+
+        bool first = true;
+
+        masterIndices = getMasterIndices();
+
+        cout << "[" << endl;
+        MasterIndexList::const_iterator mi;
+        for (mi = masterIndices.begin();
+                mi != masterIndices.end(); mi++) {
+            MasterDevice m(*mi);
+            m.open(MasterDevice::Read);
+            slaves = selectedSlaves(m);
+
+            for (si = slaves.begin(); si != slaves.end(); si++) {
+                if (!first) {
+                    cout << "," << endl;
+                }
+                first = false;
+                listSlavePdosJson(m, *si);
+            }
+        }
+        cout << endl << "]" << endl;
+
+        return;
     }
 
     if (getSkin().empty() || getSkin() == "default") {
@@ -313,6 +350,107 @@ void CommandPdos::etherlabConfig(
     }
 
     cout << "end" << endl;
+}
+
+/****************************************************************************/
+
+void CommandPdos::listSlavePdosJson(
+        MasterDevice &m,
+        const ec_ioctl_slave_t &slave
+        )
+{
+    ec_ioctl_slave_sync_t sync;
+    ec_ioctl_slave_sync_pdo_t pdo;
+    ec_ioctl_slave_sync_pdo_entry_t entry;
+    unsigned int i, j, k;
+    bool firstSync = true;
+
+    cout << "  {" << endl
+        << "    \"master\": " << dec << m.getIndex() << "," << endl
+        << "    \"slave\": " << slave.position << "," << endl
+        << "    \"sync_managers\": [" << endl;
+
+    for (i = 0; i < slave.sync_count; i++) {
+        bool firstPdo = true;
+
+        m.getSync(&sync, slave.position, i);
+
+        if (!firstSync) {
+            cout << "," << endl;
+        }
+        firstSync = false;
+
+        cout << "      {" << endl
+            << "        \"index\": " << dec << i << "," << endl
+            << "        \"physical_start_address\": "
+            << sync.physical_start_address << "," << endl
+            << "        \"default_size\": " << sync.default_size
+            << "," << endl
+            << "        \"control_register\": "
+            << (unsigned int) sync.control_register << "," << endl
+            << "        \"enable\": " << (sync.enable ? "true" : "false")
+            << "," << endl
+            << "        \"pdo_type\": \""
+            << (sync.control_register & 0x04 ? "rx" : "tx") << "\"," << endl
+            << "        \"pdos\": [" << endl;
+
+        for (j = 0; j < sync.pdo_count; j++) {
+            m.getPdo(&pdo, slave.position, i, j);
+
+            if (!firstPdo) {
+                cout << "," << endl;
+            }
+            firstPdo = false;
+
+            cout << "          {" << endl
+                << "            \"index\": " << pdo.index << "," << endl
+                << "            \"name\": \""
+                << jsonEscape(reinterpret_cast<const char *>(pdo.name))
+                << "\"," << endl
+                << "            \"entries\": [" << endl;
+
+            {
+                bool firstEntry = true;
+
+                for (k = 0; k < pdo.entry_count; k++) {
+                    m.getPdoEntry(&entry, slave.position, i, j, k);
+
+                    if (!firstEntry) {
+                        cout << "," << endl;
+                    }
+                    firstEntry = false;
+
+                    cout << "              {" << endl
+                        << "                \"index\": " << entry.index
+                        << "," << endl
+                        << "                \"subindex\": "
+                        << (unsigned int) entry.subindex << "," << endl
+                        << "                \"bit_length\": "
+                        << dec << (unsigned int) entry.bit_length << ","
+                        << endl
+                        << "                \"name\": \""
+                        << jsonEscape(
+                                reinterpret_cast<const char *>(entry.name))
+                        << "\"" << endl
+                        << "              }";
+                }
+
+                cout << endl
+                    << "            ]";
+            }
+
+            cout << endl
+                << "          }";
+        }
+
+        cout << endl
+            << "        ]" << endl
+            << "      }";
+    }
+
+    cout << endl
+        << "    ]" << endl
+        << "  }";
 }
 
 /****************************************************************************/

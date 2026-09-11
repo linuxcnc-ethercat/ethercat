@@ -26,6 +26,7 @@
 #include "NumberListParser.h"
 #include "MasterDevice.h"
 
+#include <iomanip>
 #include <map>
 
 using std::string;
@@ -149,7 +150,8 @@ Command::Command(const string &name, const string &briefDesc):
     briefDesc(briefDesc),
     verbosity(Normal),
     emergency(false),
-    force(false)
+    force(false),
+    json(false)
 {
 }
 
@@ -227,6 +229,13 @@ void Command::setOutputFile(const string &f)
 void Command::setSkin(const string &s)
 {
     skin = s;
+};
+
+/****************************************************************************/
+
+void Command::setJson(bool j)
+{
+    json = j;
 };
 
 /****************************************************************************/
@@ -508,22 +517,56 @@ int Command::emergencySlave() const
 
 string Command::alStateString(uint8_t state)
 {
-    string ret;
-
-    switch (state & EC_SLAVE_STATE_MASK) {
-        case 1: ret = "INIT"; break;
-        case 2: ret = "PREOP"; break;
-        case 3: ret = "BOOT"; break;
-        case 4: ret = "SAFEOP"; break;
-        case 8: ret = "OP"; break;
-        default: ret = "???";
-    }
+    string ret(alStateBaseString(state));
 
     if (state & EC_SLAVE_STATE_ACK_ERR) {
         ret += "+ERROR";
     }
 
     return ret;
+}
+
+/****************************************************************************/
+
+string Command::alStateBaseString(uint8_t state)
+{
+    switch (state & EC_SLAVE_STATE_MASK) {
+        case 1: return "INIT";
+        case 2: return "PREOP";
+        case 3: return "BOOT";
+        case 4: return "SAFEOP";
+        case 8: return "OP";
+        default: return "???";
+    }
+}
+
+/****************************************************************************/
+
+string Command::jsonEscape(const string &in)
+{
+    stringstream out;
+
+    for (string::const_iterator c = in.begin(); c != in.end(); c++) {
+        switch (*c) {
+            case '"':  out << "\\\""; break;
+            case '\\': out << "\\\\"; break;
+            case '\b': out << "\\b"; break;
+            case '\f': out << "\\f"; break;
+            case '\n': out << "\\n"; break;
+            case '\r': out << "\\r"; break;
+            case '\t': out << "\\t"; break;
+            default:
+                if ((unsigned char) *c < 0x20) {
+                    out << "\\u" << std::hex << std::setfill('0')
+                        << std::setw(4) << (unsigned int) (unsigned char) *c
+                        << std::dec;
+                } else {
+                    out << *c;
+                }
+        }
+    }
+
+    return out.str();
 }
 
 /****************************************************************************/

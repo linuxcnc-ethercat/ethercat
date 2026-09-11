@@ -48,6 +48,7 @@ class CommandSlaves:
 
         void listSlaves(MasterDevice &, const SlaveList &, bool);
         void showSlaves(MasterDevice &, const SlaveList &);
+        void showSlavesJson(MasterDevice &, const SlaveList &);
 
         static bool slaveInList(const ec_ioctl_slave_t &, const SlaveList &);
 };

@@ -74,6 +74,10 @@ string CommandSdos::helpString(const string &binaryBaseName) const
         << endl
         << "If the --quiet option is given, only the SDOs are output."
         << endl << endl
+        << "The global --json option outputs the same information as"
+        << endl
+        << "JSON." << endl
+        << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
@@ -94,6 +98,7 @@ void CommandSdos::execute(const StringVector &args)
     SlaveList slaves;
     SlaveList::const_iterator si;
     bool showHeader, multiMaster;
+    bool first = true;
 
     if (args.size()) {
         stringstream err;
@@ -103,6 +108,11 @@ void CommandSdos::execute(const StringVector &args)
 
     masterIndices = getMasterIndices();
     multiMaster = masterIndices.size() > 1;
+
+    if (getJson()) {
+        cout << "[" << endl;
+    }
+
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {
@@ -112,8 +122,20 @@ void CommandSdos::execute(const StringVector &args)
         showHeader = multiMaster || slaves.size() > 1;
 
         for (si = slaves.begin(); si != slaves.end(); si++) {
-            listSlaveSdos(m, *si, showHeader);
+            if (getJson()) {
+                if (!first) {
+                    cout << "," << endl;
+                }
+                first = false;
+                listSlaveSdosJson(m, *si);
+            } else {
+                listSlaveSdos(m, *si, showHeader);
+            }
         }
+    }
+
+    if (getJson()) {
+        cout << endl << "]" << endl;
     }
 }
 
@@ -176,6 +198,105 @@ void CommandSdos::listSlaveSdos(
                 << entry.description << "\"" << endl;
         }
     }
+}
+
+/****************************************************************************/
+
+void CommandSdos::listSlaveSdosJson(
+        MasterDevice &m,
+        const ec_ioctl_slave_t &slave
+        )
+{
+    ec_ioctl_slave_sdo_t sdo;
+    ec_ioctl_slave_sdo_entry_t entry;
+    unsigned int i, j;
+    const DataType *d;
+    bool firstSdo = true;
+
+    cout << "  {" << endl
+        << "    \"master\": " << dec << m.getIndex() << "," << endl
+        << "    \"slave\": " << slave.position << "," << endl
+        << "    \"sdos\": [" << endl;
+
+    for (i = 0; i < slave.sdo_count; i++) {
+        bool firstEntry = true;
+
+        m.getSdo(&sdo, slave.position, i);
+
+        if (!firstSdo) {
+            cout << "," << endl;
+        }
+        firstSdo = false;
+
+        cout << "      {" << endl
+            << "        \"index\": " << dec << sdo.sdo_index << ","
+            << endl
+            << "        \"name\": \""
+            << jsonEscape(reinterpret_cast<const char *>(sdo.name))
+            << "\"," << endl
+            << "        \"entries\": [" << endl;
+
+        for (j = 0; j <= sdo.max_subindex; j++) {
+            try {
+                m.getSdoEntry(&entry, slave.position, -i, j);
+            } catch (MasterDeviceException &e) {
+                continue;
+            }
+
+            if (!firstEntry) {
+                cout << "," << endl;
+            }
+            firstEntry = false;
+
+            cout << "          {" << endl
+                << "            \"subindex\": "
+                << (unsigned int) entry.sdo_entry_subindex << ","
+                << endl
+                << "            \"access\": {" << endl
+                << "              \"preop\": {\"read\": "
+                << (entry.read_access[EC_SDO_ENTRY_ACCESS_PREOP]
+                        ? "true" : "false") << ", \"write\": "
+                << (entry.write_access[EC_SDO_ENTRY_ACCESS_PREOP]
+                        ? "true" : "false") << "}," << endl
+                << "              \"safeop\": {\"read\": "
+                << (entry.read_access[EC_SDO_ENTRY_ACCESS_SAFEOP]
+                        ? "true" : "false") << ", \"write\": "
+                << (entry.write_access[EC_SDO_ENTRY_ACCESS_SAFEOP]
+                        ? "true" : "false") << "}," << endl
+                << "              \"op\": {\"read\": "
+                << (entry.read_access[EC_SDO_ENTRY_ACCESS_OP]
+                        ? "true" : "false") << ", \"write\": "
+                << (entry.write_access[EC_SDO_ENTRY_ACCESS_OP]
+                        ? "true" : "false") << "}" << endl
+                << "            }," << endl
+                << "            \"data_type\": ";
+            if ((d = findDataType(entry.data_type))) {
+                cout << "\"" << d->name << "\"";
+            } else {
+                cout << "null";
+            }
+            cout << "," << endl
+                << "            \"data_type_code\": "
+                << dec << entry.data_type << "," << endl
+                << "            \"bit_length\": "
+                << dec << entry.bit_length << "," << endl
+                << "            \"description\": \""
+                << jsonEscape(reinterpret_cast<const char *>(
+                            entry.description))
+                << "\"" << endl
+                << "          }";
+        }
+
+        cout << endl
+            << "        ]";
+
+        cout << endl
+            << "      }";
+    }
+
+    cout << endl
+        << "    ]" << endl
+        << "  }";
 }
 
 /****************************************************************************/

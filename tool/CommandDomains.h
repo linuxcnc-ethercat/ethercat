@@ -38,6 +38,8 @@ class CommandDomains:
     protected:
         void showDomain(MasterDevice &, const ec_ioctl_master_t &,
                 const ec_ioctl_domain_t &, bool);
+        void showDomainJson(MasterDevice &, const ec_ioctl_master_t &,
+                const ec_ioctl_domain_t &, bool);
 };
 
 /****************************************************************************/

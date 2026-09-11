@@ -98,6 +98,7 @@ void CommandDomains::execute(const StringVector &args)
     bool doIndent;
     DomainList domains;
     DomainList::const_iterator di;
+    bool firstMaster = true;
 
     if (args.size()) {
         stringstream err;
@@ -107,6 +108,11 @@ void CommandDomains::execute(const StringVector &args)
 
     masterIndices = getMasterIndices();
     doIndent = masterIndices.size() > 1;
+
+    if (getJson()) {
+        cout << "[" << endl;
+    }
+
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {
@@ -116,6 +122,32 @@ void CommandDomains::execute(const StringVector &args)
         m.getMaster(&io);
         domains = selectedDomains(m, io);
 
+        if (getJson()) {
+            bool firstDomain = true;
+
+            if (!firstMaster) {
+                cout << "," << endl;
+            }
+            firstMaster = false;
+
+            cout << "  {" << endl
+                << "    \"master\": " << dec << *mi << "," << endl
+                << "    \"domains\": [" << endl;
+
+            for (di = domains.begin(); di != domains.end(); di++) {
+                if (!firstDomain) {
+                    cout << "," << endl;
+                }
+                firstDomain = false;
+                showDomainJson(m, io, *di, getVerbosity() == Verbose);
+            }
+
+            cout << endl
+                << "    ]" << endl
+                << "  }";
+            continue;
+        }
+
         if (domains.size() && doIndent) {
             cout << "Master" << dec << *mi << endl;
         }
@@ -123,6 +155,10 @@ void CommandDomains::execute(const StringVector &args)
         for (di = domains.begin(); di != domains.end(); di++) {
             showDomain(m, io, *di, doIndent);
         }
+    }
+
+    if (getJson()) {
+        cout << endl << "]" << endl;
     }
 }
 
@@ -214,6 +250,107 @@ void CommandDomains::showDomain(
     }
 
     delete [] processData;
+}
+
+/****************************************************************************/
+
+void CommandDomains::showDomainJson(
+        MasterDevice &m,
+        const ec_ioctl_master_t &master,
+        const ec_ioctl_domain_t &domain,
+        bool verbose
+        )
+{
+    unsigned char *processData;
+    ec_ioctl_domain_data_t data;
+    unsigned int i, j;
+    ec_ioctl_domain_fmmu_t fmmu;
+    unsigned int dataOffset;
+    unsigned int dev_idx, wc_sum = 0;
+
+    for (dev_idx = EC_DEVICE_MAIN; dev_idx < master.num_devices; dev_idx++) {
+        wc_sum += domain.working_counter[dev_idx];
+    }
+
+    cout << "      {" << endl
+        << "        \"index\": " << domain.index << "," << endl
+        << "        \"logical_base_address\": "
+        << domain.logical_base_address << "," << endl
+        << "        \"size\": " << domain.data_size << "," << endl
+        << "        \"working_counter\": " << wc_sum << "," << endl
+        << "        \"expected_working_counter\": "
+        << domain.expected_working_counter << "," << endl
+        << "        \"working_counter_per_device\": [";
+    for (dev_idx = EC_DEVICE_MAIN; dev_idx < master.num_devices; dev_idx++) {
+        cout << domain.working_counter[dev_idx];
+        if (dev_idx + 1 < master.num_devices) {
+            cout << ", ";
+        }
+    }
+    cout << "]";
+
+    if (!domain.data_size || !verbose) {
+        cout << endl << "      }";
+        return;
+    }
+
+    processData = new unsigned char[domain.data_size];
+
+    try {
+        m.getData(&data, domain.index, domain.data_size, processData);
+    } catch (MasterDeviceException &e) {
+        delete [] processData;
+        throw e;
+    }
+
+    cout << "," << endl
+        << "        \"fmmus\": [" << endl;
+
+    for (i = 0; i < domain.fmmu_count; i++) {
+        m.getFmmu(&fmmu, domain.index, i);
+
+        dataOffset = fmmu.logical_address - domain.logical_base_address;
+        if (dataOffset + fmmu.data_size > domain.data_size) {
+            delete [] processData;
+            stringstream err;
+            err << "Fmmu information corrupted!";
+            throwCommandException(err);
+        }
+
+        cout << "          {" << endl
+            << "            \"slave_config_alias\": "
+            << fmmu.slave_config_alias << "," << endl
+            << "            \"slave_config_position\": "
+            << fmmu.slave_config_position << "," << endl
+            << "            \"sync_manager\": "
+            << (unsigned int) fmmu.sync_index << "," << endl
+            << "            \"direction\": \""
+            << (fmmu.dir == EC_DIR_INPUT ? "input" : "output") << "\","
+            << endl
+            << "            \"logical_address\": "
+            << fmmu.logical_address << "," << endl
+            << "            \"size\": " << fmmu.data_size << "," << endl
+            << "            \"data\": [";
+
+        for (j = 0; j < fmmu.data_size; j++) {
+            if (j) {
+                cout << ", ";
+            }
+            cout << (unsigned int) *(processData + dataOffset + j);
+        }
+
+        cout << "]" << endl
+            << "          }";
+        if (i + 1 < domain.fmmu_count) {
+            cout << ",";
+        }
+        cout << endl;
+    }
+
+    delete [] processData;
+
+    cout << "        ]" << endl
+        << "      }";
 }
 
 /****************************************************************************/

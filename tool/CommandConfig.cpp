@@ -40,6 +40,8 @@ using std::dec;
 using std::hex;
 using std::setw;
 using std::setfill;
+using std::setprecision;
+using std::fixed;
 using std::min;
 using std::right;
 using std::left;
@@ -882,10 +884,12 @@ void CommandConfig::showConfigsJson(
                 if (si) {
                     cout << ",";
                 }
-                cout << endl << "            {\"cycle_time_ns\": "
-                    << configIter->dc_sync[si].cycle_time
-                    << ", \"shift_time_ns\": "
-                    << configIter->dc_sync[si].shift_time << "}";
+                cout << endl << "            {\"cycle_time\": "
+                    << setprecision(9) << fixed
+                    << (configIter->dc_sync[si].cycle_time / 1e9)
+                    << ", \"shift_time\": "
+                    << setprecision(9) << fixed
+                    << (configIter->dc_sync[si].shift_time / 1e9) << "}";
             }
 
             cout << endl << "          ]" << endl

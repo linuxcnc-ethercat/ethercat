@@ -456,12 +456,12 @@ void CommandMaster::showMasterJson(
         jsonRates("tx_frame_rate", data.devices[dev_idx].tx_frame_rates,
                 1000.0);
         cout << "," << endl << "        ";
-        jsonRates("tx_rate", data.devices[dev_idx].tx_byte_rates, 1024.0);
+        jsonRates("tx_rate", data.devices[dev_idx].tx_byte_rates, 1.0);
         cout << "," << endl << "        ";
         jsonRates("rx_frame_rate", data.devices[dev_idx].rx_frame_rates,
                 1000.0);
         cout << "," << endl << "        ";
-        jsonRates("rx_rate", data.devices[dev_idx].rx_byte_rates, 1024.0);
+        jsonRates("rx_rate", data.devices[dev_idx].rx_byte_rates, 1.0);
         cout << endl
             << "      }";
         if (dev_idx + 1 < data.num_devices) {
@@ -486,11 +486,11 @@ void CommandMaster::showMasterJson(
         << "      ";
     jsonRates("tx_frame_rate", data.tx_frame_rates, 1000.0);
     cout << "," << endl << "      ";
-    jsonRates("tx_rate", data.tx_byte_rates, 1024.0);
+    jsonRates("tx_rate", data.tx_byte_rates, 1.0);
     cout << "," << endl << "      ";
     jsonRates("rx_frame_rate", data.rx_frame_rates, 1000.0);
     cout << "," << endl << "      ";
-    jsonRates("rx_rate", data.rx_byte_rates, 1024.0);
+    jsonRates("rx_rate", data.rx_byte_rates, 1.0);
     cout << "," << endl << "      ";
     jsonRates("loss_rate", data.loss_rates, 1000.0);
     cout << "," << endl
@@ -519,9 +519,14 @@ void CommandMaster::showMasterJson(
         cout << "null";
     }
     cout << "," << endl
-        << "      \"dc_ref_time_ns\": \"" << data.dc_ref_time << "\"," << endl
+        << "      \"dc_ref_time\": " << setprecision(9) << fixed
+        << (data.dc_ref_time / 1e9) << "," << endl
+        << "      \"dc_ref_time_ns\": \"" << data.dc_ref_time << "\","
+        << endl
+        << "      \"app_time\": " << setprecision(9) << fixed
+        << (data.app_time / 1e9) << "," << endl
         << "      \"app_time_ns\": \"" << data.app_time << "\"," << endl
-        << "      \"app_time\": \"";
+        << "      \"app_time_iso\": \"";
 
     {
         time_t epoch;

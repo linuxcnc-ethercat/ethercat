@@ -38,6 +38,8 @@ using std::hex;
 using std::dec;
 using std::setfill;
 using std::setw;
+using std::setprecision;
+using std::fixed;
 using std::left;
 using std::right;
 
@@ -558,8 +560,9 @@ void CommandSlaves::showSlavesJson(
         }
         if (si->dc_supported) {
             cout << "," << endl
-                << "          \"transmission_delay_ns\": "
-                << si->transmission_delay;
+                << "          \"transmission_delay\": "
+                << setprecision(9) << fixed
+                << (si->transmission_delay / 1e9);
         }
         cout << endl
             << "        }," << endl
@@ -596,24 +599,27 @@ void CommandSlaves::showSlavesJson(
 
             if (si->dc_supported) {
                 cout << "," << endl
-                    << "            \"receive_time_ns\": ";
+                    << "            \"receive_time\": ";
                 if (!si->ports[i].link.loop_closed) {
-                    cout << si->ports[i].receive_time;
+                    cout << setprecision(9) << fixed
+                        << (si->ports[i].receive_time / 1e9);
                 } else {
                     cout << "null";
                 }
                 cout << "," << endl
-                    << "            \"diff_ns\": ";
+                    << "            \"diff\": ";
                 if (!si->ports[i].link.loop_closed) {
-                    cout << si->ports[i].receive_time -
-                        si->ports[0].receive_time;
+                    cout << setprecision(9) << fixed
+                        << ((si->ports[i].receive_time -
+                                    si->ports[0].receive_time) / 1e9);
                 } else {
                     cout << "null";
                 }
                 cout << "," << endl
-                    << "            \"next_dc_ns\": ";
+                    << "            \"next_dc\": ";
                 if (!si->ports[i].link.loop_closed) {
-                    cout << si->ports[i].delay_to_next_dc;
+                    cout << setprecision(9) << fixed
+                        << (si->ports[i].delay_to_next_dc / 1e9);
                 } else {
                     cout << "null";
                 }
@@ -718,8 +724,9 @@ void CommandSlaves::showSlavesJson(
                 << (si->general_flags.enable_not_lrw ? "true" : "false")
                 << endl
                 << "          }," << endl
-                << "          \"current_on_ebus_ma\": "
-                << si->current_on_ebus << endl
+                << "          \"current_on_ebus\": "
+                << setprecision(3) << fixed
+                << (si->current_on_ebus / 1000.0) << endl
                 << "        }";
         }
 

@@ -147,6 +147,14 @@ struct ec_slave_config {
 #endif
 
     ec_coe_emerg_ring_t emerg_ring; /**< CoE emergency ring buffer. */
+
+    // Runtime re-initialization hold ("ReinitHold" feature flag).
+    unsigned int reinit_done; /**< Application confirmed its config for the
+                                attached slave instance; cleared on attach. */
+    unsigned int reinit_held; /**< Config FSM parked in PREOP. */
+    unsigned int reinit_timed_out; /**< Last hold expired. */
+    unsigned long reinit_hold_jiffies; /**< Start of the current hold. */
+    uint32_t reinit_hold_count; /**< Number of holds so far. */
 };
 
 /****************************************************************************/

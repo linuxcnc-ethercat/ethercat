@@ -128,4 +128,5 @@ LIBETHERCAT_1.6.13 {
 	global:
 		ecrt_master_sii_read;
 		ecrt_master_sii_write;
+		ecrt_slave_config_reinit_done;
 } LIBETHERCAT_1.6.10;

@@ -113,6 +113,10 @@ void ec_fsm_slave_config_enter_op(ec_fsm_slave_config_t *, ec_datagram_t *);
 void ec_fsm_slave_config_state_end(ec_fsm_slave_config_t *, ec_datagram_t *);
 void ec_fsm_slave_config_state_error(ec_fsm_slave_config_t *, ec_datagram_t *);
 
+void ec_fsm_slave_config_enter_reinit_check(ec_fsm_slave_config_t *, ec_datagram_t *);
+void ec_fsm_slave_config_state_reinit_hold(ec_fsm_slave_config_t *, ec_datagram_t *);
+void ec_fsm_slave_config_state_reinit_resume(ec_fsm_slave_config_t *, ec_datagram_t *);
+
 void ec_fsm_slave_config_reconfigure(ec_fsm_slave_config_t *, ec_datagram_t *);
 
 
@@ -189,8 +193,90 @@ int ec_fsm_slave_config_running(
         const ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
+    /* A held FSM is parked, not running: no datagrams, and fsm_slave keeps
+     * serving mailbox requests (see ec_fsm_slave_state_ready()). */
     return fsm->state != ec_fsm_slave_config_state_end
-        && fsm->state != ec_fsm_slave_config_state_error;
+        && fsm->state != ec_fsm_slave_config_state_error
+        && fsm->state != ec_fsm_slave_config_state_reinit_hold;
+}
+
+/****************************************************************************/
+
+/**
+ * \return true, if the state machine is parked in PREOP waiting for the
+ * application (feature flag "ReinitHold").
+ */
+int ec_fsm_slave_config_held(
+        const ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    return fsm->state == ec_fsm_slave_config_state_reinit_hold;
+}
+
+/****************************************************************************/
+
+/** Re-evaluates a parked (held) state machine, once per fsm_slave tick.
+ *
+ * Releases on ecrt_slave_config_reinit_done(), aborts if the config was
+ * removed or the slave left PREOP by itself, fails with the error flag set
+ * on timeout.
+ *
+ * \return true, if the hold was released and the FSM must be executed.
+ */
+int ec_fsm_slave_config_check_hold(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_slave_config_t *config = slave->config;
+    unsigned long timeout_ms = EC_REINIT_HOLD_TIMEOUT_MS;
+    unsigned long held_ms;
+    ec_flag_t *flag;
+
+    if (!config) { // config removed in the meantime
+        EC_SLAVE_DBG(slave, 1, "Re-initialization hold dropped:"
+                " configuration removed.\n");
+        fsm->state = ec_fsm_slave_config_state_error;
+        return 0;
+    }
+
+    if (config->reinit_done) {
+        config->reinit_held = 0;
+        EC_SLAVE_DBG(slave, 1, "Re-initialization hold released.\n");
+        fsm->state = ec_fsm_slave_config_state_reinit_resume;
+        return 1;
+    }
+
+    if ((slave->current_state & ~EC_SLAVE_STATE_ACK_ERR)
+            != EC_SLAVE_STATE_PREOP) {
+        /* Slave left PREOP by itself; abort, state_ready reconfigures and
+         * holds again at PREOP. */
+        config->reinit_held = 0;
+        EC_SLAVE_WARN(slave, "Left PREOP during re-initialization hold;"
+                " restarting configuration.\n");
+        fsm->state = ec_fsm_slave_config_state_error;
+        return 0;
+    }
+
+    flag = ec_slave_config_find_flag(config, "ReinitHoldTimeoutMs");
+    if (flag && flag->value > 0) {
+        timeout_ms = (unsigned long) flag->value;
+    }
+
+    held_ms = (jiffies - config->reinit_hold_jiffies) * 1000 / HZ;
+    if (held_ms >= timeout_ms) {
+        config->reinit_held = 0;
+        config->reinit_timed_out = 1;
+        slave->error_flag = 1;
+        EC_SLAVE_ERR(slave, "Re-initialization hold timed out after"
+                " %lu ms; leaving the slave in PREOP. Call"
+                " ecrt_slave_config_reinit_done() or rescan to retry.\n",
+                held_ms);
+        fsm->state = ec_fsm_slave_config_state_error;
+        return 0;
+    }
+
+    return 0; // still holding
 }
 
 /****************************************************************************/
@@ -802,7 +888,7 @@ void ec_fsm_slave_config_state_boot_preop(
             return;
         }
 
-        ec_fsm_slave_config_enter_sdo_conf(fsm, datagram);
+        ec_fsm_slave_config_enter_reinit_check(fsm, datagram);
     }
     else {
         EC_SLAVE_DBG(slave, 1, "Assigning SII access back to EtherCAT.\n");
@@ -819,7 +905,7 @@ void ec_fsm_slave_config_state_boot_preop(
         return;
     }
 
-    ec_fsm_slave_config_enter_sdo_conf(fsm, datagram);
+    ec_fsm_slave_config_enter_reinit_check(fsm, datagram);
 #endif
 }
 
@@ -858,10 +944,82 @@ cont_sdo_conf:
         return;
     }
 
-    ec_fsm_slave_config_enter_sdo_conf(fsm, datagram);
+    ec_fsm_slave_config_enter_reinit_check(fsm, datagram);
 }
 
 #endif
+
+/****************************************************************************/
+
+/** Decide whether to park in PREOP for application re-initialization.
+ *
+ * Entered in PREOP before any SDO / PDO / DC configuration. Holds when the
+ * "ReinitHold" flag is set and the application has not confirmed this slave
+ * instance; otherwise continues into the SDO configuration as before.
+ */
+void ec_fsm_slave_config_enter_reinit_check(
+        ec_fsm_slave_config_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_slave_config_t *config = slave->config;
+    ec_flag_t *flag;
+
+    if (config && !config->reinit_done) {
+        flag = ec_slave_config_find_flag(config, "ReinitHold");
+        if (flag && flag->value) {
+            config->reinit_held = 1;
+            config->reinit_timed_out = 0;
+            config->reinit_hold_jiffies = jiffies;
+            config->reinit_hold_count++;
+            EC_SLAVE_INFO(slave, "Holding in PREOP until the application"
+                    " confirms its re-initialization (hold #%u).\n",
+                    config->reinit_hold_count);
+            fsm->state = ec_fsm_slave_config_state_reinit_hold;
+            return;
+        }
+    }
+
+    ec_fsm_slave_config_enter_sdo_conf(fsm, datagram);
+}
+
+/****************************************************************************/
+
+/** Slave configuration state: REINIT HOLD.
+ *
+ * Parking state, never executed (not "running"); re-evaluated by
+ * ec_fsm_slave_config_check_hold() from the per-slave FSM.
+ */
+void ec_fsm_slave_config_state_reinit_hold(
+        ec_fsm_slave_config_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+}
+
+/****************************************************************************/
+
+/** Slave configuration state: REINIT RESUME.
+ *
+ * First state after a released hold; continues into the SDO configuration.
+ */
+void ec_fsm_slave_config_state_reinit_resume(
+        ec_fsm_slave_config_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (!slave->config) { // config removed in the meantime
+        ec_fsm_slave_config_reconfigure(fsm, datagram);
+        return;
+    }
+
+    EC_SLAVE_DBG(slave, 1, "Resuming configuration after"
+            " re-initialization hold.\n");
+    ec_fsm_slave_config_enter_sdo_conf(fsm, datagram);
+}
 
 /****************************************************************************/
 

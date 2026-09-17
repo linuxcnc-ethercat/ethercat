@@ -511,6 +511,52 @@ int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
 
 /****************************************************************************/
 
+int ecrt_master_sii_read(ec_master_t *master, uint16_t slave_position,
+        uint16_t offset, uint16_t *words, size_t nwords)
+{
+    ec_ioctl_slave_sii_t io;
+    int ret;
+
+    io.slave_position = slave_position;
+    io.offset = offset;
+    io.nwords = nwords;
+    io.words = words;
+
+    ret = ioctl(master->fd, EC_IOCTL_SLAVE_SII_READ, &io);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        fprintf(stderr, "Failed to read SII: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+        return -EC_IOCTL_ERRNO(ret);
+    }
+
+    return 0;
+}
+
+/****************************************************************************/
+
+int ecrt_master_sii_write(ec_master_t *master, uint16_t slave_position,
+        uint16_t offset, const uint16_t *words, size_t nwords)
+{
+    ec_ioctl_slave_sii_t io;
+    int ret;
+
+    io.slave_position = slave_position;
+    io.offset = offset;
+    io.nwords = nwords;
+    io.words = (uint16_t *) words; // will only be read in ioctl()
+
+    ret = ioctl(master->fd, EC_IOCTL_SLAVE_SII_WRITE, &io);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        fprintf(stderr, "Failed to write SII: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+        return -EC_IOCTL_ERRNO(ret);
+    }
+
+    return 0;
+}
+
+/****************************************************************************/
+
 int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
         uint8_t drive_no, uint16_t idn, const uint8_t *data, size_t data_size,
         uint16_t *error_code)

@@ -47,7 +47,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 43
+#define EC_IOCTL_VERSION_MAGIC 44
 
 // Command-line tool
 // NOLINTBEGIN(whitespace/line_length)
@@ -164,6 +164,7 @@
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x66, size_t)
 #define EC_IOCTL_SII_CACHING           EC_IOW(0x67, uint32_t)
 #define EC_IOCTL_SC_PDO_MODE           EC_IOW(0x68, ec_ioctl_config_t)
+#define EC_IOCTL_SC_REINIT_DONE         EC_IO(0x69)
 // NOLINTEND
 
 /****************************************************************************/
@@ -260,6 +261,7 @@ typedef struct {
     uint8_t al_state;
     uint8_t error_flag;
     uint8_t ready;
+    uint8_t reinit_held;
     uint8_t sync_count;
     uint16_t sdo_count;
     uint32_t sii_nwords;

@@ -79,6 +79,9 @@ int ec_fsm_slave_config_exec(ec_fsm_slave_config_t *, ec_datagram_t *);
 int ec_fsm_slave_config_running(const ec_fsm_slave_config_t *);
 int ec_fsm_slave_config_success(const ec_fsm_slave_config_t *);
 
+int ec_fsm_slave_config_held(const ec_fsm_slave_config_t *);
+int ec_fsm_slave_config_check_hold(ec_fsm_slave_config_t *);
+
 /****************************************************************************/
 
 #endif

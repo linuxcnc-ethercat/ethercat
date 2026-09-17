@@ -262,6 +262,8 @@ void ec_slave_set_state(ec_slave_t *, ec_slave_state_t);
 
 // SII
 int ec_slave_analyze_sii_data(ec_slave_t *);
+int ec_slave_sii_find_category(const ec_slave_t *, uint16_t, size_t *);
+void ec_slave_sii_update(ec_slave_t *, uint16_t, const uint16_t *, size_t);
 
 // misc.
 ec_sync_t *ec_slave_get_sync(ec_slave_t *, uint8_t);

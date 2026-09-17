@@ -395,6 +395,7 @@ ec_domain_t *ecrt_master_create_domain_err(ec_master_t *);
 ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
         uint16_t, uint32_t, uint32_t);
 
+void ec_master_clear_sii_cache(ec_master_t *);
 int ec_master_cache_sii_page(ec_master_t *, const ec_sii_page_t *);
 ec_sii_page_t *ec_master_find_cached_sii_page(const ec_master_t *,
         uint32_t, uint32_t, uint32_t, uint32_t, uint16_t);

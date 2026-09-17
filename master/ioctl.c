@@ -287,6 +287,7 @@ static ATTRIBUTES int ec_ioctl_slave(
     data.al_state = slave->current_state;
     data.error_flag = slave->error_flag;
     data.ready = ec_fsm_slave_is_ready(&slave->fsm);
+    data.reinit_held = slave->config ? slave->config->reinit_held : 0;
 
     data.sync_count = slave->sii.sync_count;
     data.sdo_count = ec_slave_sdo_count(slave);
@@ -3349,6 +3350,42 @@ static ATTRIBUTES int ec_ioctl_sc_state_timeout(
 
 /****************************************************************************/
 
+/** Confirms the application's re-initialization of a slave.
+ *
+ * The ioctl() argument is the configuration index (as for
+ * EC_IOCTL_SELECT_REF_CLOCK).
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_sc_reinit_done(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    unsigned long config_index = (unsigned long) arg;
+    ec_slave_config_t *sc;
+
+    if (unlikely(!ctx->requested)) {
+        return -EPERM;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        return -EINTR;
+    }
+
+    if (!(sc = ec_master_get_config(master, config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    up(&master->master_sem); /** \todo sc could be invalidated */
+
+    return ecrt_slave_config_reinit_done(sc);
+}
+
+/****************************************************************************/
+
 #ifdef EC_EOE
 
 /** Configures EoE IP parameters.
@@ -5515,6 +5552,13 @@ static long ec_ioctl_nrt
                 break;
             }
             ret = ec_ioctl_sc_state_timeout(master, arg, ctx);
+            break;
+        case EC_IOCTL_SC_REINIT_DONE:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_sc_reinit_done(master, arg, ctx);
             break;
 #ifdef EC_EOE
         case EC_IOCTL_SC_EOE_IP_PARAM:

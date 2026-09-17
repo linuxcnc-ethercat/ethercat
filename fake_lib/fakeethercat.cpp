@@ -1087,6 +1087,13 @@ int ecrt_slave_config_state_timeout(
     return 0;
 }
 
+int ecrt_slave_config_reinit_done(
+        ec_slave_config_t *sc /**< Slave configuration. */
+)
+{
+    return 0;
+}
+
 /*****************************************************************************
  * Domain
  ****************************************************************************/

@@ -246,6 +246,7 @@ void CommandSlaves::showSlaves(
             << "Device: " << (si->device_index ? "Backup" : "Main") << endl
             << "State: " << alStateString(si->al_state) << endl
             << "Flag: " << (si->error_flag ? 'E' : '+') << endl
+            << "Reinit hold: " << (si->reinit_held ? "yes" : "no") << endl
             << "Identity:" << endl
             << "  Vendor Id:       0x"
             << hex << setfill('0')

@@ -101,6 +101,12 @@ void ec_slave_config_init(
     sc->dc_sync[0].shift_time = 0U;
     sc->dc_sync[1].shift_time = 0;
 
+    sc->reinit_done = 0;
+    sc->reinit_held = 0;
+    sc->reinit_timed_out = 0;
+    sc->reinit_hold_jiffies = 0;
+    sc->reinit_hold_count = 0;
+
     INIT_LIST_HEAD(&sc->sdo_configs);
     INIT_LIST_HEAD(&sc->sdo_requests);
     INIT_LIST_HEAD(&sc->soe_requests);
@@ -301,6 +307,12 @@ int ec_slave_config_attach(
     slave->config = sc;
     sc->slave = slave;
 
+    /* A (re-)attached slave is a new instance (fresh scan after a topology
+     * change); the application's confirmation covered the previous one. */
+    sc->reinit_done = 0;
+    sc->reinit_held = 0;
+    sc->reinit_timed_out = 0;
+
     EC_CONFIG_DBG(sc, 1, "Attached slave %u.\n", slave->ring_position);
     return 0;
 }
@@ -327,6 +339,7 @@ void ec_slave_config_detach(
         }
 
         sc->slave = NULL;
+        sc->reinit_held = 0;
     }
 }
 
@@ -1390,13 +1403,52 @@ int ecrt_slave_config_state(const ec_slave_config_t *sc,
         state->position = slave->ring_position;
         state->error_flag = slave->error_flag ? 1 : 0;
         state->ready = ec_fsm_slave_is_ready(&slave->fsm) ? 1 : 0;
+        state->reinit_pending = sc->reinit_held ? 1 : 0;
+        state->reinit_timeout = sc->reinit_timed_out ? 1 : 0;
     } else {
         state->operational = 0;
         state->al_state = EC_SLAVE_STATE_UNKNOWN;
         state->position = (uint16_t) -1;
         state->error_flag = 0;
         state->ready = 0;
+        state->reinit_pending = 0;
+        state->reinit_timeout = 0;
     }
+    return 0;
+}
+
+/****************************************************************************/
+
+int ecrt_slave_config_reinit_done(ec_slave_config_t *sc)
+{
+    ec_slave_t *slave;
+
+    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p)\n", __func__, sc);
+
+    down(&sc->master->master_sem);
+
+    slave = sc->slave;
+
+    if (sc->reinit_timed_out) {
+        /* Late confirmation: do not trust it. Clear the error and
+         * reconfigure from scratch, which holds the slave again. */
+        sc->reinit_timed_out = 0;
+        if (slave) {
+            slave->error_flag = 0;
+            slave->force_config = 1;
+            EC_SLAVE_INFO(slave, "Re-initialization confirmed after the"
+                    " hold had timed out; reconfiguring (the slave will"
+                    " be held again).\n");
+        }
+    } else {
+        sc->reinit_done = 1;
+        if (sc->reinit_held && slave) {
+            EC_SLAVE_INFO(slave, "Re-initialization confirmed; resuming"
+                    " configuration.\n");
+        }
+    }
+
+    up(&sc->master->master_sem);
     return 0;
 }
 
@@ -1652,6 +1704,7 @@ EXPORT_SYMBOL(ecrt_slave_config_eoe_dns_address);
 EXPORT_SYMBOL(ecrt_slave_config_eoe_hostname);
 #endif
 EXPORT_SYMBOL(ecrt_slave_config_state_timeout);
+EXPORT_SYMBOL(ecrt_slave_config_reinit_done);
 
 /** \endcond */
 

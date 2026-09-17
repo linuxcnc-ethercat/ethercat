@@ -43,9 +43,19 @@ jobs:
       - name: Install build dependencies
         env:
           DEBIAN_FRONTEND: noninteractive
+          DISTRO: ${{ matrix.distro }}
         run: |
           echo 'Acquire::Retries "10";' > /etc/apt/apt.conf.d/80-retries
           echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries
+          if [ "$DISTRO" = debian-11 ]; then
+              # bullseye is EOL: main pool is on archive.debian.org; the
+              # security pool is purged from deb.debian.org and not archived
+              # yet, so use the last snapshot (the image ships those versions)
+              sed -i -e 's|http://deb.debian.org/debian-security|http://snapshot.debian.org/archive/debian-security/20260831T000000Z|' \
+                     -e 's|http://deb.debian.org/debian|http://archive.debian.org/debian|' \
+                     /etc/apt/sources.list
+              echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/90-archive
+          fi
           install_pkgs() {
               apt-get update && \
               apt-get install -y --no-install-recommends \

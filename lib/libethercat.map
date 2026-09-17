@@ -124,8 +124,14 @@ LIBETHERCAT_1.6.10 {
 		ecrt_sdo_get_info_entry;
 } LIBETHERCAT_1.6;
 
+LIBETHERCAT_1.6.13 {
+	global:
+		ecrt_master_sii_read;
+		ecrt_master_sii_write;
+} LIBETHERCAT_1.6.10;
+
 LIBETHERCAT_1.7 {
 	global:
 		ecrt_master_sii_caching;
 		ecrt_slave_config_pdo_mode;
-} LIBETHERCAT_1.6.10;
+} LIBETHERCAT_1.6.13;

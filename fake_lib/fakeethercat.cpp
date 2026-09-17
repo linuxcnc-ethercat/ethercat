@@ -363,6 +363,29 @@ int ecrt_master_sdo_upload(
     return 0;
 }
 
+int ecrt_master_sii_read(
+        ec_master_t *master,     /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t offset,         /**< Word offset into the SII. */
+        uint16_t *words,         /**< Target buffer. */
+        size_t nwords            /**< Number of words to read. */
+)
+{
+    memset(words, 0, nwords * sizeof(uint16_t));
+    return 0;
+}
+
+int ecrt_master_sii_write(
+        ec_master_t *master,     /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t offset,         /**< Word offset into the SII. */
+        const uint16_t *words,   /**< Words to write. */
+        size_t nwords            /**< Number of words to write. */
+)
+{
+    return 0;
+}
+
 int ecrt_master_write_idn(
         ec_master_t *master,     /**< EtherCAT master. */
         uint16_t slave_position, /**< Slave position. */

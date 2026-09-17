@@ -32,6 +32,12 @@
  * and to configure and activate the bus.
  *
  *
+ * Changes in the linuxcnc-ethercat fork (1.6.9+):
+ *
+ * - Added ecrt_master_sii_read() and ecrt_master_sii_write() to let an
+ *   application read and write a slave's SII (EEPROM) contents, and the
+ *   EC_HAVE_SII_ACCESS definition to check for their existence.
+ *
  * Changes in version 1.6.0:
  *
  * - Added the ecrt_master_scan_progress() method, the
@@ -241,6 +247,11 @@
 /** Defined, if the method ecrt_slave_config_state_timeout() is available.
  */
 #define EC_HAVE_STATE_TIMEOUT
+
+/** Defined, if the methods ecrt_master_sii_read() and
+ * ecrt_master_sii_write() are available.
+ */
+#define EC_HAVE_SII_ACCESS
 
 /****************************************************************************/
 
@@ -1050,6 +1061,47 @@ EC_PUBLIC_API int ecrt_master_sdo_upload(
         size_t target_size, /**< Size of the target buffer. */
         size_t *result_size, /**< Uploaded data size. */
         uint32_t *abort_code /**< Abort code of the SDO upload. */
+        );
+
+/** Reads words from a slave's SII (EEPROM) image.
+ *
+ * Returns the master's copy from the last bus scan, updated with any SII
+ * writes since. No bus traffic. \a offset and \a nwords are 16-bit words.
+ *
+ * \apiusage{master_any,blocking}
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code (-EINVAL if the range exceeds the SII image).
+ */
+EC_PUBLIC_API int ecrt_master_sii_read(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t offset, /**< Word offset into the SII. */
+        uint16_t *words, /**< Target buffer for \a nwords words. */
+        size_t nwords /**< Number of words to read. */
+        );
+
+/** Writes words to a slave's SII (EEPROM).
+ *
+ * Blocks until the master has written the EEPROM. The in-memory SII image
+ * and parsed category data (e.g. CoE details) are updated, so subsequent
+ * reads and slave configuration see the new contents without a rescan.
+ * Processed in any AL state, including OP, like \c ethercat \c sii_write.
+ *
+ * No validity or checksum checks; callers writing words 0 to 7 must keep
+ * the checksum in word 7 correct.
+ *
+ * \apiusage{master_any,blocking}
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
+ */
+EC_PUBLIC_API int ecrt_master_sii_write(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t offset, /**< Word offset into the SII. */
+        const uint16_t *words, /**< Words to write. */
+        size_t nwords /**< Number of words to write. */
         );
 
 /** Executes an SoE write request.

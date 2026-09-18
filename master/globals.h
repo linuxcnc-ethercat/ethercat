@@ -68,6 +68,10 @@
     after slave entered PREOP state. */
 #define EC_WAIT_SDO_DICT 3
 
+/** Default time [ms] a slave configuration with the "ReinitHold" feature
+ * flag is held in PREOP waiting for ecrt_slave_config_reinit_done(). */
+#define EC_REINIT_HOLD_TIMEOUT_MS 30000
+
 /** Minimum size of a buffer used with ec_state_string(). */
 #define EC_STATE_STRING_SIZE 32
 

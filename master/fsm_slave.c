@@ -429,12 +429,21 @@ void ec_fsm_slave_state_ready(
 
         if (slave->current_state != slave->requested_state
                 || slave->force_config) {
+            if (ec_fsm_slave_config_held(&fsm->fsm_slave_config)) {
+                /* Parked in PREOP ("ReinitHold"). Keep serving mailbox
+                 * requests below until released, timed out, or the slave
+                 * leaves PREOP by itself. */
+                if (!ec_fsm_slave_config_check_hold(
+                            &fsm->fsm_slave_config)) {
+                    goto process_requests;
+                }
+            }
             /* If the slave just dropped to SAFEOP after a sync manager
              * watchdog timeout (AL code 0x001B) and the application
              * still wants OP, the existing configuration is presumed
              * valid and we take the SAFEOP -> OP short cut instead of
              * re-running init / SM / PDO / DC setup. */
-            if (!slave->force_config
+            else if (!slave->force_config
                     && slave->current_state == EC_SLAVE_STATE_SAFEOP
                     && slave->requested_state == EC_SLAVE_STATE_OP
                     && slave->last_al_error == 0x001B) {
@@ -456,6 +465,7 @@ void ec_fsm_slave_state_ready(
         }
     }
 
+process_requests:
     // Check for pending external SDO requests
     if (ec_fsm_slave_action_process_sdo(fsm, datagram)) {
         return;

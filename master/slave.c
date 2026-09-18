@@ -376,6 +376,103 @@ out_zero:
 
 /****************************************************************************/
 
+/** Locates a category in the slave's in-memory SII image.
+ *
+ * Same bounds checks as the scan-time category walk in fsm_slave_scan.c.
+ *
+ * \return Word offset of the category data (after the two header words),
+ * or -1 if absent or the image is truncated.
+ */
+int ec_slave_sii_find_category(
+        const ec_slave_t *slave, /**< EtherCAT slave. */
+        uint16_t cat_type, /**< Category type (e.g. 0x001E for general). */
+        size_t *cat_words /**< Category data size in words (output). */
+        )
+{
+    const uint16_t *cat_word;
+    uint16_t type;
+    size_t size;
+
+    if (!slave->sii_words
+            || slave->sii_nwords < EC_FIRST_SII_CATEGORY_OFFSET + 1) {
+        return -1;
+    }
+
+    cat_word = slave->sii_words + EC_FIRST_SII_CATEGORY_OFFSET;
+    while (EC_READ_U16(cat_word) != 0xFFFF) {
+        if (cat_word + 2 - slave->sii_words > slave->sii_nwords) {
+            return -1; // header incomplete
+        }
+        type = EC_READ_U16(cat_word) & 0x7FFF;
+        size = EC_READ_U16(cat_word + 1);
+        cat_word += 2;
+        if (cat_word + size - slave->sii_words > slave->sii_nwords) {
+            return -1; // data incomplete
+        }
+        if (type == cat_type) {
+            if (cat_words) {
+                *cat_words = size;
+            }
+            return cat_word - slave->sii_words;
+        }
+        cat_word += size;
+        if (cat_word - slave->sii_words >= slave->sii_nwords) {
+            return -1; // next header missing
+        }
+    }
+
+    return -1;
+}
+
+/****************************************************************************/
+
+/** Mirrors a completed SII write into the in-memory image and re-parses the
+ * general category if it was touched, so SII reads and
+ * slave->sii.coe_details (checked by fsm_pdo) do not go stale until the
+ * next rescan.
+ */
+void ec_slave_sii_update(
+        ec_slave_t *slave, /**< EtherCAT slave. */
+        uint16_t offset, /**< Word offset the write started at. */
+        const uint16_t *words, /**< Written words. */
+        size_t nwords /**< Number of written words. */
+        )
+{
+    int gen_offset;
+    size_t gen_words, n;
+
+    if (!slave->sii_words || offset >= slave->sii_nwords) {
+        return; // outside the image we know about
+    }
+
+    n = nwords;
+    if (offset + n > slave->sii_nwords) {
+        n = slave->sii_nwords - offset;
+    }
+    memcpy(slave->sii_words + offset, words, n * 2);
+
+    gen_offset = ec_slave_sii_find_category(slave, 0x001E, &gen_words);
+    if (gen_offset < 0) {
+        return; // no general category
+    }
+
+    if (offset < gen_offset + gen_words && offset + n > gen_offset) {
+        // general category (CoE details, general flags, ...) was written
+        if (ec_slave_fetch_sii_general(slave,
+                    (const uint8_t *) (slave->sii_words + gen_offset),
+                    gen_words * 2) == 0) {
+            EC_SLAVE_INFO(slave, "SII general category re-parsed after"
+                    " write: PDO assign %s, PDO configuration %s.\n",
+                    slave->sii.coe_details.enable_pdo_assign ?
+                    "enabled" : "disabled",
+                    slave->sii.coe_details.enable_pdo_configuration ?
+                    "enabled" : "disabled");
+        }
+    }
+}
+
+/****************************************************************************/
+
 /**
    Fetches data from a GENERAL category.
    \return 0 in case of success, else < 0

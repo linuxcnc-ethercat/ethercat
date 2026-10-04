@@ -47,7 +47,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 42
+#define EC_IOCTL_VERSION_MAGIC 43
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -161,6 +161,7 @@
 #define EC_IOCTL_VOE_EXEC             EC_IOWR(0x64, ec_ioctl_voe_t)
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x65, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x66, size_t)
+#define EC_IOCTL_SC_REINIT_DONE         EC_IO(0x67)
 
 /****************************************************************************/
 
@@ -255,6 +256,7 @@ typedef struct {
     uint8_t al_state;
     uint8_t error_flag;
     uint8_t ready;
+    uint8_t reinit_held;
     uint8_t sync_count;
     uint16_t sdo_count;
     uint32_t sii_nwords;

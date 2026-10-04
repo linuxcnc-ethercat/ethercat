@@ -1,3 +1,19 @@
+# Unreleased (linuxcnc-ethercat fork)
+
+- Refresh the in-memory SII image and the parsed CoE details after an SII
+  write, so a PDO assignment enabled at runtime is honoured without a rescan.
+- Added `ecrt_master_sii_read()` / `ecrt_master_sii_write()` (userspace
+  library and kernel API) over the existing SII ioctls.
+- Added the `ReinitHold` / `ReinitHoldTimeoutMs` feature flags,
+  `ecrt_slave_config_reinit_done()` and the `reinit_pending` /
+  `reinit_timeout` bits in `ec_slave_config_state_t`: opt-in per-slave hold
+  in PREOP for slaves that returned to the bus, so the application can
+  re-apply volatile driver-level configuration before the master takes them
+  to SAFEOP/OP. A held slave that is not confirmed within the timeout
+  (default 30 s) is left in PREOP with its error flag set; the master never
+  advances it on its own. `ethercat slaves -v` shows the hold state.
+- The ioctl interface version magic is now 43.
+
 # Version 1.6.9
 
 - Protect datagram injection mechanism against re-ordering.

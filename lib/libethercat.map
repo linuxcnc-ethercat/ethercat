@@ -123,3 +123,10 @@ LIBETHERCAT_1.6.10 {
 		ecrt_sdo_info_get;
 		ecrt_sdo_get_info_entry;
 } LIBETHERCAT_1.6;
+
+LIBETHERCAT_1.6.13 {
+	global:
+		ecrt_master_sii_read;
+		ecrt_master_sii_write;
+		ecrt_slave_config_reinit_done;
+} LIBETHERCAT_1.6.10;

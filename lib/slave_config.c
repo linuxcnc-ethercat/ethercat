@@ -1063,3 +1063,20 @@ int ecrt_slave_config_state_timeout(ec_slave_config_t *sc,
 }
 
 /****************************************************************************/
+
+int ecrt_slave_config_reinit_done(ec_slave_config_t *sc)
+{
+    int ret;
+
+    ret = ioctl(sc->master->fd, EC_IOCTL_SC_REINIT_DONE,
+            (uint32_t) sc->index);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        fprintf(stderr, "Failed to confirm re-initialization: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+        return -EC_IOCTL_ERRNO(ret);
+    }
+
+    return 0;
+}
+
+/****************************************************************************/

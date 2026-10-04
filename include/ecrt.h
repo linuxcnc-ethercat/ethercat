@@ -32,6 +32,18 @@
  * and to configure and activate the bus.
  *
  *
+ * Changes in the linuxcnc-ethercat fork (1.6.9+):
+ *
+ * - Added ecrt_master_sii_read() and ecrt_master_sii_write() to let an
+ *   application read and write a slave's SII (EEPROM) contents, and the
+ *   EC_HAVE_SII_ACCESS definition to check for their existence.
+ * - Added the "ReinitHold" / "ReinitHoldTimeoutMs" feature flags, the
+ *   ecrt_slave_config_reinit_done() method and the \a reinit_pending /
+ *   \a reinit_timeout bits in ec_slave_config_state_t, so an application can
+ *   re-apply driver-level configuration to a slave that returned to the bus
+ *   (e.g. after a power cycle) before the master takes it beyond PREOP.
+ *   EC_HAVE_REINIT_HOLD is defined to check for their existence.
+ *
  * Changes in version 1.6.0:
  *
  * - Added the ecrt_master_scan_progress() method, the
@@ -242,6 +254,17 @@
  */
 #define EC_HAVE_STATE_TIMEOUT
 
+/** Defined, if the methods ecrt_master_sii_read() and
+ * ecrt_master_sii_write() are available.
+ */
+#define EC_HAVE_SII_ACCESS
+
+/** Defined, if the "ReinitHold" feature flag, the method
+ * ecrt_slave_config_reinit_done() and the \a reinit_pending /
+ * \a reinit_timeout bits in ec_slave_config_state_t are available.
+ */
+#define EC_HAVE_REINIT_HOLD
+
 /****************************************************************************/
 
 /** Symbol visibility control macro.
@@ -403,6 +426,16 @@ typedef struct  {
     unsigned int error_flag : 1; /**< The slave has an unrecoverable error. */
     unsigned int ready : 1;      /**< The slave is ready for external requests
                                     (mailbox and SDO). */
+    unsigned int reinit_pending : 1; /**< The master holds the slave in PREOP
+                                        waiting for the application to
+                                        re-apply its configuration and call
+                                        ecrt_slave_config_reinit_done()
+                                        (feature flag "ReinitHold"). */
+    unsigned int reinit_timeout : 1; /**< The last re-initialization hold
+                                        expired without confirmation; the
+                                        slave was left in PREOP with its
+                                        error flag set. Cleared by
+                                        ecrt_slave_config_reinit_done(). */
 } ec_slave_config_state_t;
 
 /****************************************************************************/
@@ -1050,6 +1083,47 @@ EC_PUBLIC_API int ecrt_master_sdo_upload(
         size_t target_size, /**< Size of the target buffer. */
         size_t *result_size, /**< Uploaded data size. */
         uint32_t *abort_code /**< Abort code of the SDO upload. */
+        );
+
+/** Reads words from a slave's SII (EEPROM) image.
+ *
+ * Returns the master's copy from the last bus scan, updated with any SII
+ * writes since. No bus traffic. \a offset and \a nwords are 16-bit words.
+ *
+ * \apiusage{master_any,blocking}
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code (-EINVAL if the range exceeds the SII image).
+ */
+EC_PUBLIC_API int ecrt_master_sii_read(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t offset, /**< Word offset into the SII. */
+        uint16_t *words, /**< Target buffer for \a nwords words. */
+        size_t nwords /**< Number of words to read. */
+        );
+
+/** Writes words to a slave's SII (EEPROM).
+ *
+ * Blocks until the master has written the EEPROM. The in-memory SII image
+ * and parsed category data (e.g. CoE details) are updated, so subsequent
+ * reads and slave configuration see the new contents without a rescan.
+ * Processed in any AL state, including OP, like \c ethercat \c sii_write.
+ *
+ * No validity or checksum checks; callers writing words 0 to 7 must keep
+ * the checksum in word 7 correct.
+ *
+ * \apiusage{master_any,blocking}
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
+ */
+EC_PUBLIC_API int ecrt_master_sii_write(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t offset, /**< Word offset into the SII. */
+        const uint16_t *words, /**< Words to write. */
+        size_t nwords /**< Number of words to write. */
         );
 
 /** Executes an SoE write request.
@@ -2069,6 +2143,19 @@ EC_PUBLIC_API int ecrt_slave_config_idn(
  * - WaitBeforeSAFEOPms: Number of milliseconds to wait before commanding the
  *   transition from PREOP to SAFEOP. This can be used as a workaround for
  *   slaves that need a little time to initialize.
+ * - ReinitHold: Non-zero holds the slave in PREOP, before any SDO / PDO /
+ *   DC configuration, whenever the master configures a slave instance the
+ *   application has not confirmed with ecrt_slave_config_reinit_done().
+ *   The confirmation is cleared whenever the configuration is attached to
+ *   a new slave object (every rescan after a topology change), so a slave
+ *   that lost power is held until the application re-applied its volatile
+ *   configuration. Mailbox requests are served during the hold. Zero
+ *   (default) keeps the current behavior.
+ * - ReinitHoldTimeoutMs: Maximum hold time in milliseconds (default 30000).
+ *   On expiry the master logs an error, sets the slave's error flag and
+ *   leaves it in PREOP; it never advances a held slave on its own. A later
+ *   ecrt_slave_config_reinit_done() reconfigures the slave from scratch,
+ *   holding it again.
  *
  * This method has to be called in non-realtime context before
  * ecrt_master_activate().
@@ -2255,6 +2342,28 @@ EC_PUBLIC_API int ecrt_slave_config_state_timeout(
         ec_al_state_t from_state, /**< Initial state. */
         ec_al_state_t to_state, /**< Target state. */
         unsigned int timeout_ms /**< Timeout in [ms]. */
+        );
+
+/** Confirms that the application has (re-)applied its configuration to
+ * the slave currently attached to this configuration.
+ *
+ * Used with the "ReinitHold" feature flag. Call it once before
+ * ecrt_master_activate(), and again whenever ecrt_slave_config_state()
+ * reports \a reinit_pending, after re-applying the configuration. The
+ * master then resumes the slave configuration.
+ *
+ * After a timed-out hold (\a reinit_timeout) the confirmation clears the
+ * error flag and reconfigures the slave from scratch, holding it again.
+ * The confirmation is dropped whenever the configuration is attached to a
+ * new slave object after a rescan.
+ *
+ * \apiusage{master_any,blocking}
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
+ */
+EC_PUBLIC_API int ecrt_slave_config_reinit_done(
+        ec_slave_config_t *sc /**< Slave configuration. */
         );
 
 /*****************************************************************************

@@ -1464,12 +1464,15 @@ void ec_fsm_master_state_write_sii(
             request->nwords);
 
     if (request->offset <= 4 && request->offset + request->nwords > 4) {
-        // alias was written
-        slave->sii.alias = EC_READ_U16(request->words + 4);
+        // alias was written (word 4 of the SII, relative to the request)
+        slave->sii.alias = EC_READ_U16(request->words + (4 - request->offset));
         // TODO: read alias from register 0x0012
         slave->effective_alias = slave->sii.alias;
     }
-    // TODO: Evaluate other SII contents!
+
+    // keep the SII image and parsed CoE details in sync with the EEPROM
+    ec_slave_sii_update(slave, request->offset, request->words,
+            request->nwords);
 
     request->state = EC_INT_REQUEST_SUCCESS;
     wake_up_all(&master->request_queue);

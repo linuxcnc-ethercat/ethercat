@@ -287,6 +287,7 @@ static ATTRIBUTES int ec_ioctl_slave(
     data.al_state = slave->current_state;
     data.error_flag = slave->error_flag;
     data.ready = ec_fsm_slave_is_ready(&slave->fsm);
+    data.reinit_held = slave->config ? slave->config->reinit_held : 0;
 
     data.sync_count = slave->sii.sync_count;
     data.sdo_count = ec_slave_sdo_count(slave);
@@ -929,39 +930,37 @@ static ATTRIBUTES int ec_ioctl_slave_sii_read(
         )
 {
     ec_ioctl_slave_sii_t data;
-    const ec_slave_t *slave;
+    unsigned int byte_size;
+    uint16_t *words;
     int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
-        return -EINTR;
-
-    if (!(slave = ec_master_find_slave_const(
-                    master, 0, data.slave_position))) {
-        up(&master->master_sem);
-        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
-                data.slave_position);
+    if (!data.nwords) {
         return -EINVAL;
     }
 
-    if (!data.nwords
-            || data.offset + data.nwords > slave->sii_nwords) {
-        up(&master->master_sem);
-        EC_SLAVE_ERR(slave, "Invalid SII read offset/size %u/%u for slave SII"
-                " size %zu!\n", data.offset, data.nwords, slave->sii_nwords);
-        return -EINVAL;
+    byte_size = sizeof(uint16_t) * data.nwords;
+    if (!(words = kmalloc(byte_size, GFP_KERNEL))) {
+        EC_MASTER_ERR(master, "Failed to allocate %u bytes"
+                " for SII contents.\n", byte_size);
+        return -ENOMEM;
     }
 
-    if (copy_to_user((void __user *) data.words,
-                slave->sii_words + data.offset, data.nwords * 2))
+    retval = ecrt_master_sii_read(master, data.slave_position, data.offset,
+            words, data.nwords);
+    if (retval) {
+        kfree(words);
+        return retval;
+    }
+
+    if (copy_to_user((void __user *) data.words, words, byte_size)) {
         retval = -EFAULT;
-    else
-        retval = 0;
+    }
 
-    up(&master->master_sem);
+    kfree(words);
     return retval;
 }
 
@@ -977,10 +976,9 @@ static ATTRIBUTES int ec_ioctl_slave_sii_write(
         )
 {
     ec_ioctl_slave_sii_t data;
-    ec_slave_t *slave;
     unsigned int byte_size;
     uint16_t *words;
-    ec_sii_write_request_t request;
+    int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1003,54 +1001,11 @@ static ATTRIBUTES int ec_ioctl_slave_sii_write(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem)) {
-        kfree(words);
-        return -EINTR;
-    }
-
-    if (!(slave = ec_master_find_slave(
-                    master, 0, data.slave_position))) {
-        up(&master->master_sem);
-        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
-                data.slave_position);
-        kfree(words);
-        return -EINVAL;
-    }
-
-    // init SII write request
-    INIT_LIST_HEAD(&request.list);
-    request.slave = slave;
-    request.words = words;
-    request.offset = data.offset;
-    request.nwords = data.nwords;
-    request.state = EC_INT_REQUEST_QUEUED;
-
-    // schedule SII write request.
-    list_add_tail(&request.list, &master->sii_requests);
-
-    up(&master->master_sem);
-
-    // wait for processing through FSM
-    if (wait_event_interruptible(master->request_queue,
-                request.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        down(&master->master_sem);
-        if (request.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            up(&master->master_sem);
-            kfree(words);
-            return -EINTR;
-        }
-        up(&master->master_sem);
-    }
-
-    // wait until master FSM has finished processing
-    wait_event(master->request_queue, request.state != EC_INT_REQUEST_BUSY);
+    retval = ecrt_master_sii_write(master, data.slave_position, data.offset,
+            words, data.nwords);
 
     kfree(words);
-
-    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    return retval;
 }
 
 /****************************************************************************/
@@ -3395,6 +3350,42 @@ static ATTRIBUTES int ec_ioctl_sc_state_timeout(
 
 /****************************************************************************/
 
+/** Confirms the application's re-initialization of a slave.
+ *
+ * The ioctl() argument is the configuration index (as for
+ * EC_IOCTL_SELECT_REF_CLOCK).
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_sc_reinit_done(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    unsigned long config_index = (unsigned long) arg;
+    ec_slave_config_t *sc;
+
+    if (unlikely(!ctx->requested)) {
+        return -EPERM;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        return -EINTR;
+    }
+
+    if (!(sc = ec_master_get_config(master, config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    up(&master->master_sem); /** \todo sc could be invalidated */
+
+    return ecrt_slave_config_reinit_done(sc);
+}
+
+/****************************************************************************/
+
 #ifdef EC_EOE
 
 /** Configures EoE IP parameters.
@@ -5561,6 +5552,13 @@ static long ec_ioctl_nrt
                 break;
             }
             ret = ec_ioctl_sc_state_timeout(master, arg, ctx);
+            break;
+        case EC_IOCTL_SC_REINIT_DONE:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_sc_reinit_done(master, arg, ctx);
             break;
 #ifdef EC_EOE
         case EC_IOCTL_SC_EOE_IP_PARAM:

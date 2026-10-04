@@ -3194,6 +3194,95 @@ int ecrt_master_sdo_download_complete(ec_master_t *master,
 
 /****************************************************************************/
 
+int ecrt_master_sii_read(ec_master_t *master, uint16_t slave_position,
+        uint16_t offset, uint16_t *words, size_t nwords)
+{
+    const ec_slave_t *slave;
+
+    if (!nwords) {
+        return -EINVAL;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        return -EINTR;
+    }
+
+    if (!(slave = ec_master_find_slave_const(master, 0, slave_position))) {
+        up(&master->master_sem);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
+        return -EINVAL;
+    }
+
+    if ((size_t) offset + nwords > slave->sii_nwords) {
+        up(&master->master_sem);
+        EC_SLAVE_ERR(slave, "Invalid SII read offset/size %u/%zu for slave"
+                " SII size %zu!\n", offset, nwords, slave->sii_nwords);
+        return -EINVAL;
+    }
+
+    memcpy(words, slave->sii_words + offset, nwords * sizeof(uint16_t));
+
+    up(&master->master_sem);
+    return 0;
+}
+
+/****************************************************************************/
+
+int ecrt_master_sii_write(ec_master_t *master, uint16_t slave_position,
+        uint16_t offset, const uint16_t *words, size_t nwords)
+{
+    ec_slave_t *slave;
+    ec_sii_write_request_t request;
+
+    if (!nwords) {
+        return 0;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        return -EINTR;
+    }
+
+    if (!(slave = ec_master_find_slave(master, 0, slave_position))) {
+        up(&master->master_sem);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
+        return -EINVAL;
+    }
+
+    // init SII write request
+    INIT_LIST_HEAD(&request.list);
+    request.slave = slave;
+    request.words = (uint16_t *) words; // only read by the FSM
+    request.offset = offset;
+    request.nwords = nwords;
+    request.state = EC_INT_REQUEST_QUEUED;
+
+    // schedule SII write request.
+    list_add_tail(&request.list, &master->sii_requests);
+
+    up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(master->request_queue,
+                request.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.state == EC_INT_REQUEST_QUEUED) {
+            // abort request
+            list_del(&request.list);
+            up(&master->master_sem);
+            return -EINTR;
+        }
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(master->request_queue, request.state != EC_INT_REQUEST_BUSY);
+
+    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+}
+
+/****************************************************************************/
+
 int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
         uint16_t index, uint8_t subindex, uint8_t *target,
         size_t target_size, size_t *result_size, uint32_t *abort_code)
@@ -3498,6 +3587,8 @@ EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
 EXPORT_SYMBOL(ecrt_master_sdo_download);
 EXPORT_SYMBOL(ecrt_master_sdo_download_complete);
 EXPORT_SYMBOL(ecrt_master_sdo_upload);
+EXPORT_SYMBOL(ecrt_master_sii_read);
+EXPORT_SYMBOL(ecrt_master_sii_write);
 EXPORT_SYMBOL(ecrt_master_write_idn);
 EXPORT_SYMBOL(ecrt_master_read_idn);
 EXPORT_SYMBOL(ecrt_master_reset);

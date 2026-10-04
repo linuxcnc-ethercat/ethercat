@@ -1,3 +1,20 @@
+ethercat (1:1.6.9-5) unstable; urgency=medium
+
+  * master: opt-in PREOP hold for returning slaves (ReinitHold flag,
+    EC_HAVE_REINIT_HOLD). A slave that comes back through INIT is held
+    in PREOP so the application can re-apply volatile configuration
+    (SDO/SII writes from its init path) before the slave re-enters OP.
+    Slaves without the flag behave exactly as before.
+  * lib: add ecrt_master_sii_read() / ecrt_master_sii_write()
+    (EC_HAVE_SII_ACCESS) for application access to the slave SII image.
+  * master: refresh the in-memory SII image and CoE details after an
+    SII write, so subsequent reads see the new content.
+  * These are the master-side primitives for runtime slave
+    re-initialization in linuxcnc-ethercat
+    (linuxcnc-ethercat/linuxcnc-ethercat#523).
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Sun, 04 Oct 2026 11:32:30 +0800
+
 ethercat (1:1.6.9-4) unstable; urgency=medium
 
   * Fix PREOP scan using a stale datagram pointer (mika/dev-1.6

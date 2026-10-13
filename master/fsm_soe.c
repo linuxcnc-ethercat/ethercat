@@ -532,7 +532,8 @@ void ec_fsm_soe_write_next_fragment(
     uint16_t fragments_left;
 
     remaining_size = req->data_size - fsm->offset;
-    max_fragment_size = slave->configured_rx_mailbox_size - EC_SOE_HEADER_SIZE;
+    max_fragment_size =
+        slave->configured_rx_mailbox_size - EC_SOE_HEADER_SIZE;
     incomplete = remaining_size > max_fragment_size;
     fsm->fragment_size = incomplete ? max_fragment_size : remaining_size;
     fragments_left = remaining_size / fsm->fragment_size - 1;

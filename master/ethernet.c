@@ -38,7 +38,8 @@
 #include "mailbox.h"
 #include "ethernet.h"
 
-#if defined(CONFIG_SUSE_KERNEL) && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
+#if defined(CONFIG_SUSE_KERNEL) && \
+    LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
 #include <linux/suse_version.h>
 #else
 #  ifndef SUSE_VERSION
@@ -171,7 +172,8 @@ int ec_eoe_init(
     // initialize net_device
     eoe->dev->netdev_ops = &ec_eoedev_ops;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || \
+    (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
     eth_hw_addr_set(eoe->dev, mac_addr);
 #else
     memcpy(eoe->dev->dev_addr, mac_addr, sizeof(mac_addr));
@@ -199,7 +201,8 @@ int ec_eoe_init(
 
     // make the last address octet unique
     mac_addr[ETH_ALEN - 1] = (uint8_t) eoe->dev->ifindex;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || \
+    (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
     eth_hw_addr_set(eoe->dev, mac_addr);
 #else
     memcpy(eoe->dev->dev_addr, mac_addr, sizeof(mac_addr));
@@ -284,7 +287,8 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
         current_size = remaining_size;
         last_fragment = 1;
     } else {
-        current_size = ((eoe->slave->configured_tx_mailbox_size - 10) / 32) * 32;
+        current_size =
+            ((eoe->slave->configured_tx_mailbox_size - 10) / 32) * 32;
         last_fragment = 0;
     }
 

@@ -1217,6 +1217,10 @@ static int ec_master_mbox_dispatch(
         return 0;
     }
 
+    if (!slave->valid_mbox_data) {
+        return 0;
+    }
+
     mbox_prot = EC_READ_U8(data + 5) & 0x0F;
 
     switch (mbox_prot) {

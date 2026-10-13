@@ -558,6 +558,7 @@ void ec_fsm_coe_dict_response(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_coe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_coe_dict_response_data;
     fsm->state(fsm, datagram);
@@ -915,6 +916,7 @@ void ec_fsm_coe_dict_desc_response(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_coe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_coe_dict_desc_response_data;
     fsm->state(fsm, datagram);
@@ -1219,6 +1221,7 @@ void ec_fsm_coe_dict_entry_response(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_coe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_coe_dict_entry_response_data;
     fsm->state(fsm, datagram);
@@ -1805,6 +1808,7 @@ void ec_fsm_coe_down_response(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_coe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_coe_down_response_data;
     fsm->state(fsm, datagram);
@@ -2049,6 +2053,7 @@ void ec_fsm_coe_down_seg_response(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_coe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_coe_down_seg_response_data;
     fsm->state(fsm, datagram);
@@ -2477,6 +2482,7 @@ void ec_fsm_coe_up_response(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_coe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_coe_up_response_data;
     fsm->state(fsm, datagram);
@@ -2848,6 +2854,7 @@ void ec_fsm_coe_up_seg_response(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_coe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_coe_up_seg_response_data;
     fsm->state(fsm, datagram);

@@ -445,6 +445,7 @@ void ec_fsm_eoe_set_ip_response(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_eoe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_eoe_set_ip_response_data;
     fsm->state(fsm, datagram);

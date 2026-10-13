@@ -133,6 +133,37 @@ int ec_slave_mbox_prepare_fetch(const ec_slave_t *slave, /**< slave */
 /****************************************************************************/
 
 /**
+   Takes over a mailbox error response from a mailbox fetch datagram.
+
+   Mailbox error responses (type 0x00) can not be assigned to a protocol, so
+   the mailbox dispatcher leaves them in the memory of the fetch datagram.
+   This function stores such a response in the protocol buffer of the
+   fetching state machine, so that ec_slave_mbox_fetch() reports the error.
+
+   The fetch datagram is zeroed in ec_slave_mbox_prepare_fetch(), so the
+   length field is zero, if the response was dispatched to a protocol buffer.
+*/
+void ec_slave_mbox_take_error(
+        ec_mbox_data_t *mbox_data, /**< protocol buffer of the fetching FSM */
+        const ec_datagram_t *datagram /**< mailbox fetch datagram */
+        )
+{
+    if (datagram->working_counter != 1 ||
+            datagram->data_size < EC_MBOX_HEADER_SIZE ||
+            !EC_READ_U16(datagram->data) || // length
+            (EC_READ_U8(datagram->data + 5) & 0x0F) != 0x00) { // type
+        return;
+    }
+
+    if (mbox_data->data && datagram->data_size <= mbox_data->data_size) {
+        memcpy(mbox_data->data, datagram->data, datagram->data_size);
+        mbox_data->payload_size = datagram->data_size;
+    }
+}
+
+/****************************************************************************/
+
+/**
    Mailbox error codes.
 */
 

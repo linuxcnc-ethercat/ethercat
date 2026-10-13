@@ -449,6 +449,7 @@ void ec_fsm_soe_read_response(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_soe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_soe_read_response_data;
     fsm->state(fsm, datagram);
@@ -837,6 +838,7 @@ void ec_fsm_soe_write_response(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_soe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_soe_write_response_data;
     fsm->state(fsm, datagram);

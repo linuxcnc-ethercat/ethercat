@@ -413,6 +413,7 @@ void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_voe_data, datagram);
     ec_read_mbox_lock_clear(slave);
     voe->state = ec_voe_handler_state_read_response_data;
     voe->state(voe);
@@ -549,11 +550,19 @@ void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *voe)
         return;
     }
 
+    ec_slave_mbox_take_error(&slave->mbox_voe_data, datagram);
+
     if (slave->mbox_voe_data.payload_size > 0) {
         slave->mbox_voe_data.payload_size = 0;
         data = ec_slave_mbox_fetch(slave, &slave->mbox_voe_data,
                 &mbox_prot, &rec_size);
     } else {
+        voe->state = ec_voe_handler_state_error;
+        voe->request_state = EC_INT_REQUEST_FAILURE;
+        return;
+    }
+
+    if (IS_ERR(data)) {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         return;

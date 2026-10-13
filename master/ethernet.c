@@ -492,6 +492,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
         ec_read_mbox_lock_clear(eoe->slave);
         return;
     }
+    ec_slave_mbox_take_error(&eoe->slave->mbox_eoe_data, &eoe->datagram);
     ec_read_mbox_lock_clear(eoe->slave);
     eoe->state = ec_eoe_state_rx_fetch_data;
     eoe->state(eoe);

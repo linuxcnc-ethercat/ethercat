@@ -426,6 +426,7 @@ void ec_fsm_foe_state_ack_read(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_foe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_foe_state_ack_read_data;
     fsm->state(fsm, datagram);
@@ -837,6 +838,7 @@ void ec_fsm_foe_state_data_read(
             return;
         }
     }
+    ec_slave_mbox_take_error(&slave->mbox_foe_data, fsm->datagram);
     ec_read_mbox_lock_clear(slave);
     fsm->state = ec_fsm_foe_state_data_read_data;
     fsm->state(fsm, datagram);

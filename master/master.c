@@ -1206,14 +1206,17 @@ static int ec_master_mbox_dispatch(
         }
     }
 
-    if (slave->station_address != slave_addr) {
+    if (slave == master->slaves + master->slave_count) {
         EC_MASTER_DBG(master, 1, "No slave matching datagram"
                 " slave address: %u\n", slave_addr);
-        return 1;
+        return 0;
     }
 
+    // only complete reads of the TX mailbox are dispatched (and not, for
+    // example, register requests on the mailbox memory)
     if (!slave->configured_tx_mailbox_offset ||
-            offset_addr != slave->configured_tx_mailbox_offset) {
+            offset_addr != slave->configured_tx_mailbox_offset ||
+            size != slave->configured_tx_mailbox_size) {
         return 0;
     }
 

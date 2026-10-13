@@ -44,6 +44,7 @@
 #include "device.h"
 #include "datagram.h"
 #include "smp.h"
+#include "mailbox.h"
 
 #ifdef EC_EOE
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
@@ -1001,8 +1002,10 @@ void ec_master_queue_datagram(
         }
     }
 
-    list_add_tail(&datagram->queue, &master->datagram_queue);
-    smp_store_release(&datagram->state, EC_DATAGRAM_QUEUED);
+    if (datagram->state != EC_DATAGRAM_INVALID) {
+        list_add_tail(&datagram->queue, &master->datagram_queue);
+        smp_store_release(&datagram->state, EC_DATAGRAM_QUEUED);
+    }
 }
 
 /****************************************************************************/
@@ -1155,6 +1158,94 @@ void ec_master_send_datagrams(
 
 /****************************************************************************/
 
+/** Stores a received mailbox response in a protocol-specific buffer.
+ */
+static void ec_master_mbox_store(
+        ec_mbox_data_t *mbox_data, /**< Mailbox response buffer. */
+        const uint8_t *data, /**< Received mailbox data. */
+        size_t size /**< Size of the received data. */
+        )
+{
+    if (mbox_data->data && size <= mbox_data->data_size) {
+        memcpy(mbox_data->data, data, size);
+        mbox_data->payload_size = size;
+    }
+}
+
+/****************************************************************************/
+
+/** Common mailbox dispatcher for mailboxes read via the station address.
+ *
+ * \return Non-zero, if the data were handled by the dispatcher, zero, if they
+ *         shall be copied into the datagram memory.
+ */
+static int ec_master_mbox_dispatch(
+        ec_master_t *master, /**< EtherCAT master. */
+        const uint8_t *data, /**< Received datagram data. */
+        size_t size, /**< Size of the received datagram data. */
+        uint16_t slave_addr, /**< Station address of the datagram. */
+        uint16_t offset_addr /**< Register offset of the datagram. */
+        )
+{
+    ec_slave_t *slave;
+    uint8_t mbox_prot;
+
+    if (!EC_READ_U16(data + size)) { // working counter
+        return 0;
+    }
+
+    if (!master->slaves) {
+        EC_MASTER_DBG(master, 1, "No configured slaves!\n");
+        return 0;
+    }
+
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count; slave++) {
+        if (slave->station_address == slave_addr) {
+            break;
+        }
+    }
+
+    if (slave->station_address != slave_addr) {
+        EC_MASTER_DBG(master, 1, "No slave matching datagram"
+                " slave address: %u\n", slave_addr);
+        return 1;
+    }
+
+    if (!slave->configured_tx_mailbox_offset ||
+            offset_addr != slave->configured_tx_mailbox_offset) {
+        return 0;
+    }
+
+    mbox_prot = EC_READ_U8(data + 5) & 0x0F;
+
+    switch (mbox_prot) {
+#ifdef EC_EOE
+        case EC_MBOX_TYPE_EOE:
+            ec_master_mbox_store(&slave->mbox_eoe_data, data, size);
+            return 1;
+#endif
+        case EC_MBOX_TYPE_COE:
+            ec_master_mbox_store(&slave->mbox_coe_data, data, size);
+            return 1;
+        case EC_MBOX_TYPE_FOE:
+            ec_master_mbox_store(&slave->mbox_foe_data, data, size);
+            return 1;
+        case EC_MBOX_TYPE_SOE:
+            ec_master_mbox_store(&slave->mbox_soe_data, data, size);
+            return 1;
+        case EC_MBOX_TYPE_VOE:
+            ec_master_mbox_store(&slave->mbox_voe_data, data, size);
+            return 1;
+        default:
+            EC_MASTER_DBG(master, 1, "Unknown mailbox protocol"
+                    " from slave: %u Protocol: %u\n", slave_addr, mbox_prot);
+            return 0;
+    }
+}
+
+/****************************************************************************/
+
 /** Processes a received frame.
  *
  * This function is called by the network driver for every received frame.
@@ -1170,6 +1261,7 @@ void ec_master_receive_datagrams(
 {
     size_t frame_size, data_size;
     uint8_t datagram_type, datagram_index;
+    uint16_t datagram_slave_addr, datagram_offset_addr;
     unsigned int cmd_follows, matched;
     const uint8_t *cur_data;
     ec_datagram_t *datagram;
@@ -1214,6 +1306,8 @@ void ec_master_receive_datagrams(
         // process datagram header
         datagram_type  = EC_READ_U8(cur_data);
         datagram_index = EC_READ_U8(cur_data + 1);
+        datagram_slave_addr  = EC_READ_U16(cur_data + 2);
+        datagram_offset_addr = EC_READ_U16(cur_data + 4);
         data_size      = EC_READ_U16(cur_data + 6) & 0x07FF;
         cmd_follows    = EC_READ_U16(cur_data + 6) & 0x8000;
         cur_data += EC_DATAGRAM_HEADER_SIZE;
@@ -1270,9 +1364,13 @@ void ec_master_receive_datagrams(
                 datagram->type != EC_DATAGRAM_FPWR &&
                 datagram->type != EC_DATAGRAM_BWR &&
                 datagram->type != EC_DATAGRAM_LWR) {
-            // copy received data into the datagram memory,
-            // if something has been read
-            memcpy(datagram->data, cur_data, data_size);
+            // mailbox responses are dispatched to their protocol buffers,
+            // everything else is copied into the datagram memory.
+            if (datagram->type != EC_DATAGRAM_FPRD ||
+                    !ec_master_mbox_dispatch(master, cur_data, data_size,
+                        datagram_slave_addr, datagram_offset_addr)) {
+                memcpy(datagram->data, cur_data, data_size);
+            }
         }
         cur_data += data_size;
 
@@ -2641,6 +2739,9 @@ int ecrt_master_deactivate(ec_master_t *master)
             slave++) {
         // set states for all slaves
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+
+        // clear read_mbox_busy flag in case slave CoE FSM were interrupted
+        ec_read_mbox_lock_clear(slave);
 
         // mark for reconfiguration, because the master could have no
         // possibility for a reconfiguration between two sequential operation

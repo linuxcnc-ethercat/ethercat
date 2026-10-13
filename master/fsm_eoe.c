@@ -159,6 +159,29 @@ int ec_fsm_eoe_success(const ec_fsm_eoe_t *fsm /**< Finite state machine */)
     return fsm->state == ec_fsm_eoe_end;
 }
 
+/****************************************************************************/
+
+/** Prepares a mailbox check for the set IP parameter response.
+ *
+ * If the mailbox is currently read by another state machine, the datagram
+ * is marked as invalid and the response data state awaits the data.
+ */
+static void ec_fsm_eoe_prepare_check(
+        ec_fsm_eoe_t *fsm, /**< finite state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    if (ec_read_mbox_locked(fsm->slave)) {
+        // the datagram is not used and marked as invalid
+        datagram->state = EC_DATAGRAM_INVALID;
+        fsm->state = ec_fsm_eoe_set_ip_response_data;
+    } else {
+        ec_slave_mbox_prepare_check(fsm->slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_eoe_set_ip_check;
+    }
+}
+
 /*****************************************************************************
  * EoE set IP parameter state machine
  ****************************************************************************/
@@ -333,16 +356,7 @@ void ec_fsm_eoe_set_ip_request(
     fsm->jiffies_start = fsm->datagram->jiffies_sent;
     fsm->frame_type_retries = 10;
 
-    // mailbox read check is skipped if a read request is already ongoing
-    if (ec_read_mbox_locked(slave)) {
-        fsm->state = ec_fsm_eoe_set_ip_response_data;
-        // the datagram is not used and marked as invalid
-        datagram->state = EC_DATAGRAM_INVALID;
-    } else {
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_eoe_set_ip_check;
-    }
+    ec_fsm_eoe_prepare_check(fsm, datagram);
 }
 
 /****************************************************************************/
@@ -470,14 +484,15 @@ void ec_fsm_eoe_set_ip_response_data(
     if (slave->mbox_eoe_data.payload_size > 0) {
         slave->mbox_eoe_data.payload_size = 0;
     } else {
-        // initiate a new mailbox read check if required data is not available
-        if (ec_read_mbox_locked(slave)) {
-            // await current read request and mark the datagram as invalid
-            datagram->state = EC_DATAGRAM_INVALID;
-        } else {
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            fsm->state = ec_fsm_eoe_set_ip_check;
+        unsigned long diff_ms = (jiffies - fsm->jiffies_start) * 1000 / HZ;
+
+        if (diff_ms >= EC_EOE_RESPONSE_TIMEOUT) {
+            fsm->state = ec_fsm_eoe_error;
+            EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting for"
+                    " set IP parameter response.\n", diff_ms);
+            return;
         }
+        ec_fsm_eoe_prepare_check(fsm, datagram);
         return;
     }
 
@@ -519,15 +534,8 @@ void ec_fsm_eoe_set_ip_response_data(
         if (fsm->frame_type_retries--) {
             // there may be an EoE segment left in the mailbox.
             // discard it and receive again.
-            fsm->jiffies_start = fsm->datagram->jiffies_sent;
-            if (ec_read_mbox_locked(slave)) {
-                // await current read request and mark the datagram as invalid
-                datagram->state = EC_DATAGRAM_INVALID;
-            } else {
-                ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-                fsm->retries = EC_FSM_RETRIES;
-                fsm->state = ec_fsm_eoe_set_ip_check;
-            }
+            fsm->jiffies_start = jiffies;
+            ec_fsm_eoe_prepare_check(fsm, datagram);
             return;
         }
         else {

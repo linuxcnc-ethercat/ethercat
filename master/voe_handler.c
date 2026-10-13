@@ -285,11 +285,33 @@ void ec_voe_handler_state_write_response(ec_voe_handler_t *voe)
 
 /****************************************************************************/
 
+/** Prepares a mailbox check for the VoE read response.
+ *
+ * If the mailbox is currently read by another state machine, the datagram
+ * is marked as invalid and the response data state awaits the data.
+ */
+static void ec_voe_handler_prepare_check(
+        ec_voe_handler_t *voe /**< VoE handler. */
+        )
+{
+    if (ec_read_mbox_locked(voe->config->slave)) {
+        // the datagram is not used and marked as invalid
+        voe->datagram.state = EC_DATAGRAM_INVALID;
+        voe->state = ec_voe_handler_state_read_response_data;
+    } else {
+        ec_slave_mbox_prepare_check(voe->config->slave,
+                &voe->datagram); // can not fail.
+        voe->retries = EC_FSM_RETRIES;
+        voe->state = ec_voe_handler_state_read_check;
+    }
+}
+
+/****************************************************************************/
+
 /** Start reading VoE data.
  */
 void ec_voe_handler_state_read_start(ec_voe_handler_t *voe)
 {
-    ec_datagram_t *datagram = &voe->datagram;
     ec_slave_t *slave = voe->config->slave;
 
     EC_SLAVE_DBG(slave, 1, "Reading VoE data.\n");
@@ -303,17 +325,7 @@ void ec_voe_handler_state_read_start(ec_voe_handler_t *voe)
 
     voe->jiffies_start = jiffies;
 
-    // mailbox read check is skipped if a read request is already ongoing
-    if (ec_read_mbox_locked(slave)) {
-        voe->state = ec_voe_handler_state_read_response_data;
-        // the datagram is not used and marked as invalid
-        datagram->state = EC_DATAGRAM_INVALID;
-    } else {
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        voe->jiffies_start = jiffies;
-        voe->retries = EC_FSM_RETRIES;
-        voe->state = ec_voe_handler_state_read_check;
-    }
+    ec_voe_handler_prepare_check(voe);
 }
 
 /****************************************************************************/
@@ -429,7 +441,6 @@ void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
 
 void ec_voe_handler_state_read_response_data(ec_voe_handler_t *voe)
 {
-    ec_datagram_t *datagram = &voe->datagram;
     ec_slave_t *slave = voe->config->slave;
     ec_master_t *master = voe->config->master;
     uint8_t *data, mbox_prot;
@@ -439,14 +450,14 @@ void ec_voe_handler_state_read_response_data(ec_voe_handler_t *voe)
     if (slave->mbox_voe_data.payload_size > 0) {
         slave->mbox_voe_data.payload_size = 0;
     } else {
-        // initiate a new mailbox read check if required data is not available
-        if (ec_read_mbox_locked(slave)) {
-            // await current read request and mark the datagram as invalid
-            datagram->state = EC_DATAGRAM_INVALID;
-        } else {
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            voe->state = ec_voe_handler_state_read_check;
+        if ((jiffies - voe->jiffies_start) * 1000 / HZ >=
+                EC_VOE_RESPONSE_TIMEOUT) {
+            voe->state = ec_voe_handler_state_error;
+            voe->request_state = EC_INT_REQUEST_FAILURE;
+            EC_SLAVE_ERR(slave, "Timeout while waiting for VoE data.\n");
+            return;
         }
+        ec_voe_handler_prepare_check(voe);
         return;
     }
 

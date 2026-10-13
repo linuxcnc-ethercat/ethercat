@@ -210,6 +210,49 @@ void ec_fsm_soe_print_error(ec_fsm_soe_t *fsm /**< Finite state machine */)
     printk(KERN_CONT " IDN 0x%04X failed.\n", request->idn);
 }
 
+/****************************************************************************/
+
+/** Prepares a mailbox check for an SoE response.
+ *
+ * If the mailbox is currently read by another state machine, the datagram
+ * is marked as invalid and the response data state awaits the data.
+ *
+ * \param fsm Finite state machine.
+ * \param datagram Datagram to use.
+ * \param check_state Mailbox check state.
+ * \param data_state Response data state.
+ */
+static void ec_fsm_soe_prepare_check(
+        ec_fsm_soe_t *fsm,
+        ec_datagram_t *datagram,
+        void (*check_state)(ec_fsm_soe_t *, ec_datagram_t *),
+        void (*data_state)(ec_fsm_soe_t *, ec_datagram_t *)
+        )
+{
+    if (ec_read_mbox_locked(fsm->slave)) {
+        // the datagram is not used and marked as invalid
+        datagram->state = EC_DATAGRAM_INVALID;
+        fsm->state = data_state;
+    } else {
+        ec_slave_mbox_prepare_check(fsm->slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = check_state;
+    }
+}
+
+/****************************************************************************/
+
+/** Time elapsed since the request was sent.
+ *
+ * \return Elapsed time in milliseconds.
+ */
+static unsigned long ec_fsm_soe_elapsed_ms(
+        const ec_fsm_soe_t *fsm /**< Finite state machine. */
+        )
+{
+    return (jiffies - fsm->jiffies_start) * 1000 / HZ;
+}
+
 /*****************************************************************************
  * SoE read state machine
  ****************************************************************************/
@@ -331,16 +374,8 @@ void ec_fsm_soe_read_request(
 
     fsm->jiffies_start = fsm->datagram->jiffies_sent;
 
-    // mailbox read check is skipped if a read request is already ongoing
-    if (ec_read_mbox_locked(slave)) {
-        fsm->state = ec_fsm_soe_read_response_data;
-        // the datagram is not used and marked as invalid
-        datagram->state = EC_DATAGRAM_INVALID;
-    } else {
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_soe_read_check;
-    }
+    ec_fsm_soe_prepare_check(fsm, datagram, ec_fsm_soe_read_check,
+            ec_fsm_soe_read_response_data);
 }
 
 /****************************************************************************/
@@ -479,14 +514,17 @@ void ec_fsm_soe_read_response_data(
     if (slave->mbox_soe_data.payload_size > 0) {
         slave->mbox_soe_data.payload_size = 0;
     } else {
-        // initiate a new mailbox read check if required data is not available
-        if (ec_read_mbox_locked(slave)) {
-            // await current read request and mark the datagram as invalid
-            datagram->state = EC_DATAGRAM_INVALID;
-        } else {
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            fsm->state = ec_fsm_soe_read_check;
+        unsigned long diff_ms = ec_fsm_soe_elapsed_ms(fsm);
+
+        if (diff_ms >= EC_SOE_RESPONSE_TIMEOUT) {
+            fsm->state = ec_fsm_soe_error;
+            EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting for"
+                    " read response.\n", diff_ms);
+            ec_fsm_soe_print_error(fsm);
+            return;
         }
+        ec_fsm_soe_prepare_check(fsm, datagram, ec_fsm_soe_read_check,
+                ec_fsm_soe_read_response_data);
         return;
     }
 
@@ -564,10 +602,9 @@ void ec_fsm_soe_read_response_data(
     if (incomplete) {
         EC_SLAVE_DBG(slave, 1, "SoE data incomplete. Waiting for fragment"
                 " at offset %zu.\n", req->data_size);
-        fsm->jiffies_start = fsm->datagram->jiffies_sent;
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_soe_read_check;
+        fsm->jiffies_start = jiffies;
+        ec_fsm_soe_prepare_check(fsm, datagram, ec_fsm_soe_read_check,
+                ec_fsm_soe_read_response_data);
     } else {
         if (master->debug_level) {
             EC_SLAVE_DBG(slave, 0, "IDN data:\n");
@@ -719,16 +756,8 @@ void ec_fsm_soe_write_request(
         // all fragments sent; query response
         fsm->jiffies_start = fsm->datagram->jiffies_sent;
 
-        // mailbox read check is skipped if a read request is already ongoing
-        if (ec_read_mbox_locked(slave)) {
-            fsm->state = ec_fsm_soe_write_response_data;
-            // the datagram is not used and marked as invalid
-            datagram->state = EC_DATAGRAM_INVALID;
-        } else {
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            fsm->retries = EC_FSM_RETRIES;
-            fsm->state = ec_fsm_soe_write_check;
-        }
+        ec_fsm_soe_prepare_check(fsm, datagram, ec_fsm_soe_write_check,
+                ec_fsm_soe_write_response_data);
     }
 }
 
@@ -868,14 +897,17 @@ void ec_fsm_soe_write_response_data(
     if (slave->mbox_soe_data.payload_size > 0) {
         slave->mbox_soe_data.payload_size = 0;
     } else {
-        // initiate a new mailbox read check if required data is not available
-        if (ec_read_mbox_locked(slave)) {
-            // await current read request and mark the datagram as invalid
-            datagram->state = EC_DATAGRAM_INVALID;
-        } else {
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            fsm->state = ec_fsm_soe_write_check;
+        unsigned long diff_ms = ec_fsm_soe_elapsed_ms(fsm);
+
+        if (diff_ms >= EC_SOE_RESPONSE_TIMEOUT) {
+            fsm->state = ec_fsm_soe_error;
+            EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting"
+                    " for write response.\n", diff_ms);
+            ec_fsm_soe_print_error(fsm);
+            return;
         }
+        ec_fsm_soe_prepare_check(fsm, datagram, ec_fsm_soe_write_check,
+                ec_fsm_soe_write_response_data);
         return;
     }
 

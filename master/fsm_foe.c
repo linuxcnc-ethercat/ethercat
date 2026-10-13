@@ -329,6 +329,49 @@ void ec_fsm_foe_write_start(
 
 /****************************************************************************/
 
+/** Prepares a mailbox check for an FoE response.
+ *
+ * If the mailbox is currently read by another state machine, the datagram
+ * is marked as invalid and the response data state awaits the data.
+ *
+ * \param fsm Finite state machine.
+ * \param datagram Datagram to use.
+ * \param check_state Mailbox check state.
+ * \param data_state Response data state.
+ */
+static void ec_fsm_foe_prepare_check(
+        ec_fsm_foe_t *fsm,
+        ec_datagram_t *datagram,
+        void (*check_state)(ec_fsm_foe_t *, ec_datagram_t *),
+        void (*data_state)(ec_fsm_foe_t *, ec_datagram_t *)
+        )
+{
+    if (ec_read_mbox_locked(fsm->slave)) {
+        // the datagram is not used and marked as invalid
+        datagram->state = EC_DATAGRAM_INVALID;
+        fsm->state = data_state;
+    } else {
+        ec_slave_mbox_prepare_check(fsm->slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = check_state;
+    }
+}
+
+/****************************************************************************/
+
+/** Checks, if the response timeout elapsed.
+ *
+ * \return Non-zero, if the timeout elapsed.
+ */
+static int ec_fsm_foe_timed_out(
+        const ec_fsm_foe_t *fsm /**< Finite state machine. */
+        )
+{
+    return (jiffies - fsm->jiffies_start) * 1000 / HZ >= EC_FSM_FOE_TIMEOUT;
+}
+
+/****************************************************************************/
+
 /** Check for acknowledge.
  */
 void ec_fsm_foe_state_ack_check(
@@ -450,14 +493,13 @@ void ec_fsm_foe_state_ack_read_data(
     if (slave->mbox_foe_data.payload_size > 0) {
         slave->mbox_foe_data.payload_size = 0;
     } else {
-        // initiate a new mailbox read check if required data is not available
-        if (ec_read_mbox_locked(slave)) {
-            // await current read request and mark the datagram as invalid
-            datagram->state = EC_DATAGRAM_INVALID;
-        } else {
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            fsm->state = ec_fsm_foe_state_ack_check;
+        if (ec_fsm_foe_timed_out(fsm)) {
+            ec_foe_set_tx_error(fsm, FOE_TIMEOUT_ERROR);
+            EC_SLAVE_ERR(slave, "Timeout while waiting for ack response.\n");
+            return;
         }
+        ec_fsm_foe_prepare_check(fsm, datagram, ec_fsm_foe_state_ack_check,
+                ec_fsm_foe_state_ack_read_data);
         return;
     }
 
@@ -542,16 +584,8 @@ void ec_fsm_foe_state_wrq_sent(
 
     fsm->jiffies_start = fsm->datagram->jiffies_sent;
 
-    // mailbox read check is skipped if a read request is already ongoing
-    if (ec_read_mbox_locked(slave)) {
-        fsm->state = ec_fsm_foe_state_ack_read_data;
-        // the datagram is not used and marked as invalid
-        datagram->state = EC_DATAGRAM_INVALID;
-    } else {
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_foe_state_ack_check;
-    }
+    ec_fsm_foe_prepare_check(fsm, datagram, ec_fsm_foe_state_ack_check,
+            ec_fsm_foe_state_ack_read_data);
 }
 
 /****************************************************************************/
@@ -588,16 +622,8 @@ void ec_fsm_foe_state_data_sent(
 
     fsm->jiffies_start = jiffies;
 
-    // mailbox read check is skipped if a read request is already ongoing
-    if (ec_read_mbox_locked(slave)) {
-        fsm->state = ec_fsm_foe_state_ack_read_data;
-        // the datagram is not used and marked as invalid
-        datagram->state = EC_DATAGRAM_INVALID;
-    } else {
-        ec_slave_mbox_prepare_check(slave, datagram);
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_foe_state_ack_check;
-    }
+    ec_fsm_foe_prepare_check(fsm, datagram, ec_fsm_foe_state_ack_check,
+            ec_fsm_foe_state_ack_read_data);
 }
 
 /****************************************************************************/
@@ -679,7 +705,6 @@ void ec_fsm_foe_state_rrq_sent(
 
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
-        ec_read_mbox_lock_clear(slave);
         EC_SLAVE_ERR(slave, "Failed to send FoE RRQ: ");
         ec_datagram_print_state(fsm->datagram);
         return;
@@ -688,7 +713,6 @@ void ec_fsm_foe_state_rrq_sent(
     if (fsm->datagram->working_counter != 1) {
         // slave did not put anything in the mailbox yet
         ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
-        ec_read_mbox_lock_clear(slave);
         EC_SLAVE_ERR(slave, "Reception of FoE RRQ failed: ");
         ec_datagram_print_wc_error(fsm->datagram);
         return;
@@ -696,16 +720,8 @@ void ec_fsm_foe_state_rrq_sent(
 
     fsm->jiffies_start = fsm->datagram->jiffies_sent;
 
-    // mailbox read check is skipped if a read request is already ongoing
-    if (ec_read_mbox_locked(slave)) {
-        fsm->state = ec_fsm_foe_state_data_read_data;
-        // the datagram is not used and marked as invalid
-        datagram->state = EC_DATAGRAM_INVALID;
-    } else {
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_foe_state_data_check;
-    }
+    ec_fsm_foe_prepare_check(fsm, datagram, ec_fsm_foe_state_data_check,
+            ec_fsm_foe_state_data_read_data);
 }
 
 /****************************************************************************/
@@ -861,14 +877,13 @@ void ec_fsm_foe_state_data_read_data(
     if (slave->mbox_foe_data.payload_size > 0) {
         slave->mbox_foe_data.payload_size = 0;
     } else {
-        // initiate a new mailbox read check if required data is not available
-        if (ec_read_mbox_locked(slave)) {
-            // await current read request and mark the datagram as invalid
-            datagram->state = EC_DATAGRAM_INVALID;
-        } else {
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            fsm->state = ec_fsm_foe_state_data_check;
+        if (ec_fsm_foe_timed_out(fsm)) {
+            ec_foe_set_tx_error(fsm, FOE_TIMEOUT_ERROR);
+            EC_SLAVE_ERR(slave, "Timeout while waiting for ack response.\n");
+            return;
         }
+        ec_fsm_foe_prepare_check(fsm, datagram, ec_fsm_foe_state_data_check,
+                ec_fsm_foe_state_data_read_data);
         return;
     }
 
@@ -1012,16 +1027,8 @@ void ec_fsm_foe_state_sent_ack(
     else {
         fsm->rx_expected_packet_no++;
 
-        // mailbox read check is skipped if a read request is already ongoing
-        if (ec_read_mbox_locked(slave)) {
-            fsm->state = ec_fsm_foe_state_data_read_data;
-            // the datagram is not used and marked as invalid
-            datagram->state = EC_DATAGRAM_INVALID;
-        } else {
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            fsm->retries = EC_FSM_RETRIES;
-            fsm->state = ec_fsm_foe_state_data_check;
-        }
+        ec_fsm_foe_prepare_check(fsm, datagram, ec_fsm_foe_state_data_check,
+                ec_fsm_foe_state_data_read_data);
     }
 }
 

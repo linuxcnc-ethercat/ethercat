@@ -61,6 +61,7 @@ void ec_fsm_soe_transfer(ec_fsm_soe_t *, ec_slave_t *, ec_soe_request_t *);
 
 int ec_fsm_soe_exec(ec_fsm_soe_t *, ec_datagram_t *);
 int ec_fsm_soe_success(const ec_fsm_soe_t *);
+void ec_fsm_soe_abort(ec_fsm_soe_t *);
 
 /****************************************************************************/
 

@@ -193,6 +193,26 @@ int ec_fsm_soe_success(const ec_fsm_soe_t *fsm /**< Finite state machine */)
 
 /****************************************************************************/
 
+/** Aborts a running transfer.
+ *
+ * Releases the mailbox read lock, if the state machine holds it, i. e. if a
+ * mailbox check or fetch is in progress.
+ */
+void ec_fsm_soe_abort(ec_fsm_soe_t *fsm /**< Finite state machine */)
+{
+    if (fsm->state == ec_fsm_soe_read_check ||
+            fsm->state == ec_fsm_soe_read_response ||
+            fsm->state == ec_fsm_soe_write_check ||
+            fsm->state == ec_fsm_soe_write_response) {
+        ec_read_mbox_lock_clear(fsm->slave);
+    }
+
+    fsm->state = ec_fsm_soe_error;
+    fsm->datagram = NULL;
+}
+
+/****************************************************************************/
+
 /** Output information about a failed SoE transfer.
  */
 void ec_fsm_soe_print_error(ec_fsm_soe_t *fsm /**< Finite state machine */)

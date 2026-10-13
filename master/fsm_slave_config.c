@@ -276,10 +276,6 @@ void ec_fsm_slave_config_state_init(
     ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_config_state_clear_fmmus;
-
-    EC_SLAVE_DBG(slave, 1, "Clearing mailbox check flag...\n");
-
-    ec_read_mbox_lock_clear(slave);
 }
 
 /****************************************************************************/

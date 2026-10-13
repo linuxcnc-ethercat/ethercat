@@ -2753,9 +2753,6 @@ int ecrt_master_deactivate(ec_master_t *master)
         // set states for all slaves
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
 
-        // clear read_mbox_busy flag in case slave CoE FSM were interrupted
-        ec_read_mbox_lock_clear(slave);
-
         // mark for reconfiguration, because the master could have no
         // possibility for a reconfiguration between two sequential operation
         // phases.

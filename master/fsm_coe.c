@@ -280,6 +280,38 @@ int ec_fsm_coe_success(
 
 /****************************************************************************/
 
+/** Aborts a running transfer.
+ *
+ * Releases the mailbox read lock, if the state machine holds it, i. e. if a
+ * mailbox check or fetch is in progress.
+ */
+void ec_fsm_coe_abort(
+        ec_fsm_coe_t *fsm /**< Finite state machine */
+        )
+{
+    if (fsm->state == ec_fsm_coe_dict_check ||
+            fsm->state == ec_fsm_coe_dict_response ||
+            fsm->state == ec_fsm_coe_dict_desc_check ||
+            fsm->state == ec_fsm_coe_dict_desc_response ||
+            fsm->state == ec_fsm_coe_dict_entry_check ||
+            fsm->state == ec_fsm_coe_dict_entry_response ||
+            fsm->state == ec_fsm_coe_down_check ||
+            fsm->state == ec_fsm_coe_down_response ||
+            fsm->state == ec_fsm_coe_down_seg_check ||
+            fsm->state == ec_fsm_coe_down_seg_response ||
+            fsm->state == ec_fsm_coe_up_check ||
+            fsm->state == ec_fsm_coe_up_response ||
+            fsm->state == ec_fsm_coe_up_seg_check ||
+            fsm->state == ec_fsm_coe_up_seg_response) {
+        ec_read_mbox_lock_clear(fsm->slave);
+    }
+
+    fsm->state = ec_fsm_coe_error;
+    fsm->datagram = NULL;
+}
+
+/****************************************************************************/
+
 /** Check if the received data are a CoE emergency request.
  *
  * If the check is positive, the emergency request is output.

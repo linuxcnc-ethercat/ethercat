@@ -1398,6 +1398,7 @@ void ec_fsm_master_state_sdo_request(
 
     if (!request) {
         // configuration was cleared in the meantime
+        ec_fsm_coe_abort(&fsm->fsm_coe);
         ec_fsm_master_restart(fsm);
         return;
     }
@@ -1441,6 +1442,7 @@ void ec_fsm_master_state_soe_request(
 
     if (!request) {
         // configuration was cleared in the meantime
+        ec_fsm_soe_abort(&fsm->fsm_soe);
         ec_fsm_master_restart(fsm);
         return;
     }

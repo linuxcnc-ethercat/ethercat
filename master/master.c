@@ -3249,7 +3249,13 @@ int ecrt_master_sync_reference_clock_to(
 int ecrt_master_sync_slave_clocks(ec_master_t *master)
 {
     if (master->dc_ref_clock) {
-        ec_datagram_zero(&master->sync_datagram);
+        // Pre-fill with the application time instead of zeros: the FRMW
+        // write also hits DC slaves in front of the reference, so they get
+        // disciplined to the master's estimate instead of a bogus zero.
+        // The reference overwrites the payload further down the frame, so
+        // slaves behind it still receive the hardware-latched time.
+        EC_WRITE_U32(master->sync_datagram.data, master->app_time);
+        master->dc_sync_prefill = (u32) master->app_time;
         ec_master_queue_datagram(master, &master->sync_datagram);
     } else {
         return -ENXIO;

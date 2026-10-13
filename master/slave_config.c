@@ -318,6 +318,12 @@ void ec_slave_config_detach(
 {
     if (sc->slave) {
         ec_reg_request_t *reg;
+        ec_voe_handler_t *voe;
+
+        // abandon VoE reads holding the slave's mailbox read lock
+        list_for_each_entry(voe, &sc->voe_handlers, list) {
+            ec_voe_handler_release_mbox_lock(voe);
+        }
 
         sc->slave->config = NULL;
 

@@ -58,6 +58,7 @@ struct ec_voe_handler {
 
 int ec_voe_handler_init(ec_voe_handler_t *, ec_slave_config_t *, size_t);
 void ec_voe_handler_clear(ec_voe_handler_t *);
+void ec_voe_handler_release_mbox_lock(ec_voe_handler_t *);
 size_t ec_voe_handler_mem_size(const ec_voe_handler_t *);
 
 /****************************************************************************/

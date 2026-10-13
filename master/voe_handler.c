@@ -94,6 +94,28 @@ void ec_voe_handler_clear(
 
 /****************************************************************************/
 
+/** Releases the mailbox read lock, if the handler holds it.
+ *
+ * The lock is held while a mailbox check or fetch is in progress (READ CHECK
+ * and READ RESPONSE states). This has to be called, before such a read is
+ * abandoned, e. g. because a new request is started or the slave
+ * configuration is detached.
+ */
+void ec_voe_handler_release_mbox_lock(
+        ec_voe_handler_t *voe /**< VoE handler. */
+        )
+{
+    if (voe->config->slave &&
+            (voe->state == ec_voe_handler_state_read_check ||
+             voe->state == ec_voe_handler_state_read_response)) {
+        ec_read_mbox_lock_clear(voe->config->slave);
+        voe->state = ec_voe_handler_state_error;
+        voe->request_state = EC_INT_REQUEST_FAILURE;
+    }
+}
+
+/****************************************************************************/
+
 /** Get usable memory size.
  *
  * \return Memory size.
@@ -153,6 +175,7 @@ size_t ecrt_voe_handler_data_size(const ec_voe_handler_t *voe)
 
 int ecrt_voe_handler_read(ec_voe_handler_t *voe)
 {
+    ec_voe_handler_release_mbox_lock(voe);
     voe->dir = EC_DIR_INPUT;
     voe->state = ec_voe_handler_state_read_start;
     voe->request_state = EC_INT_REQUEST_BUSY;
@@ -163,6 +186,7 @@ int ecrt_voe_handler_read(ec_voe_handler_t *voe)
 
 int ecrt_voe_handler_read_nosync(ec_voe_handler_t *voe)
 {
+    ec_voe_handler_release_mbox_lock(voe);
     voe->dir = EC_DIR_INPUT;
     voe->state = ec_voe_handler_state_read_nosync_start;
     voe->request_state = EC_INT_REQUEST_BUSY;
@@ -173,6 +197,7 @@ int ecrt_voe_handler_read_nosync(ec_voe_handler_t *voe)
 
 int ecrt_voe_handler_write(ec_voe_handler_t *voe, size_t size)
 {
+    ec_voe_handler_release_mbox_lock(voe);
     voe->dir = EC_DIR_OUTPUT;
     voe->data_size = size;
     voe->state = ec_voe_handler_state_write_start;

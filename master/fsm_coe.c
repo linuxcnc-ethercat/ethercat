@@ -1797,7 +1797,7 @@ void ec_fsm_coe_down_seg_response(
         // discard EoE message and wait for the next reponse
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
         fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_down_check;
+        fsm->state = ec_fsm_coe_down_seg_check;
         return;
     }
 #endif
@@ -1814,7 +1814,7 @@ void ec_fsm_coe_down_seg_response(
         // check for CoE response again
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
         fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_down_check;
+        fsm->state = ec_fsm_coe_down_seg_check;
         return;
     }
 

@@ -164,7 +164,6 @@ void ec_slave_init(
     ec_fsm_slave_init(&slave->fsm, slave);
 
     slave->read_mbox_busy = 0;
-    rt_mutex_init(&slave->mbox_sem);
 
 #ifdef EC_EOE
     ec_mbox_data_init(&slave->mbox_eoe_data);
@@ -181,31 +180,27 @@ void ec_slave_init(
 
 /**
    Clears the mailbox lock.
+
+   Lock-free, so that it can be called from any context (also from realtime
+   context, e. g. via ecrt_voe_handler_execute()).
 */
 void ec_read_mbox_lock_clear(ec_slave_t *slave)
 {
-    rt_mutex_lock(&slave->mbox_sem);
-    slave->read_mbox_busy = 0;
-    rt_mutex_unlock(&slave->mbox_sem);
+    clear_bit_unlock(0, &slave->read_mbox_busy);
 }
-
 
 /****************************************************************************/
 
 /**
    Return the current mailbox lock status and lock it if not locked.
+
+   Lock-free, see ec_read_mbox_lock_clear().
+
+   \return Non-zero, if the lock was already taken.
 */
 int ec_read_mbox_locked(ec_slave_t *slave)
 {
-    int rc;
-
-    rt_mutex_lock(&slave->mbox_sem);
-    rc = slave->read_mbox_busy;
-    if (!slave->read_mbox_busy) {
-        slave->read_mbox_busy = 1;
-    }
-    rt_mutex_unlock(&slave->mbox_sem);
-    return rc;
+    return test_and_set_bit_lock(0, &slave->read_mbox_busy);
 }
 
 /****************************************************************************/

@@ -31,7 +31,6 @@
 
 #include <linux/list.h>
 #include <linux/kobject.h>
-#include <linux/rtmutex.h>
 
 #include "globals.h"
 #include "datagram.h"
@@ -229,9 +228,8 @@ struct ec_slave
 
     ec_fsm_slave_t fsm; /**< Slave state machine. */
 
-    uint8_t read_mbox_busy; /**< Flag set during a mailbox read request. */
-    struct rt_mutex mbox_sem; /**< Semaphore protecting the check_mbox
-                                variable. */
+    unsigned long read_mbox_busy; /**< Bit 0 is set during a mailbox read
+                                    request. */
 
 #ifdef EC_EOE
     ec_mbox_data_t mbox_eoe_data; /**< Received mailbox data for EoE. */

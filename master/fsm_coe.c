@@ -608,16 +608,6 @@ void ec_fsm_coe_dict_response_data(
         return;
     }
 
-#ifndef EC_EOE
-    if (mbox_prot == EC_MBOX_TYPE_EOE) {
-        // discard EoE message and wait for the next reponse
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_dict_check;
-        return;
-    }
-#endif
-
     if (mbox_prot != EC_MBOX_TYPE_COE) {
         EC_SLAVE_ERR(slave, "Received mailbox protocol 0x%02X as response.\n",
                 mbox_prot);
@@ -961,16 +951,6 @@ void ec_fsm_coe_dict_desc_response_data(
         return;
     }
 
-#ifndef EC_EOE
-    if (mbox_prot == EC_MBOX_TYPE_EOE) {
-        // discard EoE message and wait for the next reponse
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_dict_desc_check;
-        return;
-    }
-#endif
-
     if (mbox_prot != EC_MBOX_TYPE_COE) {
         EC_SLAVE_ERR(slave, "Received mailbox protocol 0x%02X as response.\n",
                 mbox_prot);
@@ -1267,16 +1247,6 @@ void ec_fsm_coe_dict_entry_response_data(
         fsm->state = ec_fsm_coe_error;
         return;
     }
-
-#ifndef EC_EOE
-    if (mbox_prot == EC_MBOX_TYPE_EOE) {
-        // discard EoE message and wait for the next reponse
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_dict_entry_check;
-        return;
-    }
-#endif
 
     if (mbox_prot != EC_MBOX_TYPE_COE) {
         EC_SLAVE_ERR(slave, "Received mailbox protocol"
@@ -1855,16 +1825,6 @@ void ec_fsm_coe_down_response_data(
         return;
     }
 
-#ifndef EC_EOE
-    if (mbox_prot == EC_MBOX_TYPE_EOE) {
-        // discard EoE message and wait for the next reponse
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_down_check;
-        return;
-    }
-#endif
-
     if (mbox_prot != EC_MBOX_TYPE_COE) {
         request->errno = EIO;
         fsm->state = ec_fsm_coe_error;
@@ -2098,16 +2058,6 @@ void ec_fsm_coe_down_seg_response_data(
         fsm->state = ec_fsm_coe_error;
         return;
     }
-
-#ifndef EC_EOE
-    if (mbox_prot == EC_MBOX_TYPE_EOE) {
-        // discard EoE message and wait for the next reponse
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_down_check;
-        return;
-    }
-#endif
 
     if (mbox_prot != EC_MBOX_TYPE_COE) {
         request->errno = EIO;
@@ -2534,16 +2484,6 @@ void ec_fsm_coe_up_response_data(
         return;
     }
 
-#ifndef EC_EOE
-    if (mbox_prot == EC_MBOX_TYPE_EOE) {
-        // discard EoE message and wait for the next reponse
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_up_check;
-        return;
-    }
-#endif
-
     if (mbox_prot != EC_MBOX_TYPE_COE) {
         request->errno = EIO;
         fsm->state = ec_fsm_coe_error;
@@ -2903,16 +2843,6 @@ void ec_fsm_coe_up_seg_response_data(
         fsm->state = ec_fsm_coe_error;
         return;
     }
-
-#ifndef EC_EOE
-    if (mbox_prot == EC_MBOX_TYPE_EOE) {
-        // discard EoE message and wait for the next reponse
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_up_seg_check;
-        return;
-    }
-#endif
 
     if (mbox_prot != EC_MBOX_TYPE_COE) {
         EC_SLAVE_ERR(slave, "Received mailbox protocol 0x%02X as response.\n",

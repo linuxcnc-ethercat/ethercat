@@ -1877,7 +1877,9 @@ static int ec_master_eoe_thread(void *priv_data)
         all_idle = 1;
 
         list_for_each_entry(eoe, &master->eoe_handlers, list) {
-            if (ec_eoe_is_open(eoe)) {
+            // closed handlers have to finish a receive sequence to release
+            // the mailbox read lock
+            if (ec_eoe_is_open(eoe) || ec_eoe_holds_mbox_lock(eoe)) {
                 none_open = 0;
                 break;
             }

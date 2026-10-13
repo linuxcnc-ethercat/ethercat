@@ -48,7 +48,7 @@ enum {
     EC_EOE_FRAMETYPE_FILT_RES =   0x05, /** Set Address Filter Response. */
 };
 
-/*****************************************************************************/
+/****************************************************************************/
 
 /**
    Queued frame structure.
@@ -113,6 +113,7 @@ void ec_eoe_clear(ec_eoe_t *);
 void ec_eoe_run(ec_eoe_t *);
 void ec_eoe_queue(ec_eoe_t *);
 int ec_eoe_is_open(const ec_eoe_t *);
+int ec_eoe_holds_mbox_lock(const ec_eoe_t *);
 int ec_eoe_is_idle(const ec_eoe_t *);
 
 /****************************************************************************/

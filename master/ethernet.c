@@ -347,8 +347,23 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (!eoe->opened)
+    if (!eoe->opened) {
+        if (!ec_eoe_holds_mbox_lock(eoe))
+            return;
+
+        // the device was closed during a receive sequence. release the
+        // mailbox read lock, as soon as the datagram is not in use any more.
+        if (eoe->queue_datagram) {
+            eoe->queue_datagram = 0; // not handed over yet
+        } else if (eoe->datagram.state == EC_DATAGRAM_QUEUED ||
+                eoe->datagram.state == EC_DATAGRAM_SENT) {
+            return;
+        }
+
+        ec_read_mbox_lock_clear(eoe->slave);
+        eoe->state = ec_eoe_state_rx_start;
         return;
+    }
 
     // if the datagram was not sent, or is not yet received, skip this cycle
     if (eoe->queue_datagram || eoe->datagram.state == EC_DATAGRAM_SENT)
@@ -394,6 +409,20 @@ int ec_eoe_is_open(const ec_eoe_t *eoe /**< EoE handler */)
 
 /****************************************************************************/
 
+/** Returns, if the handler holds the mailbox read lock of its slave.
+ *
+ * This is the case during a receive sequence (RX_CHECK and RX_FETCH).
+ *
+ * \return Non-zero, if the mailbox read lock is held.
+ */
+int ec_eoe_holds_mbox_lock(const ec_eoe_t *eoe /**< EoE handler */)
+{
+    return eoe->state == ec_eoe_state_rx_check ||
+        eoe->state == ec_eoe_state_rx_fetch;
+}
+
+/****************************************************************************/
+
 /** Returns the idle state.
  *
  * \retval 1 The device is idle.
@@ -426,7 +455,15 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 
     // mailbox read check is skipped if a read request is already ongoing
     if (ec_read_mbox_locked(eoe->slave)) {
-        eoe->state = ec_eoe_state_rx_fetch_data;
+        if (eoe->slave->mbox_eoe_data.payload_size > 0) {
+            // data were already received by another read request
+            eoe->state = ec_eoe_state_rx_fetch_data;
+            eoe->state(eoe);
+        } else {
+            // do not wait for the other read request, but transmit
+            eoe->rx_idle = 1;
+            eoe->state = ec_eoe_state_tx_start;
+        }
     } else {
         ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
         eoe->queue_datagram = 1;
@@ -526,6 +563,9 @@ void ec_eoe_state_rx_fetch_data(ec_eoe_t *eoe /**< EoE handler */)
             ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
             eoe->queue_datagram = 1;
             eoe->state = ec_eoe_state_rx_check;
+        } else {
+            // do not wait for the other read request, but transmit
+            eoe->state = ec_eoe_state_tx_start;
         }
         return;
     }

@@ -472,7 +472,7 @@ void ec_voe_handler_state_read_response_data(ec_voe_handler_t *voe)
     size_t rec_size;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_voe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_voe_data.payload_size) > 0) {
         slave->mbox_voe_data.payload_size = 0;
     } else {
         if ((jiffies - voe->jiffies_start) * 1000 / HZ >=
@@ -588,7 +588,7 @@ void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *voe)
 
     ec_slave_mbox_take_error(&slave->mbox_voe_data, datagram);
 
-    if (slave->mbox_voe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_voe_data.payload_size) > 0) {
         slave->mbox_voe_data.payload_size = 0;
         data = ec_slave_mbox_fetch(slave, &slave->mbox_voe_data,
                 &mbox_prot, &rec_size);

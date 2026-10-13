@@ -157,7 +157,7 @@ void ec_slave_mbox_take_error(
 
     if (mbox_data->data && datagram->data_size <= mbox_data->data_size) {
         memcpy(mbox_data->data, datagram->data, datagram->data_size);
-        mbox_data->payload_size = datagram->data_size;
+        smp_store_release(&mbox_data->payload_size, datagram->data_size);
     }
 }
 

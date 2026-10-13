@@ -490,7 +490,7 @@ void ec_fsm_foe_state_ack_read_data(
     size_t rec_size;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_foe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_foe_data.payload_size) > 0) {
         slave->mbox_foe_data.payload_size = 0;
     } else {
         if (ec_fsm_foe_timed_out(fsm)) {
@@ -874,7 +874,7 @@ void ec_fsm_foe_state_data_read_data(
     uint8_t *data, opCode, packet_no, mbox_prot;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_foe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_foe_data.payload_size) > 0) {
         slave->mbox_foe_data.payload_size = 0;
     } else {
         if (ec_fsm_foe_timed_out(fsm)) {

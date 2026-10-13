@@ -531,7 +531,7 @@ void ec_fsm_soe_read_response_data(
     ec_soe_request_t *req = fsm->request;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_soe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_soe_data.payload_size) > 0) {
         slave->mbox_soe_data.payload_size = 0;
     } else {
         unsigned long diff_ms = ec_fsm_soe_elapsed_ms(fsm);
@@ -914,7 +914,7 @@ void ec_fsm_soe_write_response_data(
     size_t rec_size;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_soe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_soe_data.payload_size) > 0) {
         slave->mbox_soe_data.payload_size = 0;
     } else {
         unsigned long diff_ms = ec_fsm_soe_elapsed_ms(fsm);

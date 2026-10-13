@@ -555,7 +555,7 @@ void ec_eoe_state_rx_fetch_data(ec_eoe_t *eoe /**< EoE handler */)
     unsigned int i;
 #endif
 
-    if (eoe->slave->mbox_eoe_data.payload_size > 0) {
+    if (smp_load_acquire(&eoe->slave->mbox_eoe_data.payload_size) > 0) {
         eoe->slave->mbox_eoe_data.payload_size = 0;
     } else {
         // initiate a new mailbox read check if required data is not available

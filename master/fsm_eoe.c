@@ -481,7 +481,7 @@ void ec_fsm_eoe_set_ip_response_data(
     ec_eoe_request_t *req = fsm->request;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_eoe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_eoe_data.payload_size) > 0) {
         slave->mbox_eoe_data.payload_size = 0;
     } else {
         unsigned long diff_ms = (jiffies - fsm->jiffies_start) * 1000 / HZ;

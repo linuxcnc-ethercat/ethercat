@@ -1168,7 +1168,7 @@ static void ec_master_mbox_store(
 {
     if (mbox_data->data && size <= mbox_data->data_size) {
         memcpy(mbox_data->data, data, size);
-        mbox_data->payload_size = size;
+        smp_store_release(&mbox_data->payload_size, size);
     }
 }
 

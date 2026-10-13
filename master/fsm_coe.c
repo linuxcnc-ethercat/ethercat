@@ -655,7 +655,7 @@ void ec_fsm_coe_dict_response_data(
     size_t index_list_offset;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_coe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_coe_data.payload_size) > 0) {
         slave->mbox_coe_data.payload_size = 0;
     } else {
         if (ec_fsm_coe_elapsed_ms(fsm) >= EC_FSM_COE_DICT_TIMEOUT) {
@@ -987,7 +987,7 @@ void ec_fsm_coe_dict_desc_response_data(
     size_t rec_size, name_size;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_coe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_coe_data.payload_size) > 0) {
         slave->mbox_coe_data.payload_size = 0;
     } else {
         if (ec_fsm_coe_elapsed_ms(fsm) >= EC_FSM_COE_DICT_TIMEOUT) {
@@ -1275,7 +1275,7 @@ void ec_fsm_coe_dict_entry_response_data(
     u16 word;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_coe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_coe_data.payload_size) > 0) {
         slave->mbox_coe_data.payload_size = 0;
     } else {
         if (ec_fsm_coe_elapsed_ms(fsm) >= EC_FSM_COE_DICT_TIMEOUT) {
@@ -1842,7 +1842,7 @@ void ec_fsm_coe_down_response_data(
     ec_sdo_request_t *request = fsm->request;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_coe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_coe_data.payload_size) > 0) {
         slave->mbox_coe_data.payload_size = 0;
     } else {
         unsigned long diff_ms = ec_fsm_coe_elapsed_ms(fsm);
@@ -2124,7 +2124,7 @@ void ec_fsm_coe_down_seg_response_data(
     ec_sdo_request_t *request = fsm->request;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_coe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_coe_data.payload_size) > 0) {
         slave->mbox_coe_data.payload_size = 0;
     } else {
         if (ec_fsm_coe_elapsed_ms(fsm) >= request->response_timeout) {
@@ -2540,7 +2540,7 @@ void ec_fsm_coe_up_response_data(
     int ret;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_coe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_coe_data.payload_size) > 0) {
         slave->mbox_coe_data.payload_size = 0;
     } else {
         unsigned long diff_ms = ec_fsm_coe_elapsed_ms(fsm);
@@ -2895,7 +2895,7 @@ void ec_fsm_coe_up_seg_response_data(
     unsigned int last_segment;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_coe_data.payload_size > 0) {
+    if (smp_load_acquire(&slave->mbox_coe_data.payload_size) > 0) {
         slave->mbox_coe_data.payload_size = 0;
     } else {
         if (ec_fsm_coe_elapsed_ms(fsm) >= request->response_timeout) {

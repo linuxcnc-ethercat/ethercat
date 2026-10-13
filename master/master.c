@@ -3208,6 +3208,13 @@ int ecrt_master_reference_clock_time(const ec_master_t *master,
         return -EIO;
     }
 
+    // The payload still holds the pre-filled value when the frame never
+    // reached the reference (e.g. it is powered off and bypassed), so no
+    // reference time was latched.
+    if (EC_READ_U32(master->sync_datagram.data) == master->dc_sync_prefill) {
+        return -EIO;
+    }
+
     // Get returned datagram time, transmission delay removed.
     *time = EC_READ_U32(master->sync_datagram.data) -
         master->dc_ref_clock->transmission_delay;

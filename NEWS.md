@@ -27,6 +27,15 @@
 - Improved macb driver performance
 - Do not print routine errors (no reference clock or no reference clock time
   yet) in `ecrt_master_reference_clock_time()` (#231)
+- Made the macb (Cadence GEM) EtherCAT RX path allocation-free to
+  avoid receive latency spikes under host memory pressure.
+- Included macb in the device driver table and fixed a
+  `CONFIG_MACB_USE_HWSTAMP` build issue.
+- Use `strscpy` instead of the deprecated `strncpy` in kernel space,
+  with a fallback for Linux < 4.2.
+- Added a test build for kernel 6.18.
+- Improved `ecrt_slave_config_dc()` documentation.
+- Use an own pre-commit container with cache in CI.
 
 ## Version 1.6.9
 

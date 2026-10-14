@@ -49,7 +49,8 @@ def compile_regex(prefix, file_extension):
     """
     :return: Compiled regex to extract Kernel version
     """
-    return compile("^" + prefix + "-([\d]+)\.([\d]+)-ethercat\."+file_extension+"$")
+    return compile("^" + prefix + r"-([\d]+)\.([\d]+)-ethercat\."
+            + file_extension + "$")
 
 def filter_versions(file_list, prefix, file_extension):
     """
@@ -95,7 +96,7 @@ def compute_table(dict_data):
     (driver name / kernel version).
     """
     keys = sorted(dict_data.keys(), reverse=True)
-    ans = [("Kernel", *DRIVERS),]
+    ans = [["Kernel"] + DRIVERS]
 
     def parse_row(key):
         row_set = dict_data[key]

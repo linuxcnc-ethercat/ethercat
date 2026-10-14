@@ -1046,10 +1046,8 @@ void ec_fsm_slave_scan_state_sync(
             slave->configured_tx_mailbox_offset,
             slave->configured_tx_mailbox_size);
 
-    // allocate memory for mailbox response data for supported mailbox
-    // protocols
-    ec_mbox_prot_data_prealloc(slave, slave->sii.mailbox_protocols,
-            slave->configured_tx_mailbox_size);
+    // allocate memory for mailbox response data
+    ec_mbox_prot_data_prealloc(slave);
 
     ec_fsm_slave_scan_enter_clear_mailbox(fsm);
 }

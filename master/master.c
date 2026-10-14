@@ -1159,17 +1159,28 @@ void ec_master_send_datagrams(
 /****************************************************************************/
 
 /** Stores a received mailbox response in a protocol-specific buffer.
+ *
+ * \retval 0 The response was stored.
+ * \retval -ENOENT There is no buffer for the protocol.
+ * \retval -EOVERFLOW The response does not fit into the buffer.
  */
-static void ec_master_mbox_store(
+static int ec_master_mbox_store(
         ec_mbox_data_t *mbox_data, /**< Mailbox response buffer. */
         const uint8_t *data, /**< Received mailbox data. */
         size_t size /**< Size of the received data. */
         )
 {
-    if (mbox_data->data && size <= mbox_data->data_size) {
-        memcpy(mbox_data->data, data, size);
-        smp_store_release(&mbox_data->payload_size, size);
+    if (!mbox_data->data) {
+        return -ENOENT;
     }
+
+    if (size > mbox_data->data_size) {
+        return -EOVERFLOW;
+    }
+
+    memcpy(mbox_data->data, data, size);
+    smp_store_release(&mbox_data->payload_size, size);
+    return 0;
 }
 
 /****************************************************************************/
@@ -1188,7 +1199,9 @@ static int ec_master_mbox_dispatch(
         )
 {
     ec_slave_t *slave;
+    ec_mbox_data_t *mbox_data;
     uint8_t mbox_prot;
+    int ret;
 
     if (!EC_READ_U16(data + size)) { // working counter
         return 0;
@@ -1229,26 +1242,46 @@ static int ec_master_mbox_dispatch(
     switch (mbox_prot) {
 #ifdef EC_EOE
         case EC_MBOX_TYPE_EOE:
-            ec_master_mbox_store(&slave->mbox_eoe_data, data, size);
-            return 1;
+            mbox_data = &slave->mbox_eoe_data;
+            break;
 #endif
         case EC_MBOX_TYPE_COE:
-            ec_master_mbox_store(&slave->mbox_coe_data, data, size);
-            return 1;
+            mbox_data = &slave->mbox_coe_data;
+            break;
         case EC_MBOX_TYPE_FOE:
-            ec_master_mbox_store(&slave->mbox_foe_data, data, size);
-            return 1;
+            mbox_data = &slave->mbox_foe_data;
+            break;
         case EC_MBOX_TYPE_SOE:
-            ec_master_mbox_store(&slave->mbox_soe_data, data, size);
-            return 1;
+            mbox_data = &slave->mbox_soe_data;
+            break;
         case EC_MBOX_TYPE_VOE:
-            ec_master_mbox_store(&slave->mbox_voe_data, data, size);
-            return 1;
+            mbox_data = &slave->mbox_voe_data;
+            break;
         default:
             EC_MASTER_DBG(master, 1, "Unknown mailbox protocol"
                     " from slave: %u Protocol: %u\n", slave_addr, mbox_prot);
             return 0;
     }
+
+    ret = ec_master_mbox_store(mbox_data, data, size);
+    if (ret == -ENOENT) {
+        if (printk_ratelimit()) {
+            EC_SLAVE_WARN(slave, "Ignoring mailbox message of protocol"
+                    " 0x%02X, which is not supported by the slave.\n",
+                    mbox_prot);
+        }
+        return 0;
+    } else if (ret == -EOVERFLOW) {
+        if (printk_ratelimit()) {
+            EC_SLAVE_WARN(slave, "Ignoring mailbox message of protocol"
+                    " 0x%02X, which exceeds the buffer size"
+                    " (%zu > %zu bytes).\n",
+                    mbox_prot, size, mbox_data->data_size);
+        }
+        return 0;
+    }
+
+    return 1;
 }
 
 /****************************************************************************/

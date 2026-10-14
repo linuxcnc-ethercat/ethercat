@@ -696,9 +696,8 @@ static int ec_mbox_data_prealloc(
         )
 {
     if (mbox_data->data) {
-        kfree(mbox_data->data);
-        mbox_data->data = NULL;
-        mbox_data->data_size = 0;
+        // never re-allocate, the receive path may be writing to the buffer
+        return 0;
     }
 
     if (!(mbox_data->data = kmalloc(size, GFP_KERNEL))) {
@@ -713,44 +712,48 @@ static int ec_mbox_data_prealloc(
 
 /****************************************************************************/
 
-/** Allocates internal memory for mailbox response data for all slave
- *  supported mailbox protocols .
+/** Allocates internal memory for mailbox response data.
  *
-  */
+ * The buffers are allocated for the mailbox protocols supported by the slave.
+ * They are allocated only once and freed with the slave, because the receive
+ * path may write to them at any time. So they are dimensioned for the
+ * largest TX mailbox, that can be configured during the lifetime of the
+ * slave object (standard and bootstrap mailbox, sync manager configuration
+ * from the SII and the currently configured mailbox).
+ */
 void ec_mbox_prot_data_prealloc(
-        ec_slave_t *slave, /**< EtherCAT slave. */
-        uint16_t protocols, /**< Supported protocols. */
-        size_t size /**< Mailbox size in bytes. */
+        ec_slave_t *slave /**< EtherCAT slave. */
         )
 {
-    if ((size > 0) && (size <= EC_MAX_DATA_SIZE)) {
+    uint16_t protocols = slave->sii.mailbox_protocols;
+    size_t size = slave->configured_tx_mailbox_size;
+
+    size = max_t(size_t, size, slave->sii.std_tx_mailbox_size);
+    size = max_t(size_t, size, slave->sii.boot_tx_mailbox_size);
+    if (slave->sii.sync_count >= 2) {
+        size = max_t(size_t, size, slave->sii.syncs[1].default_length);
+    }
+
+    if (!size || size > EC_MAX_DATA_SIZE) {
+        size = EC_MAX_DATA_SIZE;
+    }
+
 #ifdef EC_EOE
-        if (protocols & EC_MBOX_EOE) {
-            ec_mbox_data_prealloc(&slave->mbox_eoe_data, size);
-        } else {
-            ec_mbox_data_clear(&slave->mbox_eoe_data);
-        }
+    if (protocols & EC_MBOX_EOE) {
+        ec_mbox_data_prealloc(&slave->mbox_eoe_data, size);
+    }
 #endif
-        if (protocols & EC_MBOX_COE) {
-            ec_mbox_data_prealloc(&slave->mbox_coe_data, size);
-        } else {
-            ec_mbox_data_clear(&slave->mbox_coe_data);
-        }
-        if (protocols & EC_MBOX_FOE) {
-            ec_mbox_data_prealloc(&slave->mbox_foe_data, size);
-        } else {
-            ec_mbox_data_clear(&slave->mbox_foe_data);
-        }
-        if (protocols & EC_MBOX_SOE) {
-            ec_mbox_data_prealloc(&slave->mbox_soe_data, size);
-        } else {
-            ec_mbox_data_clear(&slave->mbox_soe_data);
-        }
-        if (protocols & EC_MBOX_VOE) {
-            ec_mbox_data_prealloc(&slave->mbox_voe_data, size);
-        } else {
-            ec_mbox_data_clear(&slave->mbox_voe_data);
-        }
+    if (protocols & EC_MBOX_COE) {
+        ec_mbox_data_prealloc(&slave->mbox_coe_data, size);
+    }
+    if (protocols & EC_MBOX_FOE) {
+        ec_mbox_data_prealloc(&slave->mbox_foe_data, size);
+    }
+    if (protocols & EC_MBOX_SOE) {
+        ec_mbox_data_prealloc(&slave->mbox_soe_data, size);
+    }
+    if (protocols & EC_MBOX_VOE) {
+        ec_mbox_data_prealloc(&slave->mbox_voe_data, size);
     }
 }
 

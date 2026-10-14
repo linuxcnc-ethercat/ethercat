@@ -152,7 +152,7 @@ const char *ec_datagram_type_string(const ec_datagram_t *);
 
 void ec_mbox_data_init(ec_mbox_data_t *);
 void ec_mbox_data_clear(ec_mbox_data_t *);
-void ec_mbox_prot_data_prealloc(ec_slave_t *, uint16_t, size_t);
+void ec_mbox_prot_data_prealloc(ec_slave_t *);
 
 /****************************************************************************/
 

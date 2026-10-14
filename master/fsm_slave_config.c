@@ -546,10 +546,8 @@ void ec_fsm_slave_config_enter_mbox_sync(
             slave->sii.std_tx_mailbox_size;
     }
 
-    // allocate memory for mailbox response data for supported mailbox
-    // protocols
-    ec_mbox_prot_data_prealloc(slave, slave->sii.mailbox_protocols,
-            slave->configured_tx_mailbox_size);
+    // allocate memory for mailbox response data
+    ec_mbox_prot_data_prealloc(slave);
 
     fsm->take_time = 1;
 

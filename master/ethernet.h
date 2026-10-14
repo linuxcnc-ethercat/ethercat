@@ -35,6 +35,7 @@
 #include "globals.h"
 #include "slave.h"
 #include "datagram.h"
+#include "fsm_mbox.h"
 
 /****************************************************************************/
 
@@ -78,6 +79,7 @@ struct ec_eoe
     ec_datagram_t datagram; /**< datagram */
     unsigned int queue_datagram; /**< the datagram is ready for queuing */
     void (*state)(ec_eoe_t *); /**< state function for the state machine */
+    ec_fsm_mbox_t fsm_mbox; /**< Mailbox receive state machine. */
     struct net_device *dev; /**< net_device for virtual ethernet device */
     struct net_device_stats stats; /**< device statistics */
     unsigned int opened; /**< net_device is opened */

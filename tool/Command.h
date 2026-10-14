@@ -143,6 +143,10 @@ class Command
         static std::string alStateBaseString(uint8_t);
         static std::string directionString(ec_direction_t);
         static std::string jsonEscape(const std::string &);
+        static std::string xmlEscape(const std::string &);
+        static std::string toUtf8(const std::string &);
+        static std::string toLocal(const std::string &,
+                size_t = std::string::npos);
 
         /** Version of the JSON output format.
          *

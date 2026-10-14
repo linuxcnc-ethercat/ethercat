@@ -162,7 +162,7 @@ void CommandSdos::listSlaveSdos(
         cout << "SDO 0x"
             << hex << setfill('0')
             << setw(4) << sdo.sdo_index
-            << ", \"" << sdo.name << "\"" << endl;
+            << ", \"" << toLocal((const char *) sdo.name) << "\"" << endl;
 
         if (getVerbosity() == Quiet)
             continue;
@@ -195,7 +195,8 @@ void CommandSdos::listSlaveSdos(
             }
 
             cout << ", " << dec << entry.bit_length << " bit, \""
-                << entry.description << "\"" << endl;
+                << toLocal((const char *) entry.description) << "\""
+                << endl;
         }
     }
 }

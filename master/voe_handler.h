@@ -33,6 +33,7 @@
 
 #include "globals.h"
 #include "datagram.h"
+#include "fsm_mbox.h"
 
 /****************************************************************************/
 
@@ -52,6 +53,7 @@ struct ec_voe_handler {
     ec_internal_request_state_t request_state; /**< Handler state. */
     unsigned int retries; /**< retries upon datagram timeout */
     unsigned long jiffies_start; /**< Timestamp for timeout calculation. */
+    ec_fsm_mbox_t fsm_mbox; /**< Mailbox receive state machine. */
 };
 
 /****************************************************************************/

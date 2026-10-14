@@ -1263,6 +1263,11 @@ static int ec_master_mbox_dispatch(
             return 0;
     }
 
+    if (smp_load_acquire(&mbox_data->payload_size) && printk_ratelimit()) {
+        EC_SLAVE_WARN(slave, "Overwriting unfetched mailbox message of"
+                " protocol 0x%02X.\n", mbox_prot);
+    }
+
     ret = ec_master_mbox_store(mbox_data, data, size);
     if (ret == -ENOENT) {
         if (printk_ratelimit()) {

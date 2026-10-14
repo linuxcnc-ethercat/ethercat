@@ -31,6 +31,7 @@ noinst_HEADERS = \
 	fakeethercat.h
 
 libfakeethercat_la_CXXFLAGS = \
+	-std=c++11 \
 	-fno-strict-aliasing \
 	-Wall \
 	-I$(top_srcdir)/include \

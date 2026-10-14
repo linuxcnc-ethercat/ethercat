@@ -23,6 +23,7 @@
 
 #include "fakeethercat.h"
 
+#include <cerrno>
 #include <cstring>
 #include <fstream>
 #include <ios>
@@ -813,12 +814,12 @@ int ecrt_slave_config_reg_pdo_entry_pos(
                                  is desired */
 )
 {
-    auto syncIt {sc->sync_managers.find(sync_index)};
+    auto syncIt = sc->sync_managers.find(sync_index);
     if (syncIt == sc->sync_managers.end()) {
         return -1;
     }
 
-    auto pdo_it {syncIt->second.pdos.find(pdo_pos)};
+    auto pdo_it = syncIt->second.pdos.find(pdo_pos);
     if (pdo_it == syncIt->second.pdos.end()) {
         return -1;
     }

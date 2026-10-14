@@ -547,7 +547,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
     }
 
     // allocate memory for mailbox response data
-    ec_mbox_prot_data_prealloc(slave);
+    ec_slave_mbox_prealloc(slave);
 
     fsm->take_time = 1;
 

@@ -29,7 +29,8 @@
 #ifndef __EC_MAILBOX_H__
 #define __EC_MAILBOX_H__
 
-#include "slave.h"
+#include "globals.h"
+#include "datagram.h"
 #include "smp.h"
 
 /****************************************************************************/
@@ -52,6 +53,20 @@ enum {
 
 /****************************************************************************/
 
+/** EtherCAT mailbox response data.
+ */
+typedef struct {
+    uint8_t *data;       /**< Mailbox response data. */
+    size_t data_size;    /**< Size of the mailbox response data buffer. */
+    size_t payload_size; /**< Size of the mailbox response payload data. */
+} ec_mbox_data_t;
+
+/****************************************************************************/
+
+void     ec_mbox_data_init(ec_mbox_data_t *);
+void     ec_mbox_data_clear(ec_mbox_data_t *);
+
+void     ec_slave_mbox_prealloc(ec_slave_t *);
 uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *, ec_datagram_t *,
                                     uint8_t, size_t);
 int      ec_slave_mbox_prepare_check(const ec_slave_t *, ec_datagram_t *);

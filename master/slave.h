@@ -34,6 +34,7 @@
 
 #include "globals.h"
 #include "datagram.h"
+#include "mailbox.h"
 #include "pdo.h"
 #include "sync.h"
 #include "sdo.h"

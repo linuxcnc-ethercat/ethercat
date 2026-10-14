@@ -108,17 +108,6 @@ typedef struct {
     char name[EC_DATAGRAM_NAME_SIZE]; /**< Description of the datagram. */
 } ec_datagram_t;
 
-
-/****************************************************************************/
-
-/** EtherCAT mailbox response data.
- */
-typedef struct {
-    uint8_t *data;       /**< Mailbox response data. */
-    size_t data_size;    /**< Size of the mailbox response data buffer. */
-    size_t payload_size; /**< Size of the mailbox response payload data. */
-} ec_mbox_data_t;
-
 /****************************************************************************/
 
 void ec_datagram_init(ec_datagram_t *);
@@ -149,10 +138,6 @@ void ec_datagram_print_state(const ec_datagram_t *);
 void ec_datagram_print_wc_error(const ec_datagram_t *);
 void ec_datagram_output_stats(ec_datagram_t *);
 const char *ec_datagram_type_string(const ec_datagram_t *);
-
-void ec_mbox_data_init(ec_mbox_data_t *);
-void ec_mbox_data_clear(ec_mbox_data_t *);
-void ec_mbox_prot_data_prealloc(ec_slave_t *);
 
 /****************************************************************************/
 

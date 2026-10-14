@@ -595,6 +595,30 @@ string Command::jsonEscape(const string &raw)
 
 /****************************************************************************/
 
+/** Escapes a string for use as XML character data.
+ *
+ * The input is passed through toUtf8() first, so that the result matches
+ * the default XML encoding UTF-8.
+ */
+string Command::xmlEscape(const string &raw)
+{
+    const string in(toUtf8(raw));
+    string out;
+
+    for (string::const_iterator c = in.begin(); c != in.end(); c++) {
+        switch (*c) {
+            case '&': out += "&amp;"; break;
+            case '<': out += "&lt;"; break;
+            case '>': out += "&gt;"; break;
+            default: out += *c;
+        }
+    }
+
+    return out;
+}
+
+/****************************************************************************/
+
 /** Unicode code points of the Windows-1252 characters 0x80 to 0x9F.
  *
  * The five positions undefined in Windows-1252 map to the C1 control codes,

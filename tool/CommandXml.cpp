@@ -131,13 +131,12 @@ void CommandXml::generateSlaveXml(
         << hex << setfill('0') << setw(8) << slave.product_code
         << "\" RevisionNo=\"#x"
         << hex << setfill('0') << setw(8) << slave.revision_number
-        << "\">" << toUtf8(slave.order) << "</Type>" << endl;
+        << "\">" << xmlEscape(slave.order) << "</Type>" << endl;
 
     if (strlen(slave.name)) {
         cout
-            << in << "        <Name><![CDATA["
-            << toUtf8(slave.name)
-            << "]]></Name>" << endl;
+            << in << "        <Name>" << xmlEscape(slave.name)
+            << "</Name>" << endl;
     }
 
     for (i = 0; i < slave.sync_count; i++) {
@@ -168,7 +167,7 @@ void CommandXml::generateSlaveXml(
                 << hex << setfill('0') << setw(4) << pdo.index
                 << "</Index>" << endl
                 << in << "          <Name>"
-                << toUtf8((const char *) pdo.name) << "</Name>" << endl;
+                << xmlEscape((const char *) pdo.name) << "</Name>" << endl;
 
             for (k = 0; k < pdo.entry_count; k++) {
                 m.getPdoEntry(&entry, slave.position, i, j, k);
@@ -192,7 +191,7 @@ void CommandXml::generateSlaveXml(
                 if (entry.index) {
                     cout
                         << in << "            <Name>"
-                        << toUtf8((const char *) entry.name)
+                        << xmlEscape((const char *) entry.name)
                         << "</Name>" << endl
                         << in << "            <DataType>";
 

@@ -324,7 +324,7 @@ int ec_fsm_coe_prepare_dict(
 {
     ec_slave_t *slave = fsm->slave;
     uint8_t *data = ec_slave_mbox_prepare_send(slave, datagram,
-			EC_MBOX_TYPE_COE, 8);
+            EC_MBOX_TYPE_COE, 8);
     if (IS_ERR(data)) {
         return PTR_ERR(data);
     }
@@ -436,7 +436,7 @@ void ec_fsm_coe_dict_check(
 
     if (fsm->datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_SLAVE_ERR(slave,"Reception of CoE mailbox check"
+        EC_SLAVE_ERR(slave, "Reception of CoE mailbox check"
                 " datagram failed: ");
         ec_datagram_print_wc_error(fsm->datagram);
         return;
@@ -477,7 +477,7 @@ int ec_fsm_coe_dict_prepare_desc(
 {
     ec_slave_t *slave = fsm->slave;
     u8 *data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_COE,
-			8);
+            8);
     if (IS_ERR(data)) {
         return PTR_ERR(data);
     }
@@ -770,7 +770,7 @@ int ec_fsm_coe_dict_prepare_entry(
 {
     ec_slave_t *slave = fsm->slave;
     u8 *data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_COE,
-			10);
+            10);
     if (IS_ERR(data)) {
         return PTR_ERR(data);
     }
@@ -1120,7 +1120,6 @@ void ec_fsm_coe_dict_entry_response(
          * subindex. */
 
     } else {
-
         if (rec_size < 9) {
             EC_SLAVE_ERR(slave, "Received corrupted SDO entry"
                     " description response (size %zu).\n", rec_size);
@@ -1192,7 +1191,6 @@ void ec_fsm_coe_dict_entry_response(
     }
 
     if (fsm->subindex < sdo->max_subindex) {
-
         fsm->subindex++;
         fsm->retries = EC_FSM_RETRIES;
 
@@ -1205,7 +1203,6 @@ void ec_fsm_coe_dict_entry_response(
 
     // another SDO description to fetch?
     if (fsm->sdo->list.next != &slave->sdo_dictionary) {
-
         fsm->sdo = list_entry(fsm->sdo->list.next, ec_sdo_t, list);
         fsm->retries = EC_FSM_RETRIES;
 
@@ -1797,7 +1794,7 @@ void ec_fsm_coe_down_seg_response(
         // discard EoE message and wait for the next reponse
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
         fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_down_check;
+        fsm->state = ec_fsm_coe_down_seg_check;
         return;
     }
 #endif
@@ -1814,7 +1811,7 @@ void ec_fsm_coe_down_seg_response(
         // check for CoE response again
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
         fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_down_check;
+        fsm->state = ec_fsm_coe_down_seg_check;
         return;
     }
 
@@ -1904,7 +1901,7 @@ int ec_fsm_coe_prepare_up(
     ec_master_t *master = slave->master;
 
     u8 *data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_COE,
-			10);
+            10);
     if (IS_ERR(data)) {
         request->errno = PTR_ERR(data);
         return PTR_ERR(data);
@@ -2096,7 +2093,7 @@ void ec_fsm_coe_up_prepare_segment_request(
 {
     uint8_t *data =
         ec_slave_mbox_prepare_send(fsm->slave, datagram, EC_MBOX_TYPE_COE,
-				10);
+                10);
     if (IS_ERR(data)) {
         fsm->request->errno = PTR_ERR(data);
         fsm->state = ec_fsm_coe_error;

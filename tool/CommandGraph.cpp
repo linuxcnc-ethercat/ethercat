@@ -204,7 +204,7 @@ void CommandGraph::execute(const StringVector &args)
             << ",label=\"" << si->position
             << " / " << alias << ":" << pos;
         if (string(si->order).size())
-            cout << "\\n" << si->order;
+            cout << "\\n" << toUtf8(si->order);
         if (info == DC && si->dc_supported) {
             cout << "\\nDC: ";
             if (si->has_dc_system_time) {

@@ -149,7 +149,7 @@ void CommandCStruct::generateSlaveCStruct(
                 }
             pdos << "},";
             if (strlen((const char *) pdo.name)) {
-                pdos << " /* " << pdo.name << " */";
+                pdos << " /* " << toUtf8((const char *) pdo.name) << " */";
             }
             pdos << endl;
             entry_pos += pdo.entry_count;
@@ -163,7 +163,8 @@ void CommandCStruct::generateSlaveCStruct(
                     << ", " << dec << (unsigned int) entry.bit_length
                     << "},";
                 if (strlen((const char *) entry.name)) {
-                    entries << " /* " << entry.name << " */";
+                    entries << " /* " << toUtf8((const char *) entry.name)
+                        << " */";
                 }
                 entries << endl;
             }
@@ -173,7 +174,7 @@ void CommandCStruct::generateSlaveCStruct(
     cout
         << "/* Master " << m.getIndex() << ", Slave " << slave.position;
     if (strlen(slave.order)) {
-        cout << ", \"" << slave.order << "\"";
+        cout << ", \"" << toUtf8(slave.order) << "\"";
     }
 
     cout << endl

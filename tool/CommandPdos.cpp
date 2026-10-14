@@ -225,7 +225,8 @@ void CommandPdos::listSlavePdos(
                 << "xPDO 0x"
                 << hex << setfill('0')
                 << setw(4) << pdo.index
-                << " \"" << pdo.name << "\"" << endl;
+                << " \"" << toLocal((const char *) pdo.name) << "\""
+                << endl;
 
             if (getVerbosity() == Quiet)
                 continue;
@@ -239,7 +240,8 @@ void CommandPdos::listSlavePdos(
                     << ":" << setw(2) << (unsigned int) entry.subindex
                     << ", " << dec << setfill(' ')
                     << setw(2) << (unsigned int) entry.bit_length
-                    << " bit, \"" << entry.name << "\"" << endl;
+                    << " bit, \"" << toLocal((const char *) entry.name)
+                    << "\"" << endl;
             }
         }
     }
@@ -260,7 +262,7 @@ void CommandPdos::etherlabConfig(
     cout << "%" << endl
         << "% Master " << m.getIndex() << ", Slave " << slave.position;
     if (strlen(slave.order)) {
-        cout << ", \"" << slave.order << "\"";
+        cout << ", \"" << toUtf8(slave.order) << "\"";
     }
     cout << endl
         << "%" << endl
@@ -272,7 +274,8 @@ void CommandPdos::etherlabConfig(
         << "rv.SlaveConfig.product = hex2dec('"
         << hex << setfill('0') << setw(8) << slave.product_code << "');"
         << endl
-        << "rv.SlaveConfig.description = '" << slave.order << "';" << endl
+        << "rv.SlaveConfig.description = '" << toUtf8(slave.order) << "';"
+        << endl
         << "rv.SlaveConfig.sm = { ..." << endl;
 
     /* slave configuration */

@@ -208,7 +208,7 @@ void CommandSlaves::listSlaves(
             info.device = slave.device_index;
 
             if (strlen(slave.name)) {
-                info.name = slave.name;
+                info.name = toLocal(slave.name);
             } else {
                 str << "0x" << hex << setfill('0')
                     << setw(8) << slave.vendor_id << ":0x"
@@ -434,10 +434,10 @@ void CommandSlaves::showSlaves(
 
         if (si->has_general_category) {
             cout << "General:" << endl
-                << "  Group: " << si->group << endl
-                << "  Image name: " << si->image << endl
-                << "  Order number: " << si->order << endl
-                << "  Device name: " << si->name << endl;
+                << "  Group: " << toLocal(si->group) << endl
+                << "  Image name: " << toLocal(si->image) << endl
+                << "  Order number: " << toLocal(si->order) << endl
+                << "  Device name: " << toLocal(si->name) << endl;
 
             if (si->mailbox_protocols & EC_MBOX_COE) {
                 cout << "  CoE details:" << endl

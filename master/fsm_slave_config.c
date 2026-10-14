@@ -546,6 +546,9 @@ void ec_fsm_slave_config_enter_mbox_sync(
             slave->sii.std_tx_mailbox_size;
     }
 
+    // allocate memory for mailbox response data
+    ec_slave_mbox_prealloc(slave);
+
     fsm->take_time = 1;
 
     fsm->retries = EC_FSM_RETRIES;

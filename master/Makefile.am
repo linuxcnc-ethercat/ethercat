@@ -42,6 +42,7 @@ noinst_HEADERS = \
 	fsm_eoe.c fsm_eoe.h \
 	fsm_foe.c fsm_foe.h \
 	fsm_master.c fsm_master.h \
+	fsm_mbox.c fsm_mbox.h \
 	fsm_pdo.c fsm_pdo.h \
 	fsm_pdo_entry.c fsm_pdo_entry.h \
 	fsm_sii.c fsm_sii.h \

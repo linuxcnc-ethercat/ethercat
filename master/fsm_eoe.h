@@ -32,6 +32,7 @@
 #include "globals.h"
 #include "datagram.h"
 #include "slave.h"
+#include "fsm_mbox.h"
 #include "eoe_request.h"
 
 /****************************************************************************/
@@ -47,6 +48,7 @@ struct ec_fsm_eoe {
     void (*state)(ec_fsm_eoe_t *, ec_datagram_t *); /**< EoE state function */
     ec_datagram_t *datagram; /**< Datagram used in the previous step. */
     unsigned long jiffies_start; /**< Timestamp. */
+    ec_fsm_mbox_t fsm_mbox; /**< Mailbox receive state machine. */
     ec_eoe_request_t *request; /**< EoE request */
     unsigned int frame_type_retries; /**< retries upon wrong frame type. */
 };

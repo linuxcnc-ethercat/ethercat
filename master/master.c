@@ -44,6 +44,7 @@
 #include "device.h"
 #include "datagram.h"
 #include "smp.h"
+#include "mailbox.h"
 
 #ifdef EC_EOE
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
@@ -1001,8 +1002,10 @@ void ec_master_queue_datagram(
         }
     }
 
-    list_add_tail(&datagram->queue, &master->datagram_queue);
-    smp_store_release(&datagram->state, EC_DATAGRAM_QUEUED);
+    if (datagram->state != EC_DATAGRAM_UNUSED) {
+        list_add_tail(&datagram->queue, &master->datagram_queue);
+        smp_store_release(&datagram->state, EC_DATAGRAM_QUEUED);
+    }
 }
 
 /****************************************************************************/
@@ -1155,6 +1158,134 @@ void ec_master_send_datagrams(
 
 /****************************************************************************/
 
+/** Stores a received mailbox response in a protocol-specific buffer.
+ *
+ * \retval 0 The response was stored.
+ * \retval -ENOENT There is no buffer for the protocol.
+ * \retval -EOVERFLOW The response does not fit into the buffer.
+ */
+static int ec_master_mbox_store(
+        ec_mbox_data_t *mbox_data, /**< Mailbox response buffer. */
+        const uint8_t *data, /**< Received mailbox data. */
+        size_t size /**< Size of the received data. */
+        )
+{
+    if (!mbox_data->data) {
+        return -ENOENT;
+    }
+
+    if (size > mbox_data->data_size) {
+        return -EOVERFLOW;
+    }
+
+    memcpy(mbox_data->data, data, size);
+    smp_store_release(&mbox_data->payload_size, size);
+    return 0;
+}
+
+/****************************************************************************/
+
+/** Common mailbox dispatcher for mailboxes read via the station address.
+ *
+ * \return Non-zero, if the data were handled by the dispatcher, zero, if they
+ *         shall be copied into the datagram memory.
+ */
+static int ec_master_mbox_dispatch(
+        ec_master_t *master, /**< EtherCAT master. */
+        const uint8_t *data, /**< Received datagram data. */
+        size_t size, /**< Size of the received datagram data. */
+        uint16_t slave_addr, /**< Station address of the datagram. */
+        uint16_t offset_addr /**< Register offset of the datagram. */
+        )
+{
+    ec_slave_t *slave;
+    ec_mbox_data_t *mbox_data;
+    uint8_t mbox_prot;
+    int ret;
+
+    if (!EC_READ_U16(data + size)) { // working counter
+        return 0;
+    }
+
+    if (!master->slaves) {
+        EC_MASTER_DBG(master, 1, "No configured slaves!\n");
+        return 0;
+    }
+
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count; slave++) {
+        if (slave->station_address == slave_addr) {
+            break;
+        }
+    }
+
+    if (slave == master->slaves + master->slave_count) {
+        EC_MASTER_DBG(master, 1, "No slave matching datagram"
+                " slave address: %u\n", slave_addr);
+        return 0;
+    }
+
+    // only complete reads of the TX mailbox are dispatched (and not, for
+    // example, register requests on the mailbox memory)
+    if (!slave->configured_tx_mailbox_offset ||
+            offset_addr != slave->configured_tx_mailbox_offset ||
+            size != slave->configured_tx_mailbox_size) {
+        return 0;
+    }
+
+    if (!slave->valid_mbox_data) {
+        return 0;
+    }
+
+    mbox_prot = EC_READ_U8(data + 5) & 0x0F;
+
+    switch (mbox_prot) {
+#ifdef EC_EOE
+        case EC_MBOX_TYPE_EOE:
+            mbox_data = &slave->mbox_eoe_data;
+            break;
+#endif
+        case EC_MBOX_TYPE_COE:
+            mbox_data = &slave->mbox_coe_data;
+            break;
+        case EC_MBOX_TYPE_FOE:
+            mbox_data = &slave->mbox_foe_data;
+            break;
+        case EC_MBOX_TYPE_SOE:
+            mbox_data = &slave->mbox_soe_data;
+            break;
+        case EC_MBOX_TYPE_VOE:
+            mbox_data = &slave->mbox_voe_data;
+            break;
+        default:
+            EC_MASTER_DBG(master, 1, "Unknown mailbox protocol"
+                    " from slave: %u Protocol: %u\n", slave_addr, mbox_prot);
+            return 0;
+    }
+
+    ret = ec_master_mbox_store(mbox_data, data, size);
+    if (ret == -ENOENT) {
+        if (printk_ratelimit()) {
+            EC_SLAVE_WARN(slave, "Ignoring mailbox message of protocol"
+                    " 0x%02X, which is not supported by the slave.\n",
+                    mbox_prot);
+        }
+        return 0;
+    } else if (ret == -EOVERFLOW) {
+        if (printk_ratelimit()) {
+            EC_SLAVE_WARN(slave, "Ignoring mailbox message of protocol"
+                    " 0x%02X, which exceeds the buffer size"
+                    " (%zu > %zu bytes).\n",
+                    mbox_prot, size, mbox_data->data_size);
+        }
+        return 0;
+    }
+
+    return 1;
+}
+
+/****************************************************************************/
+
 /** Processes a received frame.
  *
  * This function is called by the network driver for every received frame.
@@ -1170,6 +1301,7 @@ void ec_master_receive_datagrams(
 {
     size_t frame_size, data_size;
     uint8_t datagram_type, datagram_index;
+    uint16_t datagram_slave_addr, datagram_offset_addr;
     unsigned int cmd_follows, matched;
     const uint8_t *cur_data;
     ec_datagram_t *datagram;
@@ -1214,6 +1346,8 @@ void ec_master_receive_datagrams(
         // process datagram header
         datagram_type  = EC_READ_U8(cur_data);
         datagram_index = EC_READ_U8(cur_data + 1);
+        datagram_slave_addr  = EC_READ_U16(cur_data + 2);
+        datagram_offset_addr = EC_READ_U16(cur_data + 4);
         data_size      = EC_READ_U16(cur_data + 6) & 0x07FF;
         cmd_follows    = EC_READ_U16(cur_data + 6) & 0x8000;
         cur_data += EC_DATAGRAM_HEADER_SIZE;
@@ -1270,9 +1404,13 @@ void ec_master_receive_datagrams(
                 datagram->type != EC_DATAGRAM_FPWR &&
                 datagram->type != EC_DATAGRAM_BWR &&
                 datagram->type != EC_DATAGRAM_LWR) {
-            // copy received data into the datagram memory,
-            // if something has been read
-            memcpy(datagram->data, cur_data, data_size);
+            // mailbox responses are dispatched to their protocol buffers,
+            // everything else is copied into the datagram memory.
+            if (datagram->type != EC_DATAGRAM_FPRD ||
+                    !ec_master_mbox_dispatch(master, cur_data, data_size,
+                        datagram_slave_addr, datagram_offset_addr)) {
+                memcpy(datagram->data, cur_data, data_size);
+            }
         }
         cur_data += data_size;
 
@@ -1507,13 +1645,15 @@ void ec_master_exec_slave_fsms(
                 fsm->slave->ring_position);
 #endif
         if (ec_fsm_slave_exec(fsm, datagram)) {
-            // FSM consumed datagram
+            if (datagram->state != EC_DATAGRAM_UNUSED) {
+                // FSM consumed datagram
 #if DEBUG_INJECT
-            EC_MASTER_DBG(master, 1, "FSM consumed datagram %s\n",
-                    datagram->name);
+                EC_MASTER_DBG(master, 1, "FSM consumed datagram %s\n",
+                        datagram->name);
 #endif
-            master->ext_ring_idx_fsm =
-                (master->ext_ring_idx_fsm + 1) % EC_EXT_RING_SIZE;
+                master->ext_ring_idx_fsm =
+                    (master->ext_ring_idx_fsm + 1) % EC_EXT_RING_SIZE;
+            }
         }
         else {
             // FSM finished
@@ -1532,8 +1672,10 @@ void ec_master_exec_slave_fsms(
             datagram = ec_master_get_external_datagram(master);
 
             if (ec_fsm_slave_exec(&master->fsm_slave->fsm, datagram)) {
-                master->ext_ring_idx_fsm =
-                    (master->ext_ring_idx_fsm + 1) % EC_EXT_RING_SIZE;
+                if (datagram->state != EC_DATAGRAM_UNUSED) {
+                    master->ext_ring_idx_fsm =
+                        (master->ext_ring_idx_fsm + 1) % EC_EXT_RING_SIZE;
+                }
                 list_add_tail(&master->fsm_slave->fsm.list,
                         &master->fsm_exec_list);
                 master->fsm_exec_count++;
@@ -1768,7 +1910,9 @@ static int ec_master_eoe_thread(void *priv_data)
         all_idle = 1;
 
         list_for_each_entry(eoe, &master->eoe_handlers, list) {
-            if (ec_eoe_is_open(eoe)) {
+            // closed handlers have to finish a receive sequence to release
+            // the mailbox read lock
+            if (ec_eoe_is_open(eoe) || ec_eoe_holds_mbox_lock(eoe)) {
                 none_open = 0;
                 break;
             }

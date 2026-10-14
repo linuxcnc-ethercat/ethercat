@@ -69,7 +69,9 @@ typedef enum {
     EC_DATAGRAM_SENT,      /**< Sent (still in the queue). */
     EC_DATAGRAM_RECEIVED,  /**< Received (dequeued). */
     EC_DATAGRAM_TIMED_OUT, /**< Timed out (dequeued). */
-    EC_DATAGRAM_ERROR      /**< Error while sending/receiving (dequeued). */
+    EC_DATAGRAM_ERROR,     /**< Error while sending/receiving (dequeued). */
+    EC_DATAGRAM_UNUSED     /**< Not used by its state machine in this cycle
+                             and not to be queued. */
 } ec_datagram_state_t;
 
 /****************************************************************************/
@@ -79,7 +81,8 @@ typedef enum {
 typedef struct {
     struct list_head queue; /**< Master datagram queue item,
         protected by user-supplied mutex. */
-    struct list_head ext_queue; /**< External datagram queue item, protected by ext_queue_sem. */
+    struct list_head ext_queue; /**< External datagram queue item,
+        protected by ext_queue_sem. */
     struct list_head sent; /**< Master list item for sent datagrams. */
     ec_device_index_t device_index; /**< Device via which the datagram shall
                                       be / was sent. */

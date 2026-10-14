@@ -35,6 +35,7 @@
 #include "globals.h"
 #include "slave.h"
 #include "datagram.h"
+#include "fsm_mbox.h"
 
 /****************************************************************************/
 
@@ -48,7 +49,7 @@ enum {
     EC_EOE_FRAMETYPE_FILT_RES =   0x05, /** Set Address Filter Response. */
 };
 
-/*****************************************************************************/
+/****************************************************************************/
 
 /**
    Queued frame structure.
@@ -78,6 +79,7 @@ struct ec_eoe
     ec_datagram_t datagram; /**< datagram */
     unsigned int queue_datagram; /**< the datagram is ready for queuing */
     void (*state)(ec_eoe_t *); /**< state function for the state machine */
+    ec_fsm_mbox_t fsm_mbox; /**< Mailbox receive state machine. */
     struct net_device *dev; /**< net_device for virtual ethernet device */
     struct net_device_stats stats; /**< device statistics */
     unsigned int opened; /**< net_device is opened */
@@ -113,6 +115,7 @@ void ec_eoe_clear(ec_eoe_t *);
 void ec_eoe_run(ec_eoe_t *);
 void ec_eoe_queue(ec_eoe_t *);
 int ec_eoe_is_open(const ec_eoe_t *);
+int ec_eoe_holds_mbox_lock(const ec_eoe_t *);
 int ec_eoe_is_idle(const ec_eoe_t *);
 
 /****************************************************************************/

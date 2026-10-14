@@ -34,6 +34,7 @@
 #include "../include/ecrt.h"
 #include "datagram.h"
 #include "slave.h"
+#include "fsm_mbox.h"
 #include "foe_request.h"
 
 /****************************************************************************/
@@ -44,12 +45,12 @@ typedef struct ec_fsm_foe ec_fsm_foe_t; /**< \see ec_fsm_foe */
  */
 struct ec_fsm_foe {
     ec_slave_t *slave; /**< Slave the FSM runs on. */
-    unsigned int retries; /**< Retries upon datagram timeout */
 
     void (*state)(ec_fsm_foe_t *, ec_datagram_t *); /**< FoE state function.
                                                      */
     ec_datagram_t *datagram; /**< Datagram used in previous step. */
     unsigned long jiffies_start; /**< FoE timestamp. */
+    ec_fsm_mbox_t fsm_mbox; /**< Mailbox receive state machine. */
     uint8_t subindex; /**< Current subindex. */
     ec_foe_request_t *request; /**< FoE request. */
     uint8_t toggle; /**< Toggle bit for segment commands. */

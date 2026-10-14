@@ -38,7 +38,8 @@
 #include "mailbox.h"
 #include "ethernet.h"
 
-#if defined(CONFIG_SUSE_KERNEL) && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
+#if defined(CONFIG_SUSE_KERNEL) && \
+    LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
 #include <linux/suse_version.h>
 #else
 #  ifndef SUSE_VERSION
@@ -78,7 +79,6 @@ int ec_eoe_send(ec_eoe_t *);
 
 // state functions
 void ec_eoe_state_rx_start(ec_eoe_t *);
-void ec_eoe_state_rx_check(ec_eoe_t *);
 void ec_eoe_state_rx_fetch(ec_eoe_t *);
 void ec_eoe_state_tx_start(ec_eoe_t *);
 void ec_eoe_state_tx_sent(ec_eoe_t *);
@@ -123,6 +123,7 @@ int ec_eoe_init(
     ec_datagram_init(&eoe->datagram);
     eoe->queue_datagram = 0;
     eoe->state = ec_eoe_state_rx_start;
+    ec_fsm_mbox_init(&eoe->fsm_mbox);
     eoe->opened = 0;
     eoe->rx_skb = NULL;
     eoe->rx_expected_fragment = 0;
@@ -171,7 +172,8 @@ int ec_eoe_init(
     // initialize net_device
     eoe->dev->netdev_ops = &ec_eoedev_ops;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || \
+    (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
     eth_hw_addr_set(eoe->dev, mac_addr);
 #else
     memcpy(eoe->dev->dev_addr, mac_addr, sizeof(mac_addr));
@@ -199,7 +201,8 @@ int ec_eoe_init(
 
     // make the last address octet unique
     mac_addr[ETH_ALEN - 1] = (uint8_t) eoe->dev->ifindex;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || \
+    (SUSE_VERSION == 15 && SUSE_PATCHLEVEL >= 5)
     eth_hw_addr_set(eoe->dev, mac_addr);
 #else
     memcpy(eoe->dev->dev_addr, mac_addr, sizeof(mac_addr));
@@ -237,6 +240,7 @@ void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 
     free_netdev(eoe->dev);
 
+    ec_fsm_mbox_clear(&eoe->fsm_mbox);
     ec_datagram_clear(&eoe->datagram);
 }
 
@@ -284,7 +288,8 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
         current_size = remaining_size;
         last_fragment = 1;
     } else {
-        current_size = ((eoe->slave->configured_tx_mailbox_size - 10) / 32) * 32;
+        current_size =
+            ((eoe->slave->configured_tx_mailbox_size - 10) / 32) * 32;
         last_fragment = 0;
     }
 
@@ -342,8 +347,23 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (!eoe->opened)
+    if (!eoe->opened) {
+        if (!ec_eoe_holds_mbox_lock(eoe))
+            return;
+
+        // the device was closed during a receive sequence. release the
+        // mailbox read lock, as soon as the datagram is not in use any more.
+        if (eoe->queue_datagram) {
+            eoe->queue_datagram = 0; // not handed over yet
+        } else if (eoe->datagram.state == EC_DATAGRAM_QUEUED ||
+                eoe->datagram.state == EC_DATAGRAM_SENT) {
+            return;
+        }
+
+        ec_fsm_mbox_abort(&eoe->fsm_mbox);
+        eoe->state = ec_eoe_state_rx_start;
         return;
+    }
 
     // if the datagram was not sent, or is not yet received, skip this cycle
     if (eoe->queue_datagram || eoe->datagram.state == EC_DATAGRAM_SENT)
@@ -389,6 +409,19 @@ int ec_eoe_is_open(const ec_eoe_t *eoe /**< EoE handler */)
 
 /****************************************************************************/
 
+/** Returns, if the handler holds the mailbox read lock of its slave.
+ *
+ * This is the case, while a mailbox check or fetch is in progress.
+ *
+ * \return Non-zero, if the mailbox read lock is held.
+ */
+int ec_eoe_holds_mbox_lock(const ec_eoe_t *eoe /**< EoE handler */)
+{
+    return ec_fsm_mbox_holds_lock(&eoe->fsm_mbox);
+}
+
+/****************************************************************************/
+
 /** Returns the idle state.
  *
  * \retval 1 The device is idle.
@@ -405,8 +438,8 @@ int ec_eoe_is_idle(const ec_eoe_t *eoe /**< EoE handler */)
 
 /** State: RX_START.
  *
- * Starts a new receiving sequence by queueing a datagram that checks the
- * slave's mailbox for a new EoE datagram.
+ * Starts a new receiving sequence by checking the slave's mailbox once for a
+ * new EoE message.
  *
  * \todo Use both devices.
  */
@@ -419,48 +452,16 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
-    eoe->queue_datagram = 1;
-    eoe->state = ec_eoe_state_rx_check;
-}
-
-/****************************************************************************/
-
-/** State: RX_CHECK.
- *
- * Processes the checking datagram sent in RX_START and issues a receive
- * datagram, if new data is available.
- */
-void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
-{
-    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
-        eoe->stats.rx_errors++;
-#if EOE_DEBUG_LEVEL >= 1
-        EC_SLAVE_WARN(eoe->slave, "Failed to receive mbox"
-                " check datagram for %s.\n", eoe->dev->name);
-#endif
-        eoe->state = ec_eoe_state_tx_start;
-        return;
-    }
-
-    if (!ec_slave_mbox_check(&eoe->datagram)) {
-        eoe->rx_idle = 1;
-        eoe->state = ec_eoe_state_tx_start;
-        return;
-    }
-
-    eoe->rx_idle = 0;
-    ec_slave_mbox_prepare_fetch(eoe->slave, &eoe->datagram);
-    eoe->queue_datagram = 1;
+    ec_fsm_mbox_poll(&eoe->fsm_mbox, eoe->slave, &eoe->slave->mbox_eoe_data);
     eoe->state = ec_eoe_state_rx_fetch;
+    eoe->state(eoe);
 }
 
 /****************************************************************************/
 
 /** State: RX_FETCH.
  *
- * Checks if the requested data of RX_CHECK was received and processes the EoE
- * datagram.
+ * Checks and fetches the mailbox and processes the EoE data.
  */
 void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 {
@@ -474,17 +475,33 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     unsigned int i;
 #endif
 
-    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
-        eoe->stats.rx_errors++;
-#if EOE_DEBUG_LEVEL >= 1
-        EC_SLAVE_WARN(eoe->slave, "Failed to receive mbox"
-                " fetch datagram for %s.\n", eoe->dev->name);
-#endif
-        eoe->state = ec_eoe_state_tx_start;
+    if (ec_fsm_mbox_exec(&eoe->fsm_mbox, &eoe->datagram)) {
+        if (eoe->datagram.state != EC_DATAGRAM_UNUSED) {
+            eoe->queue_datagram = 1;
+        }
         return;
     }
 
-    data = ec_slave_mbox_fetch(eoe->slave, &eoe->datagram,
+    switch (ec_fsm_mbox_result(&eoe->fsm_mbox)) {
+        case 0:
+            eoe->rx_idle = 0;
+            break;
+        case -EAGAIN: // no EoE data available
+        case -EBUSY: // do not wait for the other read request, but transmit
+            eoe->rx_idle = 1;
+            eoe->state = ec_eoe_state_tx_start;
+            return;
+        default:
+            eoe->stats.rx_errors++;
+#if EOE_DEBUG_LEVEL >= 1
+            EC_SLAVE_WARN(eoe->slave, "Failed to receive mailbox"
+                    " data for %s.\n", eoe->dev->name);
+#endif
+            eoe->state = ec_eoe_state_tx_start;
+            return;
+    }
+
+    data = ec_slave_mbox_fetch(eoe->slave, &eoe->slave->mbox_eoe_data,
             &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         eoe->stats.rx_errors++;

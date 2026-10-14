@@ -46,7 +46,6 @@ int ec_fsm_eoe_prepare_set(ec_fsm_eoe_t *, ec_datagram_t *);
 
 void ec_fsm_eoe_set_ip_start(ec_fsm_eoe_t *, ec_datagram_t *);
 void ec_fsm_eoe_set_ip_request(ec_fsm_eoe_t *, ec_datagram_t *);
-void ec_fsm_eoe_set_ip_check(ec_fsm_eoe_t *, ec_datagram_t *);
 void ec_fsm_eoe_set_ip_response(ec_fsm_eoe_t *, ec_datagram_t *);
 
 void ec_fsm_eoe_end(ec_fsm_eoe_t *, ec_datagram_t *);
@@ -85,6 +84,7 @@ void ec_fsm_eoe_init(
     fsm->jiffies_start = 0;
     fsm->request = NULL;
     fsm->frame_type_retries = 0;
+    ec_fsm_mbox_init(&fsm->fsm_mbox);
 }
 
 /****************************************************************************/
@@ -95,6 +95,7 @@ void ec_fsm_eoe_clear(
         ec_fsm_eoe_t *fsm /**< finite state machine */
         )
 {
+    ec_fsm_mbox_clear(&fsm->fsm_mbox);
 }
 
 /****************************************************************************/
@@ -116,35 +117,35 @@ void ec_fsm_eoe_set_ip_param(
 
 /** Executes the current state of the state machine.
  *
- * \return 1 if the datagram was used, else 0.
+ * \return 1 if the state machine is still in progress, else 0.
  */
 int ec_fsm_eoe_exec(
         ec_fsm_eoe_t *fsm, /**< finite state machine */
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    int datagram_used = 0;
+    if (fsm->state == ec_fsm_eoe_end || fsm->state == ec_fsm_eoe_error)
+        return 0;
 
     if (fsm->datagram &&
             (fsm->datagram->state == EC_DATAGRAM_INIT ||
              fsm->datagram->state == EC_DATAGRAM_QUEUED ||
              fsm->datagram->state == EC_DATAGRAM_SENT)) {
         // datagram not received yet
-        return datagram_used;
+        if (datagram != fsm->datagram)
+            datagram->state = EC_DATAGRAM_UNUSED;
+        return 1;
     }
 
     fsm->state(fsm, datagram);
 
-    datagram_used =
-        fsm->state != ec_fsm_eoe_end && fsm->state != ec_fsm_eoe_error;
-
-    if (datagram_used) {
-        fsm->datagram = datagram;
-    } else {
+    if (fsm->state == ec_fsm_eoe_end || fsm->state == ec_fsm_eoe_error) {
         fsm->datagram = NULL;
+        return 0;
     }
 
-    return datagram_used;
+    fsm->datagram = datagram;
+    return 1;
 }
 
 /****************************************************************************/
@@ -156,6 +157,25 @@ int ec_fsm_eoe_exec(
 int ec_fsm_eoe_success(const ec_fsm_eoe_t *fsm /**< Finite state machine */)
 {
     return fsm->state == ec_fsm_eoe_end;
+}
+
+/****************************************************************************/
+
+/** Waits for the set IP parameter response.
+ *
+ * Starts the mailbox receive state machine and executes the response state
+ * immediately.
+ */
+static void ec_fsm_eoe_receive(
+        ec_fsm_eoe_t *fsm, /**< finite state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_fsm_mbox_receive(&fsm->fsm_mbox, fsm->slave,
+            &fsm->slave->mbox_eoe_data, fsm->jiffies_start,
+            EC_EOE_RESPONSE_TIMEOUT);
+    fsm->state = ec_fsm_eoe_set_ip_response;
+    fsm->state(fsm, datagram);
 }
 
 /*****************************************************************************
@@ -330,63 +350,9 @@ void ec_fsm_eoe_set_ip_request(
     }
 
     fsm->jiffies_start = fsm->datagram->jiffies_sent;
-    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_eoe_set_ip_check;
     fsm->frame_type_retries = 10;
-}
 
-/****************************************************************************/
-
-/** EoE state: SET IP CHECK.
- */
-void ec_fsm_eoe_set_ip_check(
-        ec_fsm_eoe_t *fsm, /**< finite state machine */
-        ec_datagram_t *datagram /**< Datagram to use. */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        return;
-    }
-
-    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_eoe_error;
-        EC_SLAVE_ERR(slave, "Failed to receive EoE mailbox check datagram: ");
-        ec_datagram_print_state(fsm->datagram);
-        return;
-    }
-
-    if (fsm->datagram->working_counter != 1) {
-        fsm->state = ec_fsm_eoe_error;
-        EC_SLAVE_ERR(slave, "Reception of EoE mailbox check"
-                " datagram failed: ");
-        ec_datagram_print_wc_error(fsm->datagram);
-        return;
-    }
-
-    if (!ec_slave_mbox_check(fsm->datagram)) {
-        unsigned long diff_ms =
-            (fsm->datagram->jiffies_received - fsm->jiffies_start) *
-            1000 / HZ;
-        if (diff_ms >= EC_EOE_RESPONSE_TIMEOUT) {
-            fsm->state = ec_fsm_eoe_error;
-            EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting for"
-                    " set IP parameter response.\n", diff_ms);
-            return;
-        }
-
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        return;
-    }
-
-    // fetch response
-    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_eoe_set_ip_response;
+    ec_fsm_eoe_receive(fsm, datagram);
 }
 
 /****************************************************************************/
@@ -404,26 +370,22 @@ void ec_fsm_eoe_set_ip_response(
     size_t rec_size;
     ec_eoe_request_t *req = fsm->request;
 
-    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+    if (ec_fsm_mbox_exec(&fsm->fsm_mbox, datagram)) {
         return;
     }
 
-    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (ec_fsm_mbox_result(&fsm->fsm_mbox)) {
         fsm->state = ec_fsm_eoe_error;
-        EC_SLAVE_ERR(slave, "Failed to receive EoE read response datagram: ");
-        ec_datagram_print_state(fsm->datagram);
+        if (ec_fsm_mbox_result(&fsm->fsm_mbox) == -ETIMEDOUT) {
+            EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting for"
+                    " set IP parameter response.\n",
+                    (jiffies - fsm->jiffies_start) * 1000 / HZ);
+        }
         return;
     }
 
-    if (fsm->datagram->working_counter != 1) {
-        fsm->state = ec_fsm_eoe_error;
-        EC_SLAVE_ERR(slave, "Reception of EoE read response failed: ");
-        ec_datagram_print_wc_error(fsm->datagram);
-        return;
-    }
-
-    data = ec_slave_mbox_fetch(slave, fsm->datagram, &mbox_prot, &rec_size);
+    data = ec_slave_mbox_fetch(slave, &slave->mbox_eoe_data,
+            &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         fsm->state = ec_fsm_eoe_error;
         return;
@@ -460,10 +422,8 @@ void ec_fsm_eoe_set_ip_response(
         if (fsm->frame_type_retries--) {
             // there may be an EoE segment left in the mailbox.
             // discard it and receive again.
-            fsm->jiffies_start = fsm->datagram->jiffies_sent;
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            fsm->retries = EC_FSM_RETRIES;
-            fsm->state = ec_fsm_eoe_set_ip_check;
+            fsm->jiffies_start = jiffies;
+            ec_fsm_eoe_receive(fsm, datagram);
             return;
         }
         else {

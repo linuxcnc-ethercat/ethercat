@@ -34,6 +34,7 @@
 
 #include "globals.h"
 #include "datagram.h"
+#include "mailbox.h"
 #include "pdo.h"
 #include "sync.h"
 #include "sdo.h"
@@ -227,6 +228,19 @@ struct ec_slave
     struct list_head eoe_requests; /**< EoE set IP parameter requests. */
 
     ec_fsm_slave_t fsm; /**< Slave state machine. */
+
+    unsigned long read_mbox_busy; /**< Bit 0 is set during a mailbox read
+                                    request. */
+
+#ifdef EC_EOE
+    ec_mbox_data_t mbox_eoe_data; /**< Received mailbox data for EoE. */
+#endif
+    ec_mbox_data_t mbox_coe_data; /**< Received mailbox data for CoE. */
+    ec_mbox_data_t mbox_foe_data; /**< Received mailbox data for FoE. */
+    ec_mbox_data_t mbox_soe_data; /**< Received mailbox data for SoE. */
+    ec_mbox_data_t mbox_voe_data; /**< Received mailbox data for VoE. */
+
+    uint8_t valid_mbox_data; /**< Received mailbox data is valid. */
 };
 
 /****************************************************************************/
@@ -259,6 +273,9 @@ void ec_slave_attach_pdo_names(ec_slave_t *);
 void ec_slave_calc_port_delays(ec_slave_t *);
 void ec_slave_calc_transmission_delays_rec(ec_slave_t *, ec_slave_t *,
         uint32_t *);
+
+void ec_read_mbox_lock_clear(ec_slave_t *);
+int ec_read_mbox_locked(ec_slave_t *);
 
 /****************************************************************************/
 

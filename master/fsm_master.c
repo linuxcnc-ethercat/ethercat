@@ -952,6 +952,11 @@ void ec_fsm_master_state_scan_slave(
         return;
     }
 
+    // Assume that the slaves mailbox data is valid even if the slave
+    // scanning skipped the clear mailbox state, e.g. if the slave refused to
+    // enter state INIT.
+    fsm->slave->valid_mbox_data = 1;
+
 #ifdef EC_EOE
     if (slave->sii.mailbox_protocols & EC_MBOX_EOE) {
         // create EoE handler for this slave
@@ -1393,6 +1398,7 @@ void ec_fsm_master_state_sdo_request(
 
     if (!request) {
         // configuration was cleared in the meantime
+        ec_fsm_coe_abort(&fsm->fsm_coe);
         ec_fsm_master_restart(fsm);
         return;
     }
@@ -1436,6 +1442,7 @@ void ec_fsm_master_state_soe_request(
 
     if (!request) {
         // configuration was cleared in the meantime
+        ec_fsm_soe_abort(&fsm->fsm_soe);
         ec_fsm_master_restart(fsm);
         return;
     }

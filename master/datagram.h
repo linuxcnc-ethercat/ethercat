@@ -70,7 +70,8 @@ typedef enum {
     EC_DATAGRAM_RECEIVED,  /**< Received (dequeued). */
     EC_DATAGRAM_TIMED_OUT, /**< Timed out (dequeued). */
     EC_DATAGRAM_ERROR,     /**< Error while sending/receiving (dequeued). */
-    EC_DATAGRAM_INVALID    /**< Unused and should not be queued (dequeued). */
+    EC_DATAGRAM_UNUSED     /**< Not used by its state machine in this cycle
+                             and not to be queued. */
 } ec_datagram_state_t;
 
 /****************************************************************************/

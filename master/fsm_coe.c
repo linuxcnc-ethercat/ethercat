@@ -251,7 +251,7 @@ int ec_fsm_coe_exec(
              fsm->datagram->state == EC_DATAGRAM_SENT)) {
         // datagram not received yet
         if (datagram != fsm->datagram)
-            datagram->state = EC_DATAGRAM_INVALID;
+            datagram->state = EC_DATAGRAM_UNUSED;
         return 1;
     }
 
@@ -353,7 +353,7 @@ int ec_fsm_coe_check_emergency(
 /** Prepares a mailbox check for a CoE response.
  *
  * If the mailbox is currently read by another state machine, the datagram
- * is marked as invalid and the response data state awaits the data.
+ * is marked as unused and the response data state awaits the data.
  *
  * \param fsm Finite state machine.
  * \param datagram Datagram to use.
@@ -368,8 +368,8 @@ static void ec_fsm_coe_prepare_check(
         )
 {
     if (ec_read_mbox_locked(fsm->slave)) {
-        // the datagram is not used and marked as invalid
-        datagram->state = EC_DATAGRAM_INVALID;
+        // the datagram is not used in this cycle
+        datagram->state = EC_DATAGRAM_UNUSED;
         fsm->state = data_state;
     } else {
         ec_slave_mbox_prepare_check(fsm->slave, datagram); // can not fail.

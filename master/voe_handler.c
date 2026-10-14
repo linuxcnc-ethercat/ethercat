@@ -313,15 +313,15 @@ void ec_voe_handler_state_write_response(ec_voe_handler_t *voe)
 /** Prepares a mailbox check for the VoE read response.
  *
  * If the mailbox is currently read by another state machine, the datagram
- * is marked as invalid and the response data state awaits the data.
+ * is marked as unused and the response data state awaits the data.
  */
 static void ec_voe_handler_prepare_check(
         ec_voe_handler_t *voe /**< VoE handler. */
         )
 {
     if (ec_read_mbox_locked(voe->config->slave)) {
-        // the datagram is not used and marked as invalid
-        voe->datagram.state = EC_DATAGRAM_INVALID;
+        // the datagram is not used in this cycle
+        voe->datagram.state = EC_DATAGRAM_UNUSED;
         voe->state = ec_voe_handler_state_read_response_data;
     } else {
         ec_slave_mbox_prepare_check(voe->config->slave,

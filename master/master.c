@@ -1002,7 +1002,7 @@ void ec_master_queue_datagram(
         }
     }
 
-    if (datagram->state != EC_DATAGRAM_INVALID) {
+    if (datagram->state != EC_DATAGRAM_UNUSED) {
         list_add_tail(&datagram->queue, &master->datagram_queue);
         smp_store_release(&datagram->state, EC_DATAGRAM_QUEUED);
     }
@@ -1645,7 +1645,7 @@ void ec_master_exec_slave_fsms(
                 fsm->slave->ring_position);
 #endif
         if (ec_fsm_slave_exec(fsm, datagram)) {
-            if (datagram->state != EC_DATAGRAM_INVALID) {
+            if (datagram->state != EC_DATAGRAM_UNUSED) {
                 // FSM consumed datagram
 #if DEBUG_INJECT
                 EC_MASTER_DBG(master, 1, "FSM consumed datagram %s\n",
@@ -1672,7 +1672,7 @@ void ec_master_exec_slave_fsms(
             datagram = ec_master_get_external_datagram(master);
 
             if (ec_fsm_slave_exec(&master->fsm_slave->fsm, datagram)) {
-                if (datagram->state != EC_DATAGRAM_INVALID) {
+                if (datagram->state != EC_DATAGRAM_UNUSED) {
                     master->ext_ring_idx_fsm =
                         (master->ext_ring_idx_fsm + 1) % EC_EXT_RING_SIZE;
                 }

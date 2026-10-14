@@ -283,6 +283,8 @@ const ec_code_msg_t mbox_error_messages[] = {
 
 /** Processes received mailbox data.
  *
+ * The response is consumed, i. e. the response buffer is marked as empty.
+ *
  * \return Pointer to the received data, or ERR_PTR() code.
  */
 uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
@@ -298,6 +300,7 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
         return ERR_PTR(-EPROTO);
     }
 
+    response_data->payload_size = 0;
     data_size = EC_READ_U16(response_data->data);
 
     if (data_size + EC_MBOX_HEADER_SIZE > slave->configured_tx_mailbox_size) {

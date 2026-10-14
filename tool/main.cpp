@@ -57,6 +57,7 @@
 
 #include <getopt.h>
 #include <libgen.h> // basename()
+#include <locale.h>
 #include <stdlib.h>
 
 #include <iostream>
@@ -286,6 +287,9 @@ int main(int argc, char **argv)
     list<Command *> matchingCommands;
     list<Command *>::const_iterator ci;
     Command *cmd;
+
+    // only the character encoding, for Command::toLocal()
+    setlocale(LC_CTYPE, "");
 
     binaryBaseName = basename(argv[0]);
 

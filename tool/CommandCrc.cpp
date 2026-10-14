@@ -171,9 +171,7 @@ void CommandCrc::execute(const StringVector &args)
             cout << "|";
         }
 
-        std::string slaveName(slave.name);
-        slaveName = slaveName.substr(0, 11);
-        cout << slaveName << endl;
+        cout << toLocal(slave.name, 11) << endl;
     }
 }
 

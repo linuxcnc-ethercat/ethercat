@@ -121,6 +121,9 @@ int ec_eoe_init(
     eoe->slave = slave;
 
     ec_datagram_init(&eoe->datagram);
+    // set device index only once after scan, since an EoE handler lives only
+    // with a certain slave
+    eoe->datagram.device_index = slave->device_index;
     eoe->queue_datagram = 0;
     eoe->state = ec_eoe_state_rx_start;
     ec_fsm_mbox_init(&eoe->fsm_mbox);

@@ -482,6 +482,10 @@ int ec_fsm_master_action_process_sii(
         list_del_init(&request->list); // dequeue
         request->state = EC_INT_REQUEST_BUSY;
 
+        // slave could be on the backup link, so before setting the SII
+        // assignment or starting to process the request, set the device
+        fsm->datagram->device_index = request->slave->device_index;
+
         assign_to_pdi = 0;
         config = request->slave->config;
         if (config) {
@@ -561,6 +565,8 @@ int ec_fsm_master_action_process_int_request(
                 fsm->sdo_request = sdo_req;
                 fsm->slave = slave;
                 fsm->state = ec_fsm_master_state_sdo_request;
+                // send the datagram out to the device where the slave lives
+                fsm->datagram->device_index = slave->device_index;
                 ec_fsm_coe_transfer(&fsm->fsm_coe, slave, sdo_req);
                 ec_fsm_coe_exec(&fsm->fsm_coe, fsm->datagram);
                 return 1;
@@ -588,6 +594,8 @@ int ec_fsm_master_action_process_int_request(
                 fsm->soe_request = soe_req;
                 fsm->slave = slave;
                 fsm->state = ec_fsm_master_state_soe_request;
+                // send the datagram out to the device where the slave lives
+                fsm->datagram->device_index = slave->device_index;
                 ec_fsm_soe_transfer(&fsm->fsm_soe, slave, soe_req);
                 ec_fsm_soe_exec(&fsm->fsm_soe, fsm->datagram);
                 return 1;

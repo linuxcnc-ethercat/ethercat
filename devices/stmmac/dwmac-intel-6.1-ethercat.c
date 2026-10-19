@@ -5,10 +5,18 @@
 #include <linux/clk-provider.h>
 #include <linux/pci.h>
 #include <linux/dmi.h>
+#include <linux/version.h>
 #include "dwmac-intel-6.1-ethercat.h"
 #include "dwmac4-6.1-ethercat.h"
 #include "stmmac-6.1-ethercat.h"
 #include "stmmac_ptp-6.1-ethercat.h"
+
+/* The separate LPI MSI vector was removed from plat_stmmacenet_data
+ * in Linux v6.1.167 ("net: stmmac: remove support for lpi_intr_o").
+ */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 167)
+#define EC_STMMAC_HAS_MSI_LPI_VEC
+#endif
 
 struct intel_priv_data {
 	int mdio_adhoc_addr;	/* mdio address for serdes & etc */
@@ -614,7 +622,9 @@ static int intel_mgbe_common_data(struct pci_dev *pdev,
 
 	/* Setup MSI vector offset specific to Intel mGbE controller */
 	plat->msi_mac_vec = 29;
+#ifdef EC_STMMAC_HAS_MSI_LPI_VEC
 	plat->msi_lpi_vec = 28;
+#endif
 	plat->msi_sfty_ce_vec = 27;
 	plat->msi_sfty_ue_vec = 26;
 	plat->msi_rx_base_vec = 0;
@@ -999,8 +1009,10 @@ static int stmmac_config_multi_msi(struct pci_dev *pdev,
 		res->irq = pci_irq_vector(pdev, plat->msi_mac_vec);
 	if (plat->msi_wol_vec < STMMAC_MSI_VEC_MAX)
 		res->wol_irq = pci_irq_vector(pdev, plat->msi_wol_vec);
+#ifdef EC_STMMAC_HAS_MSI_LPI_VEC
 	if (plat->msi_lpi_vec < STMMAC_MSI_VEC_MAX)
 		res->lpi_irq = pci_irq_vector(pdev, plat->msi_lpi_vec);
+#endif
 	if (plat->msi_sfty_ce_vec < STMMAC_MSI_VEC_MAX)
 		res->sfty_ce_irq = pci_irq_vector(pdev, plat->msi_sfty_ce_vec);
 	if (plat->msi_sfty_ue_vec < STMMAC_MSI_VEC_MAX)
@@ -1082,7 +1094,9 @@ static int intel_eth_pci_probe(struct pci_dev *pdev,
 	 */
 	plat->msi_mac_vec = STMMAC_MSI_VEC_MAX;
 	plat->msi_wol_vec = STMMAC_MSI_VEC_MAX;
+#ifdef EC_STMMAC_HAS_MSI_LPI_VEC
 	plat->msi_lpi_vec = STMMAC_MSI_VEC_MAX;
+#endif
 	plat->msi_sfty_ce_vec = STMMAC_MSI_VEC_MAX;
 	plat->msi_sfty_ue_vec = STMMAC_MSI_VEC_MAX;
 	plat->msi_rx_base_vec = STMMAC_MSI_VEC_MAX;

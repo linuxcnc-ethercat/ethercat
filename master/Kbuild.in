@@ -109,6 +109,7 @@ REV := $(shell if test -s $(src)/../revision; then \
 
 CFLAGS_module.o := -DREV=$(REV)
 
-KBUILD_CFLAGS += -Wmaybe-uninitialized
+ccflags-y += $(call cc-option,-Wmaybe-uninitialized)
+ccflags-y += $(call cc-option,-Wsometimes-uninitialized)
 
 #-----------------------------------------------------------------------------

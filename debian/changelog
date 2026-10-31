@@ -1,3 +1,16 @@
+ethercat (1:1.6.13-1) unstable; urgency=medium
+
+  * Sync EtherLab stable-1.6 through 1.6.13 and subsequent fixes while
+    retaining the parallel per-slave scan/configuration and recovery work.
+  * Refresh the in-memory SII image and parsed CoE details after SII writes.
+  * Add ecrt_master_sii_read() / ecrt_master_sii_write() for application
+    access to slave SII data.
+  * Add opt-in ReinitHold so applications can restore volatile slave
+    configuration after reconnection before the slave returns to OP.
+  * Document the application restoration and confirmation workflow.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Sat, 31 Oct 2026 20:45:44 +0800
+
 ethercat (1.6.13) unstable; urgency=medium
 
   * Sync official stable-1.6 through 1.6.13 and subsequent stable fixes

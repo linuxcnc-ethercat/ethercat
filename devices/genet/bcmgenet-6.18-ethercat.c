@@ -2536,7 +2536,9 @@ static void ec_poll(struct net_device *netdev)
 		bcmgenet_desc_rx(&priv->rx_rings[i], budget);
 	}
 
-	bcmgenet_desc_rx(&priv->rx_rings[DESC_INDEX], budget);
+	/* DESC_INDEX is the hardware ring index. The default software ring
+	 * follows the hardware queues in rx_rings. */
+	bcmgenet_desc_rx(&priv->rx_rings[priv->hw_params->rx_queues], budget);
 }
 
 static void bcmgenet_dim_work(struct work_struct *work)

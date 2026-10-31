@@ -62,8 +62,11 @@ AC_INIT([ethercat], [1.7.0], [fp@igh.de])
 # 6:0:5
 #   ecrt_master_request_slave_state(), ecrt_master_sii_caching() and
 #   ecrt_slave_config_pdo_mode() added.
+# 7:0:6
+#   ecrt_master_sii_read(), ecrt_master_sii_write() and
+#   ecrt_slave_config_reinit_done() added.
 #
-AC_SUBST([LIBETHERCAT_VERSION_INFO], [6:0:5])
+AC_SUBST([LIBETHERCAT_VERSION_INFO], [7:0:6])
 
 AC_CONFIG_AUX_DIR([autoconf])
 AM_INIT_AUTOMAKE([-Wall -Wno-override -Werror dist-bzip2 subdir-objects foreign])

@@ -5265,6 +5265,154 @@ static void e1000e_check_82574_phy_workaround(struct e1000_adapter *adapter)
 	}
 }
 
+/* How often to look for a deaf receiver, and how many consecutive looks must
+ * agree before reconfiguring. Two intervals is long enough that a link that
+ * has only just come up is not mistaken for a broken one.
+ */
+#define EC_RX_WATCH_INTERVAL	(2 * HZ)
+#define EC_RX_DEAF_PASSES	2
+/* Consecutive reinit cap: prevents reset loop when nothing is on link */
+#define EC_RX_MAX_REINITS	2
+
+/**
+ * ec_rx_watch_task - recover a receiver left deaf by a link loss
+ * @work: the delayed work being run
+ *
+ * On PCH parts the management engine powers the MAC down while the link is
+ * gone (STATUS.PCIM_STATE). It does not always come back able to receive:
+ * RCTL.EN is set, the descriptor ring is intact and RDH tracks next_to_clean,
+ * but GPRC stays at zero, so the MAC is discarding frames before it counts
+ * them and the fault is below the descriptor layer. Nothing at the ring level
+ * clears it -- rewriting RDT, cycling RCTL.EN, rewriting RAR[0] and calling
+ * e1000_configure_rx() were all tried against a live fault and all failed.
+ *
+ * A normal netdev never shows this. The link change takes the interface down
+ * and up again, and the runtime-PM resume on the way back re-runs
+ * e1000e_reset() and e1000_configure(). An EtherCAT device is never IFF_UP,
+ * so none of that happens: the master polls a deaf receiver until the module
+ * is reloaded.
+ *
+ * The recovery is the driver's own reinit path, which is what a normal netdev
+ * gets on a link change. Nothing lighter is correct: e1000_configure_rx()
+ * writes RDH and RDT as zero but leaves rx_ring->next_to_clean where it was,
+ * so a bare e1000e_reset() plus e1000_configure() leaves the driver reading
+ * one descriptor while the hardware writes another. e1000e_down() is what
+ * resets the ring bookkeeping, and e1000e_up() reconfigures on top of it.
+ *
+ * This runs from its own delayed work rather than from e1000_watchdog_task().
+ * In EtherCAT mode that watchdog is driven from ec_poll(), and it was measured
+ * not to run at all while the link is healthy -- which is exactly the state
+ * this has to be watching.
+ */
+static void ec_rx_watch_task(struct work_struct *work)
+{
+	struct e1000_adapter *adapter = container_of(to_delayed_work(work),
+						     struct e1000_adapter,
+						     ec_rx_watch);
+	struct e1000_ring *rx_ring = adapter->rx_ring;
+	struct e1000_ring *tx_ring = adapter->tx_ring;
+	unsigned int rx_ntc, tx_ntu;
+	int link;
+
+	if (test_bit(__E1000_DOWN, &adapter->state))
+		return;
+
+	if (!rx_ring || !tx_ring)
+		goto rearm;
+
+	link = ecdev_get_link(get_ecdev(adapter));
+
+	/* Arm on link-down: a receiver that is frozen while the link never
+	 * dropped is not this fault, it is a slave that is unpowered or not
+	 * echoing, and resetting for it would only flap the link. The deaf
+	 * receiver is only ever produced by a link loss (the ME's DMoff cycle),
+	 * so only watch after the link has actually gone down.
+	 */
+	if (!link) {
+		adapter->ec_rx_armed = true;
+		adapter->ec_rx_deaf_passes = 0;
+		adapter->ec_rx_reinit_count = 0;
+		goto update_old;
+	}
+
+	/* Both counters are kept by the driver and advanced from ec_poll(), so
+	 * this costs no register access and cannot steal a clear-on-read
+	 * statistics counter from e1000e_update_stats().
+	 */
+	rx_ntc = rx_ring->next_to_clean;
+	tx_ntu = tx_ring->next_to_use;
+
+	/* Link up and receiving: the receiver is healthy, disarm. */
+	if (rx_ntc != adapter->ec_rx_ntc_old) {
+		adapter->ec_rx_armed = false;
+		adapter->ec_rx_deaf_passes = 0;
+		adapter->ec_rx_reinit_count = 0;
+		goto update_old;
+	}
+
+	/* Link up but not receiving: count it only if a link loss armed the
+	 * watch and the transmit path is still moving. A link that never
+	 * dropped, or a master with nothing to send, both leave this at zero.
+	 */
+	if (adapter->ec_rx_armed && tx_ntu != adapter->ec_tx_ntu_old)
+		adapter->ec_rx_deaf_passes++;
+	else
+		adapter->ec_rx_deaf_passes = 0;
+
+	if (adapter->ec_rx_deaf_passes >= EC_RX_DEAF_PASSES) {
+		adapter->ec_rx_deaf_passes = 0;
+
+		if (adapter->ec_rx_reinit_count < EC_RX_MAX_REINITS) {
+			adapter->ec_rx_reinit_count++;
+			e_err("Rx is deaf after a link event, reconfiguring"
+			      " (attempt %u/%u)\n",
+			      adapter->ec_rx_reinit_count, EC_RX_MAX_REINITS);
+
+			/* Keep ec_poll() and the transmit path out of the rings
+			 * while they are rebuilt. Both run in the master's
+			 * realtime thread, so they cannot be made to wait on
+			 * a lock; they check a flag and return instead. Give
+			 * a poll already inside the receive path time to leave;
+			 * the master's cycle is far shorter than this.
+			 */
+			WRITE_ONCE(adapter->ec_rx_recovering, true);
+			usleep_range(5000, 6000);
+
+			e1000e_reinit_locked(adapter);
+
+			WRITE_ONCE(adapter->ec_rx_recovering, false);
+
+			adapter->ec_rx_ntc_old = rx_ring->next_to_clean;
+			adapter->ec_tx_ntu_old = tx_ring->next_to_use;
+		} else {
+			/* Reinit attempts are exhausted and still nothing is
+			 * received: there is no slave answering (unpowered, or
+			 * an empty switch). Disarm and wait for the next link
+			 * event instead of flapping the link forever.
+			 */
+			e_warn("Rx recovery exhausted (%u attempts) without "
+			       "Rx traffic; disarming until next link event\n",
+			       adapter->ec_rx_reinit_count);
+			adapter->ec_rx_armed = false;
+			adapter->ec_rx_reinit_count = 0;
+		}
+
+		goto rearm;
+	}
+
+update_old:
+	adapter->ec_rx_ntc_old = rx_ring->next_to_clean;
+	adapter->ec_tx_ntu_old = tx_ring->next_to_use;
+
+rearm:
+	/* Do not re-arm while the adapter is being removed: e1000_remove()
+	 * sets __E1000_DOWN before cancelling this work.
+	 */
+	if (!test_bit(__E1000_DOWN, &adapter->state))
+		schedule_delayed_work(&adapter->ec_rx_watch,
+				      EC_RX_WATCH_INTERVAL);
+}
+
 /**
  * e1000_watchdog - Timer Call-back
  * @t: pointer to timer_list containing private info adapter
@@ -5919,6 +6067,12 @@ static netdev_tx_t e1000_xmit_frame(struct sk_buff *skb,
 	int tso;
 	unsigned int f;
 	__be16 protocol = vlan_get_protocol(skb);
+
+	/* Keep the transmit path out of the rings while an Rx recovery
+	 * reinit rebuilds them; ec_poll() checks the same flag.
+	 */
+	if (get_ecdev(adapter) && READ_ONCE(adapter->ec_rx_recovering))
+		return NETDEV_TX_BUSY;
 
 	if (test_bit(__E1000_DOWN, &adapter->state)) {
 		if (!get_ecdev(adapter))
@@ -7505,6 +7659,12 @@ void ec_poll(struct net_device *netdev)
 {
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 
+	/* ec_rx_watch_task() is rebuilding the Rx ring. It cannot take a lock
+	 * to keep us out, so it raises a flag and waits before it starts.
+	 */
+	if (READ_ONCE(adapter->ec_rx_recovering))
+		return;
+
 	if (jiffies - adapter->ec_watchdog_jiffies >= 2 * HZ) {
 		struct e1000_hw *hw = &adapter->hw;
 		hw->mac.get_link_status = true;
@@ -7858,6 +8018,9 @@ static int e1000_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 			goto err_register;
 		}
 		adapter->ec_watchdog_jiffies = jiffies;
+		INIT_DELAYED_WORK(&adapter->ec_rx_watch, ec_rx_watch_task);
+		schedule_delayed_work(&adapter->ec_rx_watch,
+				      EC_RX_WATCH_INTERVAL);
 		if (adapter->flags2 & FLAG2_PCIM2PCI_ARBITER_WA) {
 			e_warn("Driver uses Workaround with busy wait "
 				"which causes a lot of jitter! Compile with "
@@ -7925,6 +8088,12 @@ static void e1000_remove(struct pci_dev *pdev)
 	e1000e_ptp_remove(adapter);
 
 	if (get_ecdev(adapter)) {
+		/* Stop the Rx watch before the device goes away. Setting the
+		 * down bit first stops it re-arming itself underneath the
+		 * cancel.
+		 */
+		set_bit(__E1000_DOWN, &adapter->state);
+		cancel_delayed_work_sync(&adapter->ec_rx_watch);
 		ecdev_close(get_ecdev(adapter));
 		irq_work_sync(&adapter->watchdog_kicker);
 		ecdev_withdraw(get_ecdev(adapter));

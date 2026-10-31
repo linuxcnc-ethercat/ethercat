@@ -23,6 +23,7 @@
 
 #include "fakeethercat.h"
 
+#include <cerrno>
 #include <cstring>
 #include <fstream>
 #include <ios>
@@ -552,6 +553,14 @@ int ecrt_master_reset(ec_master_t *master /**< EtherCAT master. */
     return 0;
 }
 
+int ecrt_master_sii_caching(
+        ec_master_t *master,          /**< EtherCAT master. */
+        ec_sii_caching_fields_t fields /**< Fields to use for cache lookup. */
+)
+{
+    return 0;
+}
+
 static int mkpath(const std::string &file_path)
 {
     if (file_path.empty()) {
@@ -805,12 +814,12 @@ int ecrt_slave_config_reg_pdo_entry_pos(
                                  is desired */
 )
 {
-    auto syncIt {sc->sync_managers.find(sync_index)};
+    auto syncIt = sc->sync_managers.find(sync_index);
     if (syncIt == sc->sync_managers.end()) {
         return -1;
     }
 
-    auto pdo_it {syncIt->second.pdos.find(pdo_pos)};
+    auto pdo_it = syncIt->second.pdos.find(pdo_pos);
     if (pdo_it == syncIt->second.pdos.end()) {
         return -1;
     }

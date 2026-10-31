@@ -37,6 +37,7 @@ class CommandSdos:
 
     protected:
         void listSlaveSdos(MasterDevice &, const ec_ioctl_slave_t &, bool);
+        void listSlaveSdosJson(MasterDevice &, const ec_ioctl_slave_t &);
 };
 
 /****************************************************************************/

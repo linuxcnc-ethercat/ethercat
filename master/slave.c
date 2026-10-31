@@ -168,6 +168,45 @@ void ec_slave_init(
 
     // create state machine object
     ec_fsm_slave_init(&slave->fsm, slave);
+
+    slave->read_mbox_busy = 0;
+
+#ifdef EC_EOE
+    ec_mbox_data_init(&slave->mbox_eoe_data);
+#endif
+    ec_mbox_data_init(&slave->mbox_coe_data);
+    ec_mbox_data_init(&slave->mbox_foe_data);
+    ec_mbox_data_init(&slave->mbox_soe_data);
+    ec_mbox_data_init(&slave->mbox_voe_data);
+
+    slave->valid_mbox_data = 0;
+}
+
+/****************************************************************************/
+
+/**
+   Clears the mailbox lock.
+
+   Lock-free, so that it can be called from any context (also from realtime
+   context, e. g. via ecrt_voe_handler_execute()).
+*/
+void ec_read_mbox_lock_clear(ec_slave_t *slave)
+{
+    clear_bit_unlock(0, &slave->read_mbox_busy);
+}
+
+/****************************************************************************/
+
+/**
+   Return the current mailbox lock status and lock it if not locked.
+
+   Lock-free, see ec_read_mbox_lock_clear().
+
+   \return Non-zero, if the lock was already taken.
+*/
+int ec_read_mbox_locked(ec_slave_t *slave)
+{
+    return test_and_set_bit_lock(0, &slave->read_mbox_busy);
 }
 
 /****************************************************************************/
@@ -263,6 +302,16 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
     }
 
     ec_sii_page_clear(&slave->sii_page);
+
+    // free mailbox response data
+#ifdef EC_EOE
+    ec_mbox_data_clear(&slave->mbox_eoe_data);
+#endif
+    ec_mbox_data_clear(&slave->mbox_coe_data);
+    ec_mbox_data_clear(&slave->mbox_foe_data);
+    ec_mbox_data_clear(&slave->mbox_soe_data);
+    ec_mbox_data_clear(&slave->mbox_voe_data);
+
     ec_fsm_slave_clear(&slave->fsm);
 }
 
@@ -1274,34 +1323,51 @@ void ec_slave_calc_port_delays(
  */
 void ec_slave_calc_transmission_delays_rec(
         ec_slave_t *slave, /**< Current slave. */
+        ec_slave_t *came_from, /**< DC slave we recursed in from (NULL at the
+                                    reference clock). */
         uint32_t *delay /**< Sum of delays. */
         )
 {
-    unsigned int i;
+    unsigned int i, first;
     ec_slave_t *next_dc;
 
     EC_SLAVE_DBG(slave, 1, "%s(delay = %u ns)\n", __func__, *delay);
 
     slave->transmission_delay = *delay;
 
-    i = ec_slave_get_next_port(slave, slave->upstream_port);
+    // Visit every open port in frame-traversal order (downstream ports
+    // first, the master-facing upstream port last), skipping the port we
+    // arrived through. Link delays are symmetric, so each edge adds the
+    // same amount whether descended or ascended, and the round-trip is
+    // accounted by adding the edge delay both before and after recursing.
+    // Starting the walk at the reference clock and allowing the upstream
+    // direction re-roots the delay tree at the reference, so slaves
+    // upstream of a non-default reference get recomputed too (previously
+    // they kept stale delays from the old default).
+    first = ec_slave_get_next_port(slave, 0);
+    i = first;
 
-    while (i != slave->upstream_port) {
+    do {
         ec_slave_port_t *port = &slave->ports[i];
-        next_dc = ec_slave_find_next_dc_slave(port->next_slave);
-        if (next_dc) {
+        // ec_slave_get_next_port() falls back to port 0 when no
+        // further connected port exists; on the first slave that port faces
+        // the master and has no next_slave. Also skip a next_dc that resolves
+        // back to ourselves (possible when ascending through a non-DC slave,
+        // whose downstream search would find us again).
+        next_dc = port->next_slave ?
+            ec_slave_find_next_dc_slave(port->next_slave) : NULL;
+        if (next_dc && next_dc != came_from && next_dc != slave) {
             *delay = *delay + port->delay_to_next_dc;
 #if 0
             EC_SLAVE_DBG(slave, 1, "%u:%u %u\n",
                     slave->ring_position, i, *delay);
 #endif
-            ec_slave_calc_transmission_delays_rec(next_dc, delay);
+            ec_slave_calc_transmission_delays_rec(next_dc, slave, delay);
+            *delay = *delay + port->delay_to_next_dc;
         }
 
         i = ec_slave_get_next_port(slave, i);
-    }
-
-    *delay = *delay + slave->ports[slave->upstream_port].delay_to_next_dc;
+    } while (i != first);
 }
 
 /****************************************************************************/

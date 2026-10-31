@@ -342,6 +342,17 @@ struct e1000_adapter {
 	unsigned long ec_watchdog_jiffies;
 	struct irq_work watchdog_kicker;
 	bool ecdev_initialized;
+
+	/* Detection and recovery of a receiver left deaf by a link loss,
+	 * see ec_rx_watch_task().
+	 */
+	struct delayed_work ec_rx_watch;
+	unsigned int ec_rx_ntc_old;
+	unsigned int ec_tx_ntu_old;
+	unsigned int ec_rx_deaf_passes;
+	unsigned int ec_rx_reinit_count;
+	bool ec_rx_armed;
+	bool ec_rx_recovering;
 };
 
 static inline ec_device_t *get_ecdev(struct e1000_adapter *adapter)

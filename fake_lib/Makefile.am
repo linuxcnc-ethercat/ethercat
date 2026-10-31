@@ -31,6 +31,7 @@ noinst_HEADERS = \
 	fakeethercat.h
 
 libfakeethercat_la_CXXFLAGS = \
+	-std=c++11 \
 	-fno-strict-aliasing \
 	-Wall \
 	-I$(top_srcdir)/include \
@@ -38,7 +39,7 @@ libfakeethercat_la_CXXFLAGS = \
 	-fvisibility=hidden \
 	$(RTIPC_CFLAGS)
 
-libfakeethercat_la_LDFLAGS = -version-info 3:0:2 \
+libfakeethercat_la_LDFLAGS = -version-info $(LIBETHERCAT_VERSION_INFO) \
 	$(RTIPC_LIBS) \
 	-Wl,--version-script=$(srcdir)/../lib/libethercat.map \
 	-fvisibility=hidden

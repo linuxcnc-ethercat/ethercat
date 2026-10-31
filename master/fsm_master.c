@@ -459,7 +459,7 @@ void ec_fsm_master_state_broadcast(
             }
             master->scan_index = 0;
             fsm->state = ec_fsm_master_state_scan_slave;
-            fsm->datagram->state = EC_DATAGRAM_INVALID;
+            fsm->datagram->state = EC_DATAGRAM_UNUSED;
             fsm->state(fsm); // execute immediately
             return;
         }
@@ -1052,7 +1052,7 @@ void ec_fsm_master_state_dc_measure_delays(
     }
     master->scan_index = 0;
     fsm->state = ec_fsm_master_state_scan_slave;
-    fsm->datagram->state = EC_DATAGRAM_INVALID; // nothing to send
+    fsm->datagram->state = EC_DATAGRAM_UNUSED; // nothing to send
     fsm->state(fsm); // execute immediately
 }
 
@@ -1529,6 +1529,7 @@ void ec_fsm_master_state_sdo_request(
 
     if (!request) {
         // configuration was cleared in the meantime
+        ec_fsm_coe_abort(&fsm->fsm_coe);
         ec_fsm_master_restart(fsm);
         return;
     }
@@ -1572,6 +1573,7 @@ void ec_fsm_master_state_soe_request(
 
     if (!request) {
         // configuration was cleared in the meantime
+        ec_fsm_soe_abort(&fsm->fsm_soe);
         ec_fsm_master_restart(fsm);
         return;
     }

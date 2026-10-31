@@ -130,7 +130,7 @@ int ec_fsm_sii_exec(ec_fsm_sii_t *fsm, /**< finite state machine */
              fsm->datagram->state == EC_DATAGRAM_SENT)) {
         // previously queued datagram not yet received; keep waiting
         if (datagram != fsm->datagram) {
-            datagram->state = EC_DATAGRAM_INVALID;
+            datagram->state = EC_DATAGRAM_UNUSED;
         }
         return 1;
     }

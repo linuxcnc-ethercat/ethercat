@@ -38,6 +38,8 @@ using std::hex;
 using std::dec;
 using std::setfill;
 using std::setw;
+using std::setprecision;
+using std::fixed;
 using std::left;
 using std::right;
 
@@ -125,6 +127,11 @@ void CommandSlaves::execute(const StringVector &args)
 
     masterIndices = getMasterIndices();
     doIndent = masterIndices.size() > 1;
+
+    if (getJson()) {
+        jsonBegin("main_devices");
+    }
+
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {
@@ -132,11 +139,20 @@ void CommandSlaves::execute(const StringVector &args)
         m.open(MasterDevice::Read);
         slaves = selectedSlaves(m);
 
-        if (getVerbosity() == Verbose) {
+        if (getJson()) {
+            if (mi != masterIndices.begin()) {
+                cout << "," << endl;
+            }
+            showSlavesJson(m, slaves);
+        } else if (getVerbosity() == Verbose) {
             showSlaves(m, slaves);
         } else {
             listSlaves(m, slaves, doIndent);
         }
+    }
+
+    if (getJson()) {
+        jsonEnd();
     }
 }
 
@@ -192,7 +208,7 @@ void CommandSlaves::listSlaves(
             info.device = slave.device_index;
 
             if (strlen(slave.name)) {
-                info.name = slave.name;
+                info.name = toLocal(slave.name);
             } else {
                 str << "0x" << hex << setfill('0')
                     << setw(8) << slave.vendor_id << ":0x"
@@ -342,7 +358,7 @@ void CommandSlaves::showSlaves(
                 << "  " << setw(9) << right;
 
             if (si->ports[i].next_slave != 0xffff) {
-                cout << dec << si->ports[i].next_slave;
+                cout << si->ports[i].next_slave;
             } else {
                 cout << "-";
             }
@@ -424,10 +440,10 @@ void CommandSlaves::showSlaves(
 
         if (si->has_general_category) {
             cout << "General:" << endl
-                << "  Group: " << si->group << endl
-                << "  Image name: " << si->image << endl
-                << "  Order number: " << si->order << endl
-                << "  Device name: " << si->name << endl;
+                << "  Group: " << toLocal(si->group) << endl
+                << "  Image name: " << toLocal(si->image) << endl
+                << "  Order number: " << toLocal(si->order) << endl
+                << "  Device name: " << toLocal(si->name) << endl;
 
             if (si->mailbox_protocols & EC_MBOX_COE) {
                 cout << "  CoE details:" << endl
@@ -477,6 +493,254 @@ bool CommandSlaves::slaveInList(
     }
 
     return false;
+}
+
+/****************************************************************************/
+
+void CommandSlaves::showSlavesJson(
+        MasterDevice &m,
+        const SlaveList &slaves
+        )
+{
+    SlaveList::const_iterator si;
+    int i;
+    bool first = true;
+
+    cout << "    {" << endl
+        << "      \"main_device\": " << m.getIndex() << "," << endl
+        << "      \"sub_devices\": [" << endl;
+
+    for (si = slaves.begin(); si != slaves.end(); si++) {
+        if (!first) {
+            cout << "," << endl;
+        }
+        first = false;
+
+        cout << "        {" << endl
+            << "          \"position\": " << si->position << ","
+            << endl
+            << "          \"alias\": " << si->alias << "," << endl
+            << "          \"device_role\": \""
+            << (si->device_index ? "backup" : "main") << "\"," << endl
+            << "          \"state\": \""
+            << alStateBaseString(si->al_state) << "\"," << endl
+            << "          \"state_error\": "
+            << ((si->al_state & EC_SLAVE_STATE_ACK_ERR) ? "true" : "false")
+            << "," << endl
+            << "          \"error\": "
+            << (si->error_flag ? "true" : "false") << "," << endl
+            << "          \"name\": \"" << jsonEscape(si->name) << "\","
+            << endl
+            << "          \"identity\": {" << endl
+            << "            \"vendor_id\": " << si->vendor_id << ","
+            << endl
+            << "            \"product_code\": " << si->product_code << ","
+            << endl
+            << "            \"revision_number\": " << si->revision_number
+            << "," << endl
+            << "            \"serial_number\": " << si->serial_number << endl
+            << "          }," << endl
+            << "          \"sii_parallel_read_words\": ";
+        if (si->sii_parallel_words) {
+            cout << si->sii_parallel_words;
+        } else {
+            cout << "null";
+        }
+        cout << "," << endl
+            << "          \"fmmu_bit_operation\": "
+            << (si->fmmu_bit ? "true" : "false") << "," << endl
+            << "          \"distributed_clocks\": {" << endl
+            << "            \"support\": \"";
+        if (!si->dc_supported) {
+            cout << "no";
+        } else if (!si->has_dc_system_time) {
+            cout << "delay_measurement_only";
+        } else {
+            cout << "full";
+        }
+        cout << "\"";
+        if (si->dc_supported && si->has_dc_system_time) {
+            cout << "," << endl
+                << "            \"range_bits\": "
+                << (si->dc_range == EC_DC_64 ? 64 : 32);
+        }
+        if (si->dc_supported) {
+            cout << "," << endl
+                << "            \"transmission_delay\": "
+                << setprecision(9) << fixed
+                << (si->transmission_delay / 1e9);
+        }
+        cout << endl
+            << "          }," << endl
+            << "          \"ports\": [" << endl;
+
+        for (i = 0; i < EC_MAX_PORTS; i++) {
+            const char *type;
+            switch (si->ports[i].desc) {
+                case EC_PORT_NOT_IMPLEMENTED: type = "N/A"; break;
+                case EC_PORT_NOT_CONFIGURED:  type = "N/C"; break;
+                case EC_PORT_EBUS:            type = "EBUS"; break;
+                case EC_PORT_MII:             type = "MII"; break;
+                default:                      type = "???";
+            }
+
+            cout << "            {" << endl
+                << "              \"index\": " << i << "," << endl
+                << "              \"type\": \"" << type << "\"," << endl
+                << "              \"link_up\": "
+                << (si->ports[i].link.link_up ? "true" : "false") << ","
+                << endl
+                << "              \"loop_closed\": "
+                << (si->ports[i].link.loop_closed ? "true" : "false") << ","
+                << endl
+                << "              \"signal_detected\": "
+                << (si->ports[i].link.signal_detected ? "true" : "false")
+                << "," << endl
+                << "              \"next_sub_device\": ";
+            if (si->ports[i].next_slave != 0xffff) {
+                cout << si->ports[i].next_slave;
+            } else {
+                cout << "null";
+            }
+
+            if (si->dc_supported) {
+                cout << "," << endl
+                    << "              \"receive_time\": ";
+                if (!si->ports[i].link.loop_closed) {
+                    cout << setprecision(9) << fixed
+                        << (si->ports[i].receive_time / 1e9);
+                } else {
+                    cout << "null";
+                }
+                cout << "," << endl
+                    << "              \"diff\": ";
+                if (!si->ports[i].link.loop_closed) {
+                    cout << setprecision(9) << fixed
+                        << ((si->ports[i].receive_time -
+                                    si->ports[0].receive_time) / 1e9);
+                } else {
+                    cout << "null";
+                }
+                cout << "," << endl
+                    << "              \"next_dc\": ";
+                if (!si->ports[i].link.loop_closed) {
+                    cout << setprecision(9) << fixed
+                        << (si->ports[i].delay_to_next_dc / 1e9);
+                } else {
+                    cout << "null";
+                }
+            }
+
+            cout << endl
+                << "            }";
+            if (i + 1 < EC_MAX_PORTS) {
+                cout << ",";
+            }
+            cout << endl;
+        }
+        cout << "          ]";
+
+        if (si->mailbox_protocols) {
+            bool firstProto = true;
+
+            cout << "," << endl
+                << "          \"mailboxes\": {" << endl
+                << "            \"bootstrap\": {"
+                << "\"rx_offset\": " << si->boot_rx_mailbox_offset
+                << ", "
+                << "\"rx_size\": " << si->boot_rx_mailbox_size << ", "
+                << "\"tx_offset\": " << si->boot_tx_mailbox_offset << ", "
+                << "\"tx_size\": " << si->boot_tx_mailbox_size
+                << "}," << endl
+                << "            \"standard\": {"
+                << "\"rx_offset\": " << si->std_rx_mailbox_offset << ", "
+                << "\"rx_size\": " << si->std_rx_mailbox_size << ", "
+                << "\"tx_offset\": " << si->std_tx_mailbox_offset << ", "
+                << "\"tx_size\": " << si->std_tx_mailbox_size
+                << "}," << endl
+                << "            \"protocols\": [";
+
+            static const struct {
+                uint16_t flag;
+                const char *name;
+            } protocols[] = {
+                {EC_MBOX_AOE, "AoE"},
+                {EC_MBOX_EOE, "EoE"},
+                {EC_MBOX_COE, "CoE"},
+                {EC_MBOX_FOE, "FoE"},
+                {EC_MBOX_SOE, "SoE"},
+                {EC_MBOX_VOE, "VoE"},
+            };
+            unsigned int p;
+            for (p = 0; p < sizeof(protocols) / sizeof(protocols[0]); p++) {
+                if (si->mailbox_protocols & protocols[p].flag) {
+                    if (!firstProto) {
+                        cout << ", ";
+                    }
+                    cout << "\"" << protocols[p].name << "\"";
+                    firstProto = false;
+                }
+            }
+            cout << "]" << endl
+                << "          }";
+        }
+
+        if (si->has_general_category) {
+            cout << "," << endl
+                << "          \"general\": {" << endl
+                << "            \"group\": \"" << jsonEscape(si->group)
+                << "\"," << endl
+                << "            \"image\": \"" << jsonEscape(si->image)
+                << "\"," << endl
+                << "            \"order\": \"" << jsonEscape(si->order)
+                << "\"";
+
+            if (si->mailbox_protocols & EC_MBOX_COE) {
+                cout << "," << endl
+                    << "            \"coe_details\": {" << endl
+                    << "              \"enable_sdo\": "
+                    << (si->coe_details.enable_sdo ? "true" : "false") << ","
+                    << endl
+                    << "              \"enable_sdo_info\": "
+                    << (si->coe_details.enable_sdo_info ? "true" : "false")
+                    << "," << endl
+                    << "              \"enable_pdo_assign\": "
+                    << (si->coe_details.enable_pdo_assign
+                            ? "true" : "false") << "," << endl
+                    << "              \"enable_pdo_configuration\": "
+                    << (si->coe_details.enable_pdo_configuration
+                            ? "true" : "false") << "," << endl
+                    << "              \"enable_upload_at_startup\": "
+                    << (si->coe_details.enable_upload_at_startup
+                            ? "true" : "false") << "," << endl
+                    << "              \"enable_sdo_complete_access\": "
+                    << (si->coe_details.enable_sdo_complete_access
+                            ? "true" : "false") << endl
+                    << "            }";
+            }
+
+            cout << "," << endl
+                << "            \"flags\": {" << endl
+                << "              \"enable_safeop\": "
+                << (si->general_flags.enable_safeop ? "true" : "false")
+                << "," << endl
+                << "              \"enable_not_lrw\": "
+                << (si->general_flags.enable_not_lrw ? "true" : "false")
+                << endl
+                << "            }," << endl
+                << "            \"current_on_ebus\": "
+                << setprecision(3) << fixed
+                << (si->current_on_ebus / 1000.0) << endl
+                << "          }";
+        }
+
+        cout << endl
+            << "        }";
+    }
+
+    cout << endl
+        << "      ]" << endl
+        << "    }";
 }
 
 /****************************************************************************/

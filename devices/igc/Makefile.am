@@ -30,6 +30,8 @@ EXTRA_DIST = \
 	igc-6.1-orig.h \
 	igc-6.12-ethercat.h \
 	igc-6.12-orig.h \
+	igc-6.18-ethercat.h \
+	igc-6.18-orig.h \
 	igc-6.4-ethercat.h \
 	igc-6.4-orig.h \
 	igc-6.6-ethercat.h \
@@ -44,7 +46,6 @@ EXTRA_DIST = \
 	igc_base-5.15-ethercat.h \
 	igc_base-5.15-orig.c \
 	igc_base-5.15-orig.h \
-	igc_base-5.15-orig.h \
 	igc_base-6.1-ethercat.c \
 	igc_base-6.1-ethercat.h \
 	igc_base-6.1-orig.c \
@@ -53,6 +54,10 @@ EXTRA_DIST = \
 	igc_base-6.12-ethercat.h \
 	igc_base-6.12-orig.c \
 	igc_base-6.12-orig.h \
+	igc_base-6.18-ethercat.c \
+	igc_base-6.18-ethercat.h \
+	igc_base-6.18-orig.c \
+	igc_base-6.18-orig.h \
 	igc_base-6.4-ethercat.c \
 	igc_base-6.4-ethercat.h \
 	igc_base-6.4-orig.c \
@@ -73,6 +78,8 @@ EXTRA_DIST = \
 	igc_defines-6.1-orig.h \
 	igc_defines-6.12-ethercat.h \
 	igc_defines-6.12-orig.h \
+	igc_defines-6.18-ethercat.h \
+	igc_defines-6.18-orig.h \
 	igc_defines-6.4-ethercat.h \
 	igc_defines-6.4-orig.h \
 	igc_defines-6.6-ethercat.h \
@@ -95,6 +102,10 @@ EXTRA_DIST = \
 	igc_diag-6.12-ethercat.h \
 	igc_diag-6.12-orig.c \
 	igc_diag-6.12-orig.h \
+	igc_diag-6.18-ethercat.c \
+	igc_diag-6.18-ethercat.h \
+	igc_diag-6.18-orig.c \
+	igc_diag-6.18-orig.h \
 	igc_diag-6.4-ethercat.c \
 	igc_diag-6.4-ethercat.h \
 	igc_diag-6.4-orig.c \
@@ -115,6 +126,8 @@ EXTRA_DIST = \
 	igc_dump-6.1-orig.c \
 	igc_dump-6.12-ethercat.c \
 	igc_dump-6.12-orig.c \
+	igc_dump-6.18-ethercat.c \
+	igc_dump-6.18-orig.c \
 	igc_dump-6.4-ethercat.c \
 	igc_dump-6.4-orig.c \
 	igc_dump-6.6-ethercat.c \
@@ -129,6 +142,8 @@ EXTRA_DIST = \
 	igc_ethtool-6.1-orig.c \
 	igc_ethtool-6.12-ethercat.c \
 	igc_ethtool-6.12-orig.c \
+	igc_ethtool-6.18-ethercat.c \
+	igc_ethtool-6.18-orig.c \
 	igc_ethtool-6.4-ethercat.c \
 	igc_ethtool-6.4-orig.c \
 	igc_ethtool-6.6-ethercat.c \
@@ -143,6 +158,8 @@ EXTRA_DIST = \
 	igc_hw-6.1-orig.h \
 	igc_hw-6.12-ethercat.h \
 	igc_hw-6.12-orig.h \
+	igc_hw-6.18-ethercat.h \
+	igc_hw-6.18-orig.h \
 	igc_hw-6.4-ethercat.h \
 	igc_hw-6.4-orig.h \
 	igc_hw-6.6-ethercat.h \
@@ -165,6 +182,10 @@ EXTRA_DIST = \
 	igc_i225-6.12-ethercat.h \
 	igc_i225-6.12-orig.c \
 	igc_i225-6.12-orig.h \
+	igc_i225-6.18-ethercat.c \
+	igc_i225-6.18-ethercat.h \
+	igc_i225-6.18-orig.c \
+	igc_i225-6.18-orig.h \
 	igc_i225-6.4-ethercat.c \
 	igc_i225-6.4-ethercat.h \
 	igc_i225-6.4-orig.c \
@@ -179,6 +200,8 @@ EXTRA_DIST = \
 	igc_i225-6.8-orig.h \
 	igc_leds-6.12-ethercat.c \
 	igc_leds-6.12-orig.c \
+	igc_leds-6.18-ethercat.c \
+	igc_leds-6.18-orig.c \
 	igc_mac-5.14-ethercat.c \
 	igc_mac-5.14-ethercat.h \
 	igc_mac-5.14-orig.c \
@@ -195,6 +218,10 @@ EXTRA_DIST = \
 	igc_mac-6.12-ethercat.h \
 	igc_mac-6.12-orig.c \
 	igc_mac-6.12-orig.h \
+	igc_mac-6.18-ethercat.c \
+	igc_mac-6.18-ethercat.h \
+	igc_mac-6.18-orig.c \
+	igc_mac-6.18-orig.h \
 	igc_mac-6.4-ethercat.c \
 	igc_mac-6.4-ethercat.h \
 	igc_mac-6.4-orig.c \
@@ -215,6 +242,8 @@ EXTRA_DIST = \
 	igc_main-6.1-orig.c \
 	igc_main-6.12-ethercat.c \
 	igc_main-6.12-orig.c \
+	igc_main-6.18-ethercat.c \
+	igc_main-6.18-orig.c \
 	igc_main-6.4-ethercat.c \
 	igc_main-6.4-orig.c \
 	igc_main-6.6-ethercat.c \
@@ -237,6 +266,10 @@ EXTRA_DIST = \
 	igc_nvm-6.12-ethercat.h \
 	igc_nvm-6.12-orig.c \
 	igc_nvm-6.12-orig.h \
+	igc_nvm-6.18-ethercat.c \
+	igc_nvm-6.18-ethercat.h \
+	igc_nvm-6.18-orig.c \
+	igc_nvm-6.18-orig.h \
 	igc_nvm-6.4-ethercat.c \
 	igc_nvm-6.4-ethercat.h \
 	igc_nvm-6.4-orig.c \
@@ -265,6 +298,10 @@ EXTRA_DIST = \
 	igc_phy-6.12-ethercat.h \
 	igc_phy-6.12-orig.c \
 	igc_phy-6.12-orig.h \
+	igc_phy-6.18-ethercat.c \
+	igc_phy-6.18-ethercat.h \
+	igc_phy-6.18-orig.c \
+	igc_phy-6.18-orig.h \
 	igc_phy-6.4-ethercat.c \
 	igc_phy-6.4-ethercat.h \
 	igc_phy-6.4-orig.c \
@@ -285,6 +322,8 @@ EXTRA_DIST = \
 	igc_ptp-6.1-orig.c \
 	igc_ptp-6.12-ethercat.c \
 	igc_ptp-6.12-orig.c \
+	igc_ptp-6.18-ethercat.c \
+	igc_ptp-6.18-orig.c \
 	igc_ptp-6.4-ethercat.c \
 	igc_ptp-6.4-orig.c \
 	igc_ptp-6.6-ethercat.c \
@@ -299,6 +338,8 @@ EXTRA_DIST = \
 	igc_regs-6.1-orig.h \
 	igc_regs-6.12-ethercat.h \
 	igc_regs-6.12-orig.h \
+	igc_regs-6.18-ethercat.h \
+	igc_regs-6.18-orig.h \
 	igc_regs-6.4-ethercat.h \
 	igc_regs-6.4-orig.h \
 	igc_regs-6.6-ethercat.h \
@@ -321,6 +362,10 @@ EXTRA_DIST = \
 	igc_tsn-6.12-ethercat.h \
 	igc_tsn-6.12-orig.c \
 	igc_tsn-6.12-orig.h \
+	igc_tsn-6.18-ethercat.c \
+	igc_tsn-6.18-ethercat.h \
+	igc_tsn-6.18-orig.c \
+	igc_tsn-6.18-orig.h \
 	igc_tsn-6.4-ethercat.c \
 	igc_tsn-6.4-ethercat.h \
 	igc_tsn-6.4-orig.c \
@@ -349,6 +394,10 @@ EXTRA_DIST = \
 	igc_xdp-6.12-ethercat.h \
 	igc_xdp-6.12-orig.c \
 	igc_xdp-6.12-orig.h \
+	igc_xdp-6.18-ethercat.c \
+	igc_xdp-6.18-ethercat.h \
+	igc_xdp-6.18-orig.c \
+	igc_xdp-6.18-orig.h \
 	igc_xdp-6.4-ethercat.c \
 	igc_xdp-6.4-ethercat.h \
 	igc_xdp-6.4-orig.c \

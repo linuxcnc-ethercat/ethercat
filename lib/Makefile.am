@@ -52,34 +52,8 @@ libethercat_la_CFLAGS = \
 	-Dethercat_EXPORTS \
 	-fvisibility=hidden
 
-#
-# http://www.gnu.org/software/libtool/manual/html_node/ ...
-# Updating-version-info.html
-#
-# - If the library source code has changed at all since the last update, then
-#   increment revision (‘c:r:a’ becomes ‘c:r+1:a’).
-# - If any interfaces have been added, removed, or changed since the last
-#   update, increment current, and set revision to 0.
-# - If any interfaces have been added since the last public release, then
-#   increment age.
-# - If any interfaces have been removed or changed since the last public
-#   release, then set age to 0.
-#
-# History
-#
-# 1:0.0
-# 	ecrt_master_sync_reference_clock_to() added.
-# 2:0:1
-#   SoE requests added
-# 3:0:2
-# 4:0:3
-#   ecrt_master_rescan() added.
-# 5:0:4
-#   ecrt_sdo_info_get() and ecrt_sdo_get_info_entry() added.
-# 6:0:5
-#   ecrt_master_request_slave_state() added.
-#
-libethercat_la_LDFLAGS = -version-info 6:0:5 \
+# Version info is defined in configure.ac
+libethercat_la_LDFLAGS = -version-info $(LIBETHERCAT_VERSION_INFO) \
 	-Wl,--version-script=$(srcdir)/libethercat.map \
 	-fvisibility=hidden
 

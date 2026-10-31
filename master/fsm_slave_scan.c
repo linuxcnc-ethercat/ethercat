@@ -56,6 +56,8 @@ void ec_fsm_slave_scan_enter_datalink(ec_fsm_slave_scan_t *, ec_datagram_t *);
 void ec_fsm_slave_scan_enter_regalias(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #endif
 void ec_fsm_slave_scan_enter_preop(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_enter_clear_mailbox(
+        ec_fsm_slave_scan_t *, ec_datagram_t *);
 void ec_fsm_slave_scan_enter_pdos(ec_fsm_slave_scan_t *, ec_datagram_t *);
 
 /****************************************************************************/
@@ -73,6 +75,8 @@ void ec_fsm_slave_scan_state_assign_sii(ec_fsm_slave_scan_t *, ec_datagram_t *);
 void ec_fsm_slave_scan_state_sii_ident(ec_fsm_slave_scan_t *, ec_datagram_t *);
 void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *, ec_datagram_t *);
 void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_mailbox_cleared(
+        ec_fsm_slave_scan_t *, ec_datagram_t *);
 #ifdef EC_REGALIAS
 void ec_fsm_slave_scan_state_regalias(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #endif
@@ -1082,7 +1086,7 @@ void ec_fsm_slave_scan_state_preop(
         return;
     }
 
-    ec_fsm_slave_scan_enter_pdos(fsm, datagram);
+    ec_fsm_slave_scan_enter_clear_mailbox(fsm, datagram);
 }
 
 /****************************************************************************/
@@ -1151,6 +1155,56 @@ void ec_fsm_slave_scan_state_sync(
     EC_SLAVE_DBG(slave, 1, " TX offset=0x%04x size=%u\n",
             slave->configured_tx_mailbox_offset,
             slave->configured_tx_mailbox_size);
+
+    // allocate memory for mailbox response data
+    ec_slave_mbox_prealloc(slave);
+
+    ec_fsm_slave_scan_enter_clear_mailbox(fsm, datagram);
+}
+
+/****************************************************************************/
+
+/** Enter slave scan state: Clear Mailbox.
+ */
+void ec_fsm_slave_scan_enter_clear_mailbox(
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    // Read out and discard old mailbox data. Errors and an empty mailbox
+    // response are deliberately ignored.
+    ec_slave_mbox_prepare_fetch(slave, datagram);
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_slave_scan_state_mailbox_cleared;
+
+    slave->valid_mbox_data = 0;
+}
+
+/****************************************************************************/
+
+/** Slave scan state: Mailbox cleared.
+ */
+void ec_fsm_slave_scan_state_mailbox_cleared(
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_slave_mbox_prepare_fetch(slave, datagram);
+        return;
+    }
+
+    if (unlikely(slave->master->debug_level > 0)
+            && fsm->datagram->state == EC_DATAGRAM_RECEIVED
+            && fsm->datagram->working_counter == 1) {
+        EC_SLAVE_INFO(slave, "Cleared old data from the mailbox\n");
+    }
+
+    slave->valid_mbox_data = 1;
 
     ec_fsm_slave_scan_enter_pdos(fsm, datagram);
 }

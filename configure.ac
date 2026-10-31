@@ -27,8 +27,44 @@ AC_PREREQ([2.59])
 # - Write NEWS.md entry with changes since last release
 # - Check for complete Doxygen comments
 # - Update version number below
+# - Update library version info below
+# - Check symbol versions in lib/libethercat.map
 #
 AC_INIT([ethercat], [1.7.0], [fp@igh.de])
+
+#
+# Library version info (current:revision:age) for libethercat and
+# libfakeethercat, see
+# http://www.gnu.org/software/libtool/manual/html_node/ ...
+# Updating-version-info.html
+#
+# - If the library source code has changed at all since the last update, then
+#   increment revision (‘c:r:a’ becomes ‘c:r+1:a’).
+# - If any interfaces have been added, removed, or changed since the last
+#   update, increment current, and set revision to 0.
+# - If any interfaces have been added since the last public release, then
+#   increment age.
+# - If any interfaces have been removed or changed since the last public
+#   release, then set age to 0.
+#
+# History
+#
+# 1:0:0
+#   ecrt_master_sync_reference_clock_to() added.
+# 2:0:1
+#   SoE requests added
+# 3:0:2
+#   1.6: Scan progress, EoE IP parameters and state timeout added
+# 4:0:3
+#   ecrt_master_rescan() added.
+# 5:0:4
+#   ecrt_sdo_info_get() and ecrt_sdo_get_info_entry() added.
+# 6:0:5
+#   ecrt_master_request_slave_state(), ecrt_master_sii_caching() and
+#   ecrt_slave_config_pdo_mode() added.
+#
+AC_SUBST([LIBETHERCAT_VERSION_INFO], [6:0:5])
+
 AC_CONFIG_AUX_DIR([autoconf])
 AM_INIT_AUTOMAKE([-Wall -Wno-override -Werror dist-bzip2 subdir-objects foreign])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -797,10 +833,32 @@ if test "x${enablestmmac}" = "x1"; then
         AC_MSG_RESULT([no])
         has_stmmac_est=0
     fi
+
+    AC_MSG_CHECKING([for stmmac_fpe.c])
+
+    if test -r "${srcdir}/devices/stmmac/stmmac_fpe-${kernelstmmac}-ethercat.c"; then
+        AC_MSG_RESULT([yes])
+        has_stmmac_fpe=1
+    else
+        AC_MSG_RESULT([no])
+        has_stmmac_fpe=0
+    fi
+
+    AC_MSG_CHECKING([for stmmac_vlan.c])
+
+    if test -r "${srcdir}/devices/stmmac/stmmac_vlan-${kernelstmmac}-ethercat.c"; then
+        AC_MSG_RESULT([yes])
+        has_stmmac_vlan=1
+    else
+        AC_MSG_RESULT([no])
+        has_stmmac_vlan=0
+    fi
 fi
 
 AC_SUBST(KERNEL_STMMAC, [$kernelstmmac])
 AC_SUBST(HAS_STMMAC_EST, [$has_stmmac_est])
+AC_SUBST(HAS_STMMAC_FPE, [$has_stmmac_fpe])
+AC_SUBST(HAS_STMMAC_VLAN, [$has_stmmac_vlan])
 
 #-----------------------------------------------------------------------------
 # CCAT driver

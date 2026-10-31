@@ -84,6 +84,10 @@ string CommandPdos::helpString(const string &binaryBaseName) const
         << "The \"etherlab\" skin outputs a template configuration" << endl
         << "for EtherLab's generic EtherCAT slave block." << endl
         << endl
+        << "The global --json option outputs the same information as" << endl
+        << "the default skin as JSON and cannot be combined with a" << endl
+        << "skin other than \"default\"." << endl
+        << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
@@ -110,6 +114,39 @@ void CommandPdos::execute(const StringVector &args)
         stringstream err;
         err << "'" << getName() << "' takes no arguments!";
         throwInvalidUsageException(err);
+    }
+
+    if (getJson()) {
+        if (!getSkin().empty() && getSkin() != "default") {
+            stringstream err;
+            err << "'--json' cannot be combined with skin '"
+                << getSkin() << "'!";
+            throwInvalidUsageException(err);
+        }
+
+        bool first = true;
+
+        masterIndices = getMasterIndices();
+
+        jsonBegin("sub_devices");
+        MasterIndexList::const_iterator mi;
+        for (mi = masterIndices.begin();
+                mi != masterIndices.end(); mi++) {
+            MasterDevice m(*mi);
+            m.open(MasterDevice::Read);
+            slaves = selectedSlaves(m);
+
+            for (si = slaves.begin(); si != slaves.end(); si++) {
+                if (!first) {
+                    cout << "," << endl;
+                }
+                first = false;
+                listSlavePdosJson(m, *si);
+            }
+        }
+        jsonEnd();
+
+        return;
     }
 
     if (getSkin().empty() || getSkin() == "default") {
@@ -188,7 +225,8 @@ void CommandPdos::listSlavePdos(
                 << "xPDO 0x"
                 << hex << setfill('0')
                 << setw(4) << pdo.index
-                << " \"" << pdo.name << "\"" << endl;
+                << " \"" << toLocal((const char *) pdo.name) << "\""
+                << endl;
 
             if (getVerbosity() == Quiet)
                 continue;
@@ -202,7 +240,8 @@ void CommandPdos::listSlavePdos(
                     << ":" << setw(2) << (unsigned int) entry.subindex
                     << ", " << dec << setfill(' ')
                     << setw(2) << (unsigned int) entry.bit_length
-                    << " bit, \"" << entry.name << "\"" << endl;
+                    << " bit, \"" << toLocal((const char *) entry.name)
+                    << "\"" << endl;
             }
         }
     }
@@ -223,7 +262,7 @@ void CommandPdos::etherlabConfig(
     cout << "%" << endl
         << "% Master " << m.getIndex() << ", Slave " << slave.position;
     if (strlen(slave.order)) {
-        cout << ", \"" << slave.order << "\"";
+        cout << ", \"" << toUtf8(slave.order) << "\"";
     }
     cout << endl
         << "%" << endl
@@ -235,7 +274,8 @@ void CommandPdos::etherlabConfig(
         << "rv.SlaveConfig.product = hex2dec('"
         << hex << setfill('0') << setw(8) << slave.product_code << "');"
         << endl
-        << "rv.SlaveConfig.description = '" << slave.order << "';" << endl
+        << "rv.SlaveConfig.description = '" << toUtf8(slave.order) << "';"
+        << endl
         << "rv.SlaveConfig.sm = { ..." << endl;
 
     /* slave configuration */
@@ -313,6 +353,110 @@ void CommandPdos::etherlabConfig(
     }
 
     cout << "end" << endl;
+}
+
+/****************************************************************************/
+
+void CommandPdos::listSlavePdosJson(
+        MasterDevice &m,
+        const ec_ioctl_slave_t &slave
+        )
+{
+    ec_ioctl_slave_sync_t sync;
+    ec_ioctl_slave_sync_pdo_t pdo;
+    ec_ioctl_slave_sync_pdo_entry_t entry;
+    unsigned int i, j, k;
+    bool firstSync = true;
+
+    cout << "    {" << endl
+        << "      \"main_device\": " << dec << m.getIndex() << "," << endl
+        << "      \"sub_device\": " << slave.position << "," << endl
+        << "      \"sync_managers\": [" << endl;
+
+    for (i = 0; i < slave.sync_count; i++) {
+        bool firstPdo = true;
+
+        m.getSync(&sync, slave.position, i);
+
+        if (!firstSync) {
+            cout << "," << endl;
+        }
+        firstSync = false;
+
+        // Write access from the EtherCAT side (control register bit 2)
+        // means outputs.
+        cout << "        {" << endl
+            << "          \"index\": " << dec << i << "," << endl
+            << "          \"physical_start_address\": "
+            << sync.physical_start_address << "," << endl
+            << "          \"default_size\": " << sync.default_size
+            << "," << endl
+            << "          \"control_register\": "
+            << (unsigned int) sync.control_register << "," << endl
+            << "          \"enable\": " << (sync.enable ? "true" : "false")
+            << "," << endl
+            << "          \"direction\": \""
+            << (sync.control_register & 0x04 ? "output" : "input") << "\","
+            << endl
+            << "          \"pdos\": [" << endl;
+
+        for (j = 0; j < sync.pdo_count; j++) {
+            m.getPdo(&pdo, slave.position, i, j);
+
+            if (!firstPdo) {
+                cout << "," << endl;
+            }
+            firstPdo = false;
+
+            cout << "            {" << endl
+                << "              \"index\": " << pdo.index << "," << endl
+                << "              \"name\": \""
+                << jsonEscape(reinterpret_cast<const char *>(pdo.name))
+                << "\"," << endl
+                << "              \"entries\": [" << endl;
+
+            {
+                bool firstEntry = true;
+
+                for (k = 0; k < pdo.entry_count; k++) {
+                    m.getPdoEntry(&entry, slave.position, i, j, k);
+
+                    if (!firstEntry) {
+                        cout << "," << endl;
+                    }
+                    firstEntry = false;
+
+                    cout << "                {" << endl
+                        << "                  \"index\": " << entry.index
+                        << "," << endl
+                        << "                  \"subindex\": "
+                        << (unsigned int) entry.subindex << "," << endl
+                        << "                  \"bit_length\": "
+                        << dec << (unsigned int) entry.bit_length << ","
+                        << endl
+                        << "                  \"name\": \""
+                        << jsonEscape(
+                                reinterpret_cast<const char *>(entry.name))
+                        << "\"" << endl
+                        << "                }";
+                }
+
+                cout << endl
+                    << "              ]";
+            }
+
+            cout << endl
+                << "            }";
+        }
+
+        cout << endl
+            << "          ]" << endl
+            << "        }";
+    }
+
+    cout << endl
+        << "      ]" << endl
+        << "    }";
 }
 
 /****************************************************************************/

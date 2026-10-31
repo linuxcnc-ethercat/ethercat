@@ -65,13 +65,13 @@ typedef enum {
  */
 typedef enum {
     EC_DATAGRAM_INIT,      /**< Initial state of a new datagram. */
-    EC_DATAGRAM_INVALID,   /**< Allocated but should be skipped when injecting
-                                (external-ring slot handed back unused). */
     EC_DATAGRAM_QUEUED,    /**< Queued for sending. */
     EC_DATAGRAM_SENT,      /**< Sent (still in the queue). */
     EC_DATAGRAM_RECEIVED,  /**< Received (dequeued). */
     EC_DATAGRAM_TIMED_OUT, /**< Timed out (dequeued). */
-    EC_DATAGRAM_ERROR      /**< Error while sending/receiving (dequeued). */
+    EC_DATAGRAM_ERROR,     /**< Error while sending/receiving (dequeued). */
+    EC_DATAGRAM_UNUSED     /**< Not used by its state machine in this cycle
+                             and not to be queued. */
 } ec_datagram_state_t;
 
 /****************************************************************************/
@@ -81,7 +81,8 @@ typedef enum {
 typedef struct {
     struct list_head queue; /**< Master datagram queue item,
         protected by user-supplied mutex. */
-    struct list_head ext_queue; /**< External datagram queue item, protected by ext_queue_sem. */
+    struct list_head ext_queue; /**< External datagram queue item,
+        protected by ext_queue_sem. */
     struct list_head sent; /**< Master list item for sent datagrams. */
     ec_device_index_t device_index; /**< Device via which the datagram shall
                                       be / was sent. */

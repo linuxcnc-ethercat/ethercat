@@ -85,6 +85,11 @@ string CommandDomains::helpString(const string &binaryBaseName) const
         << "  --verbose -v          Show FMMUs and process data" << endl
         << "                        in addition." << endl
         << endl
+        << "The global --json option outputs the same summary" << endl
+        << "information as JSON, regardless of --verbose. For a" << endl
+        << "structured, JSON breakdown of the FMMUs and process data," << endl
+        << "see the 'data' command's --json option instead." << endl
+        << endl
         << numericInfo();
 
     return str.str();
@@ -98,6 +103,7 @@ void CommandDomains::execute(const StringVector &args)
     bool doIndent;
     DomainList domains;
     DomainList::const_iterator di;
+    bool firstMaster = true;
 
     if (args.size()) {
         stringstream err;
@@ -107,6 +113,11 @@ void CommandDomains::execute(const StringVector &args)
 
     masterIndices = getMasterIndices();
     doIndent = masterIndices.size() > 1;
+
+    if (getJson()) {
+        jsonBegin("main_devices");
+    }
+
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {
@@ -116,6 +127,32 @@ void CommandDomains::execute(const StringVector &args)
         m.getMaster(&io);
         domains = selectedDomains(m, io);
 
+        if (getJson()) {
+            bool firstDomain = true;
+
+            if (!firstMaster) {
+                cout << "," << endl;
+            }
+            firstMaster = false;
+
+            cout << "    {" << endl
+                << "      \"main_device\": " << dec << *mi << "," << endl
+                << "      \"domains\": [" << endl;
+
+            for (di = domains.begin(); di != domains.end(); di++) {
+                if (!firstDomain) {
+                    cout << "," << endl;
+                }
+                firstDomain = false;
+                showDomainJson(io, *di);
+            }
+
+            cout << endl
+                << "      ]" << endl
+                << "    }";
+            continue;
+        }
+
         if (domains.size() && doIndent) {
             cout << "Master" << dec << *mi << endl;
         }
@@ -123,6 +160,10 @@ void CommandDomains::execute(const StringVector &args)
         for (di = domains.begin(); di != domains.end(); di++) {
             showDomain(m, io, *di, doIndent);
         }
+    }
+
+    if (getJson()) {
+        jsonEnd();
     }
 }
 
@@ -214,6 +255,38 @@ void CommandDomains::showDomain(
     }
 
     delete [] processData;
+}
+
+/****************************************************************************/
+
+void CommandDomains::showDomainJson(
+        const ec_ioctl_master_t &master,
+        const ec_ioctl_domain_t &domain
+        )
+{
+    unsigned int dev_idx, wc_sum = 0;
+
+    for (dev_idx = EC_DEVICE_MAIN; dev_idx < master.num_devices; dev_idx++) {
+        wc_sum += domain.working_counter[dev_idx];
+    }
+
+    cout << "        {" << endl
+        << "          \"index\": " << domain.index << "," << endl
+        << "          \"logical_base_address\": "
+        << domain.logical_base_address << "," << endl
+        << "          \"size\": " << domain.data_size << "," << endl
+        << "          \"working_counter\": " << wc_sum << "," << endl
+        << "          \"expected_working_counter\": "
+        << domain.expected_working_counter << "," << endl
+        << "          \"working_counter_per_device\": [";
+    for (dev_idx = EC_DEVICE_MAIN; dev_idx < master.num_devices; dev_idx++) {
+        cout << domain.working_counter[dev_idx];
+        if (dev_idx + 1 < master.num_devices) {
+            cout << ", ";
+        }
+    }
+    cout << "]" << endl
+        << "        }";
 }
 
 /****************************************************************************/

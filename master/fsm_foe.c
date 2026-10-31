@@ -76,12 +76,10 @@ void ec_fsm_foe_error(ec_fsm_foe_t *, ec_datagram_t *);
 void ec_fsm_foe_state_wrq_sent(ec_fsm_foe_t *, ec_datagram_t *);
 void ec_fsm_foe_state_rrq_sent(ec_fsm_foe_t *, ec_datagram_t *);
 
-void ec_fsm_foe_state_ack_check(ec_fsm_foe_t *, ec_datagram_t *);
 void ec_fsm_foe_state_ack_read(ec_fsm_foe_t *, ec_datagram_t *);
 
 void ec_fsm_foe_state_data_sent(ec_fsm_foe_t *, ec_datagram_t *);
 
-void ec_fsm_foe_state_data_check(ec_fsm_foe_t *, ec_datagram_t *);
 void ec_fsm_foe_state_data_read(ec_fsm_foe_t *, ec_datagram_t *);
 void ec_fsm_foe_state_sent_ack(ec_fsm_foe_t *, ec_datagram_t *);
 
@@ -98,6 +96,7 @@ void ec_fsm_foe_init(
 {
     fsm->state = NULL;
     fsm->datagram = NULL;
+    ec_fsm_mbox_init(&fsm->fsm_mbox);
 }
 
 /****************************************************************************/
@@ -106,6 +105,7 @@ void ec_fsm_foe_init(
  */
 void ec_fsm_foe_clear(ec_fsm_foe_t *fsm /**< finite state machine */)
 {
+    ec_fsm_mbox_clear(&fsm->fsm_mbox);
 }
 
 /****************************************************************************/
@@ -119,8 +119,17 @@ int ec_fsm_foe_exec(
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    if (fsm->state == ec_fsm_foe_end || fsm->state == ec_fsm_foe_error) {
+    if (fsm->state == ec_fsm_foe_end || fsm->state == ec_fsm_foe_error)
         return 0;
+
+    if (fsm->datagram &&
+            (fsm->datagram->state == EC_DATAGRAM_INIT ||
+             fsm->datagram->state == EC_DATAGRAM_QUEUED ||
+             fsm->datagram->state == EC_DATAGRAM_SENT)) {
+        // datagram not received yet
+        if (datagram != fsm->datagram)
+            datagram->state = EC_DATAGRAM_UNUSED;
+        return 1;
     }
 
     fsm->state(fsm, datagram);
@@ -320,59 +329,47 @@ void ec_fsm_foe_write_start(
 
 /****************************************************************************/
 
-/** Check for acknowledge.
+/** Starts waiting for an FoE response.
+ *
+ * Starts the mailbox receive state machine. The response is awaited in the
+ * given state, starting with the next execution.
  */
-void ec_fsm_foe_state_ack_check(
-        ec_fsm_foe_t *fsm, /**< FoE statemachine. */
-        ec_datagram_t *datagram /**< Datagram to use. */
+static void ec_fsm_foe_wait(
+        ec_fsm_foe_t *fsm, /**< Finite state machine. */
+        void (*state)(ec_fsm_foe_t *, ec_datagram_t *) /**< Response
+                                                        state. */
         )
 {
-    ec_slave_t *slave = fsm->slave;
-
-#ifdef DEBUG_FOE
-    EC_SLAVE_DBG(fsm->slave, 0, "%s()\n", __func__);
-#endif
-
-    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
-        ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
-        EC_SLAVE_ERR(slave, "Failed to receive FoE mailbox check datagram: ");
-        ec_datagram_print_state(fsm->datagram);
-        return;
-    }
-
-    if (fsm->datagram->working_counter != 1) {
-        ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
-        EC_SLAVE_ERR(slave, "Reception of FoE mailbox check datagram"
-                " failed: ");
-        ec_datagram_print_wc_error(fsm->datagram);
-        return;
-    }
-
-    if (!ec_slave_mbox_check(fsm->datagram)) {
-        // slave did not put anything in the mailbox yet
-        unsigned long diff_ms = (fsm->datagram->jiffies_received -
-                fsm->jiffies_start) * 1000 / HZ;
-        if (diff_ms >= EC_FSM_FOE_TIMEOUT) {
-            ec_foe_set_tx_error(fsm, FOE_TIMEOUT_ERROR);
-            EC_SLAVE_ERR(slave, "Timeout while waiting for ack response.\n");
-            return;
-        }
-
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        return;
-    }
-
-    // Fetch response
-    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
-
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_foe_state_ack_read;
+    ec_fsm_mbox_receive(&fsm->fsm_mbox, fsm->slave,
+            &fsm->slave->mbox_foe_data, fsm->jiffies_start,
+            EC_FSM_FOE_TIMEOUT);
+    fsm->state = state;
 }
 
 /****************************************************************************/
 
-/** Acknowledge a read operation.
+/** Waits for an FoE response.
+ *
+ * Starts the mailbox receive state machine and executes the given response
+ * state immediately. The response state is left, as soon as an FoE response
+ * is available, or receiving failed.
+ */
+static void ec_fsm_foe_receive(
+        ec_fsm_foe_t *fsm, /**< Finite state machine. */
+        ec_datagram_t *datagram, /**< Datagram to use. */
+        void (*state)(ec_fsm_foe_t *, ec_datagram_t *) /**< Response
+                                                        state. */
+        )
+{
+    ec_fsm_foe_wait(fsm, state);
+    fsm->state(fsm, datagram);
+}
+
+/****************************************************************************/
+
+/** State: ACK READ.
+ *
+ * Waits for an acknowledge and processes it.
  */
 void ec_fsm_foe_state_ack_read(
         ec_fsm_foe_t *fsm, /**< FoE statemachine. */
@@ -384,25 +381,25 @@ void ec_fsm_foe_state_ack_read(
     uint8_t opCode;
     size_t rec_size;
 
+    if (ec_fsm_mbox_exec(&fsm->fsm_mbox, datagram)) {
+        return;
+    }
+
 #ifdef DEBUG_FOE
     EC_SLAVE_DBG(fsm->slave, 0, "%s()\n", __func__);
 #endif
 
-    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (ec_fsm_mbox_result(&fsm->fsm_mbox) == -ETIMEDOUT) {
+        ec_foe_set_tx_error(fsm, FOE_TIMEOUT_ERROR);
+        EC_SLAVE_ERR(slave, "Timeout while waiting for ack response.\n");
+        return;
+    } else if (ec_fsm_mbox_result(&fsm->fsm_mbox)) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
-        EC_SLAVE_ERR(slave, "Failed to receive FoE ack response datagram: ");
-        ec_datagram_print_state(fsm->datagram);
         return;
     }
 
-    if (fsm->datagram->working_counter != 1) {
-        ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
-        EC_SLAVE_ERR(slave, "Reception of FoE ack response failed: ");
-        ec_datagram_print_wc_error(fsm->datagram);
-        return;
-    }
-
-    data = ec_slave_mbox_fetch(slave, fsm->datagram, &mbox_prot, &rec_size);
+    data = ec_slave_mbox_fetch(slave, &slave->mbox_foe_data,
+            &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         ec_foe_set_tx_error(fsm, FOE_PROT_ERROR);
         return;
@@ -482,10 +479,7 @@ void ec_fsm_foe_state_wrq_sent(
 
     fsm->jiffies_start = fsm->datagram->jiffies_sent;
 
-    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_foe_state_ack_check;
+    ec_fsm_foe_receive(fsm, datagram, ec_fsm_foe_state_ack_read);
 }
 
 /****************************************************************************/
@@ -520,10 +514,9 @@ void ec_fsm_foe_state_data_sent(
         return;
     }
 
-    ec_slave_mbox_prepare_check(slave, datagram);
     fsm->jiffies_start = jiffies;
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_foe_state_ack_check;
+
+    ec_fsm_foe_receive(fsm, datagram, ec_fsm_foe_state_ack_read);
 }
 
 /****************************************************************************/
@@ -620,10 +613,7 @@ void ec_fsm_foe_state_rrq_sent(
 
     fsm->jiffies_start = fsm->datagram->jiffies_sent;
 
-    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_foe_state_data_check;
+    ec_fsm_foe_receive(fsm, datagram, ec_fsm_foe_state_data_read);
 }
 
 /****************************************************************************/
@@ -661,87 +651,38 @@ void ec_fsm_foe_read_start(
 
 /****************************************************************************/
 
-/** Check for data.
- */
-void ec_fsm_foe_state_data_check(
-        ec_fsm_foe_t *fsm, /**< FoE statemachine. */
-        ec_datagram_t *datagram /**< Datagram to use. */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-
-#ifdef DEBUG_FOE
-    EC_SLAVE_DBG(fsm->slave, 0, "%s()\n", __func__);
-#endif
-
-    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
-        ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
-        EC_SLAVE_ERR(slave, "Failed to send FoE DATA READ: ");
-        ec_datagram_print_state(fsm->datagram);
-        return;
-    }
-
-    if (fsm->datagram->working_counter != 1) {
-        ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
-        EC_SLAVE_ERR(slave, "Reception of FoE DATA READ: ");
-        ec_datagram_print_wc_error(fsm->datagram);
-        return;
-    }
-
-    if (!ec_slave_mbox_check(fsm->datagram)) {
-        unsigned long diff_ms = (fsm->datagram->jiffies_received -
-                fsm->jiffies_start) * 1000 / HZ;
-        if (diff_ms >= EC_FSM_FOE_TIMEOUT) {
-            ec_foe_set_tx_error(fsm, FOE_TIMEOUT_ERROR);
-            EC_SLAVE_ERR(slave, "Timeout while waiting for ack response.\n");
-            return;
-        }
-
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        return;
-    }
-
-    // Fetch response
-    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
-
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_foe_state_data_read;
-}
-
-/****************************************************************************/
-
-/** Start reading data.
+/** State: DATA READ.
+ *
+ * Waits for data and processes them.
  */
 void ec_fsm_foe_state_data_read(
         ec_fsm_foe_t *fsm, /**< FoE statemachine. */
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
+    ec_slave_t *slave = fsm->slave;
     size_t rec_size;
     uint8_t *data, opCode, packet_no, mbox_prot;
 
-    ec_slave_t *slave = fsm->slave;
+    if (ec_fsm_mbox_exec(&fsm->fsm_mbox, datagram)) {
+        return;
+    }
 
 #ifdef DEBUG_FOE
     EC_SLAVE_DBG(fsm->slave, 0, "%s()\n", __func__);
 #endif
 
-    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (ec_fsm_mbox_result(&fsm->fsm_mbox) == -ETIMEDOUT) {
+        ec_foe_set_tx_error(fsm, FOE_TIMEOUT_ERROR);
+        EC_SLAVE_ERR(slave, "Timeout while waiting for data.\n");
+        return;
+    } else if (ec_fsm_mbox_result(&fsm->fsm_mbox)) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
-        EC_SLAVE_ERR(slave, "Failed to receive FoE DATA READ datagram: ");
-        ec_datagram_print_state(fsm->datagram);
         return;
     }
 
-    if (fsm->datagram->working_counter != 1) {
-        ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
-        EC_SLAVE_ERR(slave, "Reception of FoE DATA READ failed: ");
-        ec_datagram_print_wc_error(fsm->datagram);
-        return;
-    }
-
-    data = ec_slave_mbox_fetch(slave, fsm->datagram, &mbox_prot, &rec_size);
+    data = ec_slave_mbox_fetch(slave, &slave->mbox_foe_data,
+            &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         ec_foe_set_rx_error(fsm, FOE_MBOX_FETCH_ERROR);
         return;
@@ -759,7 +700,10 @@ void ec_fsm_foe_state_data_read(
     if (opCode == EC_FOE_OPCODE_BUSY) {
         if (ec_foe_prepare_send_ack(fsm, datagram)) {
             ec_foe_set_rx_error(fsm, FOE_PROT_ERROR);
+            return;
         }
+        // wait for the data again, after the acknowledge was sent
+        ec_fsm_foe_wait(fsm, ec_fsm_foe_state_data_read);
         return;
     }
 
@@ -837,6 +781,7 @@ void ec_fsm_foe_state_data_read(
                 slave->configured_rx_mailbox_size);
         printk(KERN_CONT "  rx_last_packet = %d\n", fsm->rx_last_packet);
         fsm->request->result = FOE_READY;
+        ec_fsm_foe_wait(fsm, ec_fsm_foe_state_data_read);
     }
 }
 
@@ -872,8 +817,6 @@ void ec_fsm_foe_state_sent_ack(
 
     fsm->jiffies_start = fsm->datagram->jiffies_sent;
 
-    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-
     if (fsm->rx_last_packet) {
         fsm->rx_expected_packet_no = 0;
         fsm->request->data_size = fsm->rx_buffer_offset;
@@ -881,8 +824,8 @@ void ec_fsm_foe_state_sent_ack(
     }
     else {
         fsm->rx_expected_packet_no++;
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_foe_state_data_check;
+
+        ec_fsm_foe_receive(fsm, datagram, ec_fsm_foe_state_data_read);
     }
 }
 

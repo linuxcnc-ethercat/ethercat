@@ -58,6 +58,7 @@
 
 #include <getopt.h>
 #include <libgen.h> // basename()
+#include <locale.h>
 #include <stdlib.h>
 
 #include <iostream>
@@ -94,6 +95,7 @@ bool helpRequested = false;
 bool reset = false;
 string outputFile;
 string skin;
+bool json = false;
 
 /****************************************************************************/
 
@@ -127,6 +129,8 @@ string usage()
         << "                         Default: '-' (all)."
         << endl
         << "  --force   -f           Force a command." << endl
+        << "  --json    -j           Output in JSON format" << endl
+        << "                         (where supported)." << endl
         << "  --quiet   -q           Output less information." << endl
         << "  --verbose -v           Output more information." << endl
         << "  --help    -h           Show this help." << endl
@@ -160,6 +164,7 @@ void getOptions(int argc, char **argv)
         {"emergency",   no_argument,       NULL, 'e'},
         {"force",       no_argument,       NULL, 'f'},
         {"reset",       no_argument,       NULL, 'r'},
+        {"json",        no_argument,       NULL, 'j'},
         {"quiet",       no_argument,       NULL, 'q'},
         {"verbose",     no_argument,       NULL, 'v'},
         {"help",        no_argument,       NULL, 'h'},
@@ -167,7 +172,8 @@ void getOptions(int argc, char **argv)
     };
 
     do {
-        c = getopt_long(argc, argv, "m:a:p:d:t:o:s:efrqvh", longOptions, NULL);
+        c = getopt_long(argc, argv, "m:a:p:d:t:o:s:efrjqvh", longOptions,
+                NULL);
 
         switch (c) {
             case 'm':
@@ -208,6 +214,10 @@ void getOptions(int argc, char **argv)
 
             case 'r':
                 reset = true;
+                break;
+
+            case 'j':
+                json = true;
                 break;
 
             case 'q':
@@ -285,6 +295,9 @@ int main(int argc, char **argv)
     list<Command *>::const_iterator ci;
     Command *cmd;
 
+    // only the character encoding, for Command::toLocal()
+    setlocale(LC_CTYPE, "");
+
     binaryBaseName = basename(argv[0]);
 
     commandList.push_back(new CommandAlias());
@@ -342,6 +355,7 @@ int main(int argc, char **argv)
                     cmd->setEmergency(emergency);
                     cmd->setForce(force);
                     cmd->setReset(reset);
+                    cmd->setJson(json);
                     cmd->execute(commandArgs);
                 } catch (InvalidUsageException &e) {
                     cerr << e.what() << endl << endl;

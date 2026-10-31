@@ -24,7 +24,8 @@
 #include <linux/netdevice.h>
 #include <linux/version.h>
 
-#ifdef CONFIG_SUSE_KERNEL
+#if defined(CONFIG_SUSE_KERNEL) && \
+    LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
 #include <linux/suse_version.h>
 #else
 #  ifndef SUSE_VERSION

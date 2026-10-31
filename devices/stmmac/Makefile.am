@@ -26,24 +26,32 @@ EXTRA_DIST = \
 	chain_mode-6.1-orig.c \
 	chain_mode-6.12-ethercat.c \
 	chain_mode-6.12-orig.c \
+	chain_mode-6.18-ethercat.c \
+	chain_mode-6.18-orig.c \
 	chain_mode-6.4-ethercat.c \
 	chain_mode-6.4-orig.c \
 	common-6.1-ethercat.h \
 	common-6.1-orig.h \
 	common-6.12-ethercat.h \
 	common-6.12-orig.h \
+	common-6.18-ethercat.h \
+	common-6.18-orig.h \
 	common-6.4-ethercat.h \
 	common-6.4-orig.h \
 	descs-6.1-ethercat.h \
 	descs-6.1-orig.h \
 	descs-6.12-ethercat.h \
 	descs-6.12-orig.h \
+	descs-6.18-ethercat.h \
+	descs-6.18-orig.h \
 	descs-6.4-ethercat.h \
 	descs-6.4-orig.h \
 	descs_com-6.1-ethercat.h \
 	descs_com-6.1-orig.h \
 	descs_com-6.12-ethercat.h \
 	descs_com-6.12-orig.h \
+	descs_com-6.18-ethercat.h \
+	descs_com-6.18-orig.h \
 	descs_com-6.4-ethercat.h \
 	descs_com-6.4-orig.h \
 	dwmac-intel-6.1-ethercat.c \
@@ -54,6 +62,10 @@ EXTRA_DIST = \
 	dwmac-intel-6.12-ethercat.h \
 	dwmac-intel-6.12-orig.c \
 	dwmac-intel-6.12-orig.h \
+	dwmac-intel-6.18-ethercat.c \
+	dwmac-intel-6.18-ethercat.h \
+	dwmac-intel-6.18-orig.c \
+	dwmac-intel-6.18-orig.h \
 	dwmac-intel-6.4-ethercat.c \
 	dwmac-intel-6.4-ethercat.h \
 	dwmac-intel-6.4-orig.c \
@@ -62,48 +74,64 @@ EXTRA_DIST = \
 	dwmac100-6.1-orig.h \
 	dwmac100-6.12-ethercat.h \
 	dwmac100-6.12-orig.h \
+	dwmac100-6.18-ethercat.h \
+	dwmac100-6.18-orig.h \
 	dwmac100-6.4-ethercat.h \
 	dwmac100-6.4-orig.h \
 	dwmac1000-6.1-ethercat.h \
 	dwmac1000-6.1-orig.h \
 	dwmac1000-6.12-ethercat.h \
 	dwmac1000-6.12-orig.h \
+	dwmac1000-6.18-ethercat.h \
+	dwmac1000-6.18-orig.h \
 	dwmac1000-6.4-ethercat.h \
 	dwmac1000-6.4-orig.h \
 	dwmac1000_core-6.1-ethercat.c \
 	dwmac1000_core-6.1-orig.c \
 	dwmac1000_core-6.12-ethercat.c \
 	dwmac1000_core-6.12-orig.c \
+	dwmac1000_core-6.18-ethercat.c \
+	dwmac1000_core-6.18-orig.c \
 	dwmac1000_core-6.4-ethercat.c \
 	dwmac1000_core-6.4-orig.c \
 	dwmac1000_dma-6.1-ethercat.c \
 	dwmac1000_dma-6.1-orig.c \
 	dwmac1000_dma-6.12-ethercat.c \
 	dwmac1000_dma-6.12-orig.c \
+	dwmac1000_dma-6.18-ethercat.c \
+	dwmac1000_dma-6.18-orig.c \
 	dwmac1000_dma-6.4-ethercat.c \
 	dwmac1000_dma-6.4-orig.c \
 	dwmac100_core-6.1-ethercat.c \
 	dwmac100_core-6.1-orig.c \
 	dwmac100_core-6.12-ethercat.c \
 	dwmac100_core-6.12-orig.c \
+	dwmac100_core-6.18-ethercat.c \
+	dwmac100_core-6.18-orig.c \
 	dwmac100_core-6.4-ethercat.c \
 	dwmac100_core-6.4-orig.c \
 	dwmac100_dma-6.1-ethercat.c \
 	dwmac100_dma-6.1-orig.c \
 	dwmac100_dma-6.12-ethercat.c \
 	dwmac100_dma-6.12-orig.c \
+	dwmac100_dma-6.18-ethercat.c \
+	dwmac100_dma-6.18-orig.c \
 	dwmac100_dma-6.4-ethercat.c \
 	dwmac100_dma-6.4-orig.c \
 	dwmac4-6.1-ethercat.h \
 	dwmac4-6.1-orig.h \
 	dwmac4-6.12-ethercat.h \
 	dwmac4-6.12-orig.h \
+	dwmac4-6.18-ethercat.h \
+	dwmac4-6.18-orig.h \
 	dwmac4-6.4-ethercat.h \
 	dwmac4-6.4-orig.h \
 	dwmac4_core-6.1-ethercat.c \
 	dwmac4_core-6.1-orig.c \
 	dwmac4_core-6.12-ethercat.c \
 	dwmac4_core-6.12-orig.c \
+	dwmac4_core-6.18-ethercat.c \
+	dwmac4_core-6.18-orig.c \
 	dwmac4_core-6.4-ethercat.c \
 	dwmac4_core-6.4-orig.c \
 	dwmac4_descs-6.1-ethercat.c \
@@ -114,6 +142,10 @@ EXTRA_DIST = \
 	dwmac4_descs-6.12-ethercat.h \
 	dwmac4_descs-6.12-orig.c \
 	dwmac4_descs-6.12-orig.h \
+	dwmac4_descs-6.18-ethercat.c \
+	dwmac4_descs-6.18-ethercat.h \
+	dwmac4_descs-6.18-orig.c \
+	dwmac4_descs-6.18-orig.h \
 	dwmac4_descs-6.4-ethercat.c \
 	dwmac4_descs-6.4-ethercat.h \
 	dwmac4_descs-6.4-orig.c \
@@ -126,6 +158,10 @@ EXTRA_DIST = \
 	dwmac4_dma-6.12-ethercat.h \
 	dwmac4_dma-6.12-orig.c \
 	dwmac4_dma-6.12-orig.h \
+	dwmac4_dma-6.18-ethercat.c \
+	dwmac4_dma-6.18-ethercat.h \
+	dwmac4_dma-6.18-orig.c \
+	dwmac4_dma-6.18-orig.h \
 	dwmac4_dma-6.4-ethercat.c \
 	dwmac4_dma-6.4-ethercat.h \
 	dwmac4_dma-6.4-orig.c \
@@ -134,6 +170,8 @@ EXTRA_DIST = \
 	dwmac4_lib-6.1-orig.c \
 	dwmac4_lib-6.12-ethercat.c \
 	dwmac4_lib-6.12-orig.c \
+	dwmac4_lib-6.18-ethercat.c \
+	dwmac4_lib-6.18-orig.c \
 	dwmac4_lib-6.4-ethercat.c \
 	dwmac4_lib-6.4-orig.c \
 	dwmac5-6.1-ethercat.c \
@@ -144,58 +182,76 @@ EXTRA_DIST = \
 	dwmac5-6.12-ethercat.h \
 	dwmac5-6.12-orig.c \
 	dwmac5-6.12-orig.h \
+	dwmac5-6.18-ethercat.c \
+	dwmac5-6.18-ethercat.h \
+	dwmac5-6.18-orig.c \
+	dwmac5-6.18-orig.h \
 	dwmac5-6.4-ethercat.c \
 	dwmac5-6.4-ethercat.h \
 	dwmac5-6.4-orig.c \
 	dwmac5-6.4-orig.h \
 	dwmac_dma-6.1-ethercat.h \
-	dwmac_dma-6.1-ethercat.h \
-	dwmac_dma-6.1-orig.h \
 	dwmac_dma-6.1-orig.h \
 	dwmac_dma-6.12-ethercat.h \
 	dwmac_dma-6.12-orig.h \
+	dwmac_dma-6.18-ethercat.h \
+	dwmac_dma-6.18-orig.h \
 	dwmac_dma-6.4-ethercat.h \
 	dwmac_dma-6.4-orig.h \
 	dwmac_lib-6.1-ethercat.c \
 	dwmac_lib-6.1-orig.c \
 	dwmac_lib-6.12-ethercat.c \
 	dwmac_lib-6.12-orig.c \
+	dwmac_lib-6.18-ethercat.c \
+	dwmac_lib-6.18-orig.c \
 	dwmac_lib-6.4-ethercat.c \
 	dwmac_lib-6.4-orig.c \
 	dwxgmac2-6.1-ethercat.h \
 	dwxgmac2-6.1-orig.h \
 	dwxgmac2-6.12-ethercat.h \
 	dwxgmac2-6.12-orig.h \
+	dwxgmac2-6.18-ethercat.h \
+	dwxgmac2-6.18-orig.h \
 	dwxgmac2-6.4-ethercat.h \
 	dwxgmac2-6.4-orig.h \
 	dwxgmac2_core-6.1-ethercat.c \
 	dwxgmac2_core-6.1-orig.c \
 	dwxgmac2_core-6.12-ethercat.c \
 	dwxgmac2_core-6.12-orig.c \
+	dwxgmac2_core-6.18-ethercat.c \
+	dwxgmac2_core-6.18-orig.c \
 	dwxgmac2_core-6.4-ethercat.c \
 	dwxgmac2_core-6.4-orig.c \
 	dwxgmac2_descs-6.1-ethercat.c \
 	dwxgmac2_descs-6.1-orig.c \
 	dwxgmac2_descs-6.12-ethercat.c \
 	dwxgmac2_descs-6.12-orig.c \
+	dwxgmac2_descs-6.18-ethercat.c \
+	dwxgmac2_descs-6.18-orig.c \
 	dwxgmac2_descs-6.4-ethercat.c \
 	dwxgmac2_descs-6.4-orig.c \
 	dwxgmac2_dma-6.1-ethercat.c \
 	dwxgmac2_dma-6.1-orig.c \
 	dwxgmac2_dma-6.12-ethercat.c \
 	dwxgmac2_dma-6.12-orig.c \
+	dwxgmac2_dma-6.18-ethercat.c \
+	dwxgmac2_dma-6.18-orig.c \
 	dwxgmac2_dma-6.4-ethercat.c \
 	dwxgmac2_dma-6.4-orig.c \
 	dwxlgmac2-6.1-ethercat.h \
 	dwxlgmac2-6.1-orig.h \
 	dwxlgmac2-6.12-ethercat.h \
 	dwxlgmac2-6.12-orig.h \
+	dwxlgmac2-6.18-ethercat.h \
+	dwxlgmac2-6.18-orig.h \
 	dwxlgmac2-6.4-ethercat.h \
 	dwxlgmac2-6.4-orig.h \
 	enh_desc-6.1-ethercat.c \
 	enh_desc-6.1-orig.c \
 	enh_desc-6.12-ethercat.c \
 	enh_desc-6.12-orig.c \
+	enh_desc-6.18-ethercat.c \
+	enh_desc-6.18-orig.c \
 	enh_desc-6.4-ethercat.c \
 	enh_desc-6.4-orig.c \
 	hwif-6.1-ethercat.c \
@@ -206,6 +262,10 @@ EXTRA_DIST = \
 	hwif-6.12-ethercat.h \
 	hwif-6.12-orig.c \
 	hwif-6.12-orig.h \
+	hwif-6.18-ethercat.c \
+	hwif-6.18-ethercat.h \
+	hwif-6.18-orig.c \
+	hwif-6.18-orig.h \
 	hwif-6.4-ethercat.c \
 	hwif-6.4-ethercat.h \
 	hwif-6.4-orig.c \
@@ -214,70 +274,100 @@ EXTRA_DIST = \
 	mmc-6.1-orig.h \
 	mmc-6.12-ethercat.h \
 	mmc-6.12-orig.h \
+	mmc-6.18-ethercat.h \
+	mmc-6.18-orig.h \
 	mmc-6.4-ethercat.h \
 	mmc-6.4-orig.h \
 	mmc_core-6.1-ethercat.c \
 	mmc_core-6.1-orig.c \
 	mmc_core-6.12-ethercat.c \
 	mmc_core-6.12-orig.c \
+	mmc_core-6.18-ethercat.c \
+	mmc_core-6.18-orig.c \
 	mmc_core-6.4-ethercat.c \
 	mmc_core-6.4-orig.c \
 	norm_desc-6.1-ethercat.c \
 	norm_desc-6.1-orig.c \
 	norm_desc-6.12-ethercat.c \
 	norm_desc-6.12-orig.c \
+	norm_desc-6.18-ethercat.c \
+	norm_desc-6.18-orig.c \
 	norm_desc-6.4-ethercat.c \
 	norm_desc-6.4-orig.c \
 	ring_mode-6.1-ethercat.c \
 	ring_mode-6.1-orig.c \
 	ring_mode-6.12-ethercat.c \
 	ring_mode-6.12-orig.c \
+	ring_mode-6.18-ethercat.c \
+	ring_mode-6.18-orig.c \
 	ring_mode-6.4-ethercat.c \
 	ring_mode-6.4-orig.c \
 	stmmac-6.1-ethercat.h \
 	stmmac-6.1-orig.h \
 	stmmac-6.12-ethercat.h \
 	stmmac-6.12-orig.h \
+	stmmac-6.18-ethercat.h \
+	stmmac-6.18-orig.h \
 	stmmac-6.4-ethercat.h \
 	stmmac-6.4-orig.h \
 	stmmac_est-6.12-ethercat.c \
 	stmmac_est-6.12-ethercat.h \
 	stmmac_est-6.12-orig.c \
 	stmmac_est-6.12-orig.h \
+	stmmac_est-6.18-ethercat.c \
+	stmmac_est-6.18-ethercat.h \
+	stmmac_est-6.18-orig.c \
+	stmmac_est-6.18-orig.h \
 	stmmac_ethtool-6.1-ethercat.c \
 	stmmac_ethtool-6.1-orig.c \
 	stmmac_ethtool-6.12-ethercat.c \
 	stmmac_ethtool-6.12-orig.c \
+	stmmac_ethtool-6.18-ethercat.c \
+	stmmac_ethtool-6.18-orig.c \
 	stmmac_ethtool-6.4-ethercat.c \
 	stmmac_ethtool-6.4-orig.c \
+	stmmac_fpe-6.18-ethercat.c \
+	stmmac_fpe-6.18-ethercat.h \
+	stmmac_fpe-6.18-orig.c \
+	stmmac_fpe-6.18-orig.h \
 	stmmac_hwtstamp-6.1-ethercat.c \
 	stmmac_hwtstamp-6.1-orig.c \
 	stmmac_hwtstamp-6.12-ethercat.c \
 	stmmac_hwtstamp-6.12-orig.c \
+	stmmac_hwtstamp-6.18-ethercat.c \
+	stmmac_hwtstamp-6.18-orig.c \
 	stmmac_hwtstamp-6.4-ethercat.c \
 	stmmac_hwtstamp-6.4-orig.c \
 	stmmac_main-6.1-ethercat.c \
 	stmmac_main-6.1-orig.c \
 	stmmac_main-6.12-ethercat.c \
 	stmmac_main-6.12-orig.c \
+	stmmac_main-6.18-ethercat.c \
+	stmmac_main-6.18-orig.c \
 	stmmac_main-6.4-ethercat.c \
 	stmmac_main-6.4-orig.c \
 	stmmac_mdio-6.1-ethercat.c \
 	stmmac_mdio-6.1-orig.c \
 	stmmac_mdio-6.12-ethercat.c \
 	stmmac_mdio-6.12-orig.c \
+	stmmac_mdio-6.18-ethercat.c \
+	stmmac_mdio-6.18-orig.c \
 	stmmac_mdio-6.4-ethercat.c \
 	stmmac_mdio-6.4-orig.c \
 	stmmac_pci-6.1-ethercat.c \
 	stmmac_pci-6.1-orig.c \
 	stmmac_pci-6.12-ethercat.c \
 	stmmac_pci-6.12-orig.c \
+	stmmac_pci-6.18-ethercat.c \
+	stmmac_pci-6.18-orig.c \
 	stmmac_pci-6.4-ethercat.c \
 	stmmac_pci-6.4-orig.c \
 	stmmac_pcs-6.1-ethercat.h \
 	stmmac_pcs-6.1-orig.h \
 	stmmac_pcs-6.12-ethercat.h \
 	stmmac_pcs-6.12-orig.h \
+	stmmac_pcs-6.18-ethercat.h \
+	stmmac_pcs-6.18-orig.h \
 	stmmac_pcs-6.4-ethercat.h \
 	stmmac_pcs-6.4-orig.h \
 	stmmac_ptp-6.1-ethercat.c \
@@ -288,6 +378,10 @@ EXTRA_DIST = \
 	stmmac_ptp-6.12-ethercat.h \
 	stmmac_ptp-6.12-orig.c \
 	stmmac_ptp-6.12-orig.h \
+	stmmac_ptp-6.18-ethercat.c \
+	stmmac_ptp-6.18-ethercat.h \
+	stmmac_ptp-6.18-orig.c \
+	stmmac_ptp-6.18-orig.h \
 	stmmac_ptp-6.4-ethercat.c \
 	stmmac_ptp-6.4-ethercat.h \
 	stmmac_ptp-6.4-orig.c \
@@ -296,8 +390,14 @@ EXTRA_DIST = \
 	stmmac_tc-6.1-orig.c \
 	stmmac_tc-6.12-ethercat.c \
 	stmmac_tc-6.12-orig.c \
+	stmmac_tc-6.18-ethercat.c \
+	stmmac_tc-6.18-orig.c \
 	stmmac_tc-6.4-ethercat.c \
 	stmmac_tc-6.4-orig.c \
+	stmmac_vlan-6.18-ethercat.c \
+	stmmac_vlan-6.18-ethercat.h \
+	stmmac_vlan-6.18-orig.c \
+	stmmac_vlan-6.18-orig.h \
 	stmmac_xdp-6.1-ethercat.c \
 	stmmac_xdp-6.1-ethercat.h \
 	stmmac_xdp-6.1-orig.c \
@@ -306,6 +406,10 @@ EXTRA_DIST = \
 	stmmac_xdp-6.12-ethercat.h \
 	stmmac_xdp-6.12-orig.c \
 	stmmac_xdp-6.12-orig.h \
+	stmmac_xdp-6.18-ethercat.c \
+	stmmac_xdp-6.18-ethercat.h \
+	stmmac_xdp-6.18-orig.c \
+	stmmac_xdp-6.18-orig.h \
 	stmmac_xdp-6.4-ethercat.c \
 	stmmac_xdp-6.4-ethercat.h \
 	stmmac_xdp-6.4-orig.c \

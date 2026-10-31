@@ -73,7 +73,21 @@ kernel 6.18:
         KBUILD_MODPOST_WARN: "1"
     script:
         - ./bootstrap
-        - ./configure --enable-macb --enable-ccat --with-linux-dir=/usr/src/linux-6.18.45-rt
+        - |
+          ./configure \
+            --with-linux-dir=/usr/src/linux-6.18.45-rt \
+            --enable-8139too \
+            --enable-ccat \
+            --enable-dwmac-intel \
+            --enable-e100 \
+            --enable-e1000 \
+            --enable-e1000e \
+            --enable-genet \
+            --enable-igb \
+            --enable-igc \
+            --enable-macb \
+            --enable-r8169 \
+            --enable-stmmac-pci
         - make -j8 all modules
 
 xenomai3:

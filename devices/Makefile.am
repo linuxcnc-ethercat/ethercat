@@ -63,6 +63,8 @@ EXTRA_DIST = \
 	8139too-6.1-orig.c \
 	8139too-6.12-ethercat.c \
 	8139too-6.12-orig.c \
+	8139too-6.18-ethercat.c \
+	8139too-6.18-orig.c \
 	8139too-6.4-ethercat.c \
 	8139too-6.4-orig.c \
 	create_driver_table.py \
@@ -97,6 +99,8 @@ EXTRA_DIST = \
 	e100-6.1-orig.c \
 	e100-6.12-ethercat.c \
 	e100-6.12-orig.c \
+	e100-6.18-ethercat.c \
+	e100-6.18-orig.c \
 	e100-6.4-ethercat.c \
 	e100-6.4-orig.c \
 	ecdev.h \

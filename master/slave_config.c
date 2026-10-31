@@ -318,6 +318,12 @@ void ec_slave_config_detach(
 {
     if (sc->slave) {
         ec_reg_request_t *reg;
+        ec_voe_handler_t *voe;
+
+        // abandon VoE reads holding the slave's mailbox read lock
+        list_for_each_entry(voe, &sc->voe_handlers, list) {
+            ec_voe_handler_release_mbox_lock(voe);
+        }
 
         sc->slave->config = NULL;
 
@@ -684,9 +690,9 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
 {
     ec_sync_config_t *sync_config;
 
-    EC_CONFIG_DBG(sc, 1, "ecrt_slave_config_sync_manager(sc = 0x%p,"
-            " sync_index = %u, dir = %i, watchdog_mode = %i)\n",
-            sc, sync_index, dir, watchdog_mode);
+    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, sync_index = %u, dir = %i,"
+            " watchdog_mode = %i)\n", __func__, sc, sync_index, dir,
+            watchdog_mode);
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_CONFIG_ERR(sc, "Invalid sync manager index %u!\n", sync_index);

@@ -89,9 +89,52 @@ jobs:
           path: artifacts/${{ matrix.distro }}/*.deb
           if-no-files-found: error
 
+  kernel-6-18-clang:
+    name: Linux 6.18 (Clang)
+    runs-on: ubuntu-latest
+    container:
+      image: registry.gitlab.com/etherlab.org/build-container-factory/ethercat-kernels:k6.18-rt
+    env:
+      # The prepared kernel tree has no complete Module.symvers.
+      KBUILD_MODPOST_WARN: "1"
+    steps:
+      - name: Install Clang
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends clang
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Mark repo as safe (container runs as root)
+        run: git config --global --add safe.directory "$PWD"
+
+      - name: Bootstrap
+        run: ./bootstrap
+
+      - name: Configure
+        run: |
+          ./configure \
+            --with-linux-dir=/usr/src/linux-6.18.45-rt \
+            --enable-8139too \
+            --enable-ccat \
+            --enable-dwmac-intel \
+            --enable-e100 \
+            --enable-e1000 \
+            --enable-e1000e \
+            --enable-genet \
+            --enable-igb \
+            --enable-igc \
+            --enable-macb \
+            --enable-r8169 \
+            --enable-stmmac-pci
+
+      - name: Build with Clang
+        run: make -j$(nproc) all modules CC=clang CXX=clang++
+
   release:
     name: Attach debs to GitHub release
-    needs: build
+    needs: [build, kernel-6-18-clang]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:

@@ -935,6 +935,15 @@ EC_PUBLIC_API ec_slave_config_t *ecrt_master_slave_config(
  * configuration pointer is NULL, then the first slave with DC functionality
  * will provide the reference clock.
  *
+ * \attention The time distribution datagram queued by
+ * ecrt_master_sync_slave_clocks() is read at the reference clock and
+ * written at every other slave, so it only carries the reference time once
+ * it has passed the reference in frame order. Slaves behind the reference
+ * receive its hardware-latched system time, while DC slaves in front of it
+ * are disciplined to the master's application time at software quality
+ * only. Select a reference clock that precedes all DC-synchronized slaves,
+ * or keep the default.
+ *
  * \apiusage{master_idle,blocking}
  *
  * \return 0 on success, otherwise negative error code.
@@ -1416,6 +1425,10 @@ EC_PUBLIC_API int ecrt_master_sync_reference_clock(
  *
  * Has to be called by the application after ecrt_master_activate()
  * has returned.
+ *
+ * \attention DC slaves in front of the reference clock are not written
+ * this value by the time distribution datagram; they keep following the
+ * master's application time (see ecrt_master_select_reference_clock()).
  *
  * \apiusage{master_op,rt_safe}
  *

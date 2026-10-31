@@ -2321,8 +2321,10 @@ void ec_master_find_dc_ref_clock(
         EC_MASTER_INFO(master, "Using slave %u as DC reference clock.\n",
                 ref->ring_position);
 
-        // The cyclic time distribution datagram only writes to slaves behind
-        // the reference in frame order; DC slaves in front of it free-run.
+        // The cyclic time distribution datagram only carries the latched
+        // reference time once it has passed the reference in frame order;
+        // DC slaves in front of it are written the pre-filled application
+        // time instead and synchronize at reduced accuracy.
         {
             unsigned int upstream_dc = 0;
 
@@ -2332,16 +2334,16 @@ void ec_master_find_dc_ref_clock(
                     if (slave->config && slave->config->dc_assign_activate) {
                         EC_SLAVE_WARN(slave, "Slave has DC sync configured,"
                                 " but is in front of the reference clock and"
-                                " will not receive cyclic time"
-                                " distribution!\n");
+                                " will only receive the master's application"
+                                " time instead of the reference time!\n");
                     }
                 }
             }
 
             if (upstream_dc) {
                 EC_MASTER_WARN(master, "%u DC-capable slave(s) in front of"
-                        " the reference clock will not receive cyclic time"
-                        " distribution.\n", upstream_dc);
+                        " the reference clock will not receive the"
+                        " distributed reference time.\n", upstream_dc);
             }
         }
     }
@@ -3208,6 +3210,13 @@ int ecrt_master_reference_clock_time(const ec_master_t *master,
         return -EIO;
     }
 
+    // The payload still holds the pre-filled value when the frame never
+    // reached the reference (e.g. it is powered off and bypassed), so no
+    // reference time was latched.
+    if (EC_READ_U32(master->sync_datagram.data) == master->dc_sync_prefill) {
+        return -EIO;
+    }
+
     // Get returned datagram time, transmission delay removed.
     *time = EC_READ_U32(master->sync_datagram.data) -
         master->dc_ref_clock->transmission_delay;
@@ -3249,7 +3258,13 @@ int ecrt_master_sync_reference_clock_to(
 int ecrt_master_sync_slave_clocks(ec_master_t *master)
 {
     if (master->dc_ref_clock) {
-        ec_datagram_zero(&master->sync_datagram);
+        // Pre-fill with the application time instead of zeros: the FRMW
+        // write also hits DC slaves in front of the reference, so they get
+        // disciplined to the master's estimate instead of a bogus zero.
+        // The reference overwrites the payload further down the frame, so
+        // slaves behind it still receive the hardware-latched time.
+        EC_WRITE_U32(master->sync_datagram.data, master->app_time);
+        master->dc_sync_prefill = (u32) master->app_time;
         ec_master_queue_datagram(master, &master->sync_datagram);
     } else {
         return -ENXIO;

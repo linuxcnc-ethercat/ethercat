@@ -239,6 +239,8 @@ struct ec_master {
                                        reference clock to the master clock. */
     ec_datagram_t sync_datagram; /**< Datagram used for DC drift
                                    compensation. */
+    u32 dc_sync_prefill; /**< Value last written to the sync_datagram
+                           payload by ecrt_master_sync_slave_clocks(). */
     ec_datagram_t sync_mon_datagram; /**< Datagram used for DC synchronisation
                                        monitoring. */
     ec_slave_config_t *dc_ref_config; /**< Application-selected DC reference

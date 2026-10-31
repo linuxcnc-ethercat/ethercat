@@ -121,6 +121,13 @@ jobs:
       - name: Mark repo as safe (container runs as root)
         run: git config --global --add safe.directory "$PWD"
 
+      - name: Prepare kernel with Clang
+        run: |
+          make -C "$KERNEL_SRC" LLVM=1 x86_64_defconfig
+          "$KERNEL_SRC/scripts/config" --file "$KERNEL_SRC/.config" \
+              --enable CONFIG_EXPERT --enable CONFIG_PREEMPT_RT
+          make -C "$KERNEL_SRC" LLVM=1 olddefconfig modules_prepare
+
       - name: Bootstrap
         run: ./bootstrap
 

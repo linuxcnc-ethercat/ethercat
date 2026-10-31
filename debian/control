@@ -12,8 +12,11 @@ Build-Depends:
 Standards-Version: 4.6.2
 Homepage: https://etherlab.org/ethercat
 
-Package: ethercat
+Package: ethercat-master
 Architecture: any
+Provides: ethercat
+Replaces: ethercat
+Conflicts: ethercat
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},

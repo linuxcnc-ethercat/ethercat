@@ -1,10 +1,60 @@
 ethercat (1.6.13) unstable; urgency=medium
 
-  * Sync official stable-1.6 through 1.6.13 (drivers, FoE/EoE hardening,
-    datagram re-order barriers, max-frame split).
+  * Sync official stable-1.6 through 1.6.13 and subsequent stable fixes
+    (segmented CoE downloads, EoE/VoE cleanup and driver build fixes).
   * Keep our parallel slave scan/config, AL recovery and DC patches.
+  * Retain ethercat-master packaging, udev rules, multi-driver DKMS,
+    optional EoE packages and Clang compatibility fixes.
 
  -- mika <mika-net@outlook.com>  Wed, 16 Sep 2026 01:40:00 -0400
+
+ethercat (1.6.9+parallelop1~pre8) unstable; urgency=medium
+
+  * CI: drop --fix-missing in the apt retry loop; --fix-missing was
+    masking partial installs (git silently skipped, later steps failed
+    with "git: not found"). Retry both apt-get update and install,
+    fail loudly if a package is still missing.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Wed, 30 Apr 2026 00:00:00 +0000
+
+ethercat (1.6.9+parallelop1~pre7) unstable; urgency=medium
+
+  * CI: apt-get retry loop + Acquire::Retries config to survive
+    archive.ubuntu.com hiccups on ubuntu-24.04 jobs.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Wed, 30 Apr 2026 00:00:00 +0000
+
+ethercat (1.6.9+parallelop1~pre6) unstable; urgency=medium
+
+  * Rebased on mika/dev-1.6 (parallel-slave/0007: drop redundant
+    inner head-of-line check).
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Wed, 30 Apr 2026 00:00:00 +0000
+
+ethercat (1.6.9+parallelop1~pre5) unstable; urgency=medium
+
+  * Ship udev rule (99-EtherCAT.rules) granting group "ethercat" access
+    to /dev/EtherCAT* devices.
+  * Create system group "ethercat" on install; remove on purge.
+  * postinst prints reminder to add user to the ethercat group.
+  * Rebased on Mika's dev-1.6 (FSM/EC_IO_TIMEOUT work, distro-tagged
+    release artefacts).
+  * Build all common NIC drivers in the DKMS module (8139too, e100,
+    e1000, e1000e, r8169, igb, igc, genet) instead of only igc.
+  * CI now produces a parallel "eoe" variant of every package
+    (ethercat-master-eoe, libethercat-eoe, libethercat-eoe-dev,
+    ethercat-dkms-eoe) with --enable-eoe set. The two variants
+    Conflict with each other so only one can be installed at a time.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Thu, 30 Apr 2026 00:00:00 +0000
+
+ethercat (1.6.9+parallelop1) unstable; urgency=medium
+
+  * Rename binary package ethercat -> ethercat-master to match the
+    OpenSUSE EtherLab naming convention. Provides/Replaces/Conflicts
+    on ethercat for smooth upgrade.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Mon, 27 Apr 2026 00:00:00 +0000
 
 ethercat (1.6.9) unstable; urgency=medium
 

@@ -4,3 +4,4 @@ usr/share/bash-completion/completions/*
 etc/ethercat.conf
 etc/init.d/ethercat
 lib/systemd/system/ethercat.service
+debian/udev/99-EtherCAT.rules lib/udev/rules.d/

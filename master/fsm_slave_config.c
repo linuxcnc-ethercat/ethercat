@@ -517,7 +517,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         sync.control_register = 0x26;
         sync.enable = 1;
         ec_sync_page(&sync, 0, slave->sii.boot_rx_mailbox_size,
-                EC_DIR_INVALID, // use default direction
+                NULL, // use default sync manager configuration
                 0, // no PDO xfer
                 datagram->data);
         slave->configured_rx_mailbox_offset =
@@ -530,7 +530,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         sync.control_register = 0x22;
         sync.enable = 1;
         ec_sync_page(&sync, 1, slave->sii.boot_tx_mailbox_size,
-                EC_DIR_INVALID, // use default direction
+                NULL, // use default sync manager configuration
                 0, // no PDO xfer
                 datagram->data + EC_SYNC_PAGE_SIZE);
         slave->configured_tx_mailbox_offset =

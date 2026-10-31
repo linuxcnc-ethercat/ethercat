@@ -1,0 +1,33 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        if ! getent group ethercat >/dev/null; then
+            addgroup --system ethercat
+        fi
+
+        if [ -d /run/udev ] && command -v udevadm >/dev/null 2>&1; then
+            udevadm control --reload-rules || true
+            udevadm trigger --subsystem-match=ethercat || true
+        fi
+
+        cat <<'EOF'
+
+ethercat-master: /dev/EtherCAT* devices are owned by group "ethercat".
+Add yourself with:  sudo usermod -aG ethercat $USER
+Log out and back in for the new group membership to take effect.
+
+EOF
+        ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

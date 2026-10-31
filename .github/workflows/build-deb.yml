@@ -19,12 +19,16 @@ jobs:
         include:
           - distro: debian-12
             image: debian:bookworm
+            deb_rev: deb12u1
           - distro: debian-13
             image: debian:trixie
+            deb_rev: deb13u1
           - distro: ubuntu-22.04
             image: ubuntu:22.04
+            deb_rev: ubuntu22.04u1
           - distro: ubuntu-24.04
             image: ubuntu:24.04
+            deb_rev: ubuntu24.04u1
 
     container:
       image: ${{ matrix.image }}
@@ -43,6 +47,7 @@ jobs:
               apt-get install -y --no-install-recommends \
                   build-essential \
                   debhelper \
+                  devscripts \
                   dpkg-dev \
                   autoconf \
                   automake \
@@ -65,6 +70,18 @@ jobs:
 
       - name: Mark repo as safe (container runs as root)
         run: git config --global --add safe.directory "$PWD"
+
+      - name: Stamp version with codename suffix
+        run: |
+          # Give each distro a unique package version for apt ingestion.
+          base_ver=$(dpkg-parsechangelog --show-field Version)
+          new_ver="${base_ver}+${{ matrix.deb_rev }}"
+          msg="CI build for ${{ matrix.distro }}"
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+              msg="Release ${GITHUB_REF_NAME} for ${{ matrix.distro }}"
+          fi
+          DEBEMAIL="ci@linuxcnc-ethercat.github.io" DEBFULLNAME="LinuxCNC-EtherCAT CI" \
+              dch --newversion "${new_ver}" --distribution stable "$msg"
 
       - name: Prepare EoE variant
         if: matrix.variant == 'eoe'
@@ -188,3 +205,19 @@ jobs:
           files: artifacts/**/*.deb
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, 'pre') || contains(github.ref_name, 'rc') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
+
+      - name: Trigger apt-repo ingestion
+        env:
+          GH_TOKEN: ${{ secrets.APT_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+              echo "APT_DISPATCH_TOKEN not set; skipping ingestion dispatch."
+              exit 0
+          fi
+          gh api \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              /repos/linuxcnc-ethercat/apt/dispatches \
+              -f event_type=ingest-release \
+              -f "client_payload[source_repo]=${{ github.repository }}" \
+              -f "client_payload[tag]=${{ github.ref_name }}"

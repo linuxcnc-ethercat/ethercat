@@ -18,6 +18,7 @@ Depends:
  ${shlibs:Depends},
  ${misc:Depends},
  ethercat-dkms (= ${source:Version}),
+ libethercat (= ${source:Version}),
  iproute2,
  kmod
 Description: IgH EtherCAT master — userspace tools and services

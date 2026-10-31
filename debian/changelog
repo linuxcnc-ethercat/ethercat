@@ -1,3 +1,16 @@
+ethercat (1:1.7.0~rc1-1) unstable; urgency=medium
+
+  * First downstream 1.7 release candidate, based on EtherLab stable-1.7.
+  * Retain the parallel per-slave scan/configuration and AL recovery work.
+  * Include Linux 6.18 and Clang build fixes.
+  * Add SII read/write APIs and refresh the SII image after writes, including
+    invalidation of the 1.7 SII page cache.
+  * Add opt-in ReinitHold so applications can restore volatile slave
+    configuration after reconnection before the slave returns to OP.
+  * Update the library ABI and document the application restoration workflow.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Sat, 31 Oct 2026 20:45:44 +0800
+
 ethercat (1.7.0) unstable; urgency=medium
 
   * Rebase on official stable-1.7 (SII cache, PDO mode, ioctl 43).

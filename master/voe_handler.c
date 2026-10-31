@@ -486,8 +486,8 @@ void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *voe)
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(slave, datagram,
-                    &mbox_prot, &rec_size))) {
+    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    if (IS_ERR(data)) {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         return;

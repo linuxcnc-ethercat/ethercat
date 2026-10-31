@@ -65,6 +65,7 @@ EXTRA_DIST = \
 	INSTALL.md \
 	README.EoE \
 	README.md \
+	documentation/reinit_hold.md \
 	ethercat.spec
 
 mydist:

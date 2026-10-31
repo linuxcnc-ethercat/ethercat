@@ -142,7 +142,7 @@ jobs:
             --enable-stmmac-pci
 
       - name: Build with Clang
-        run: make -j$(nproc) all modules CC=clang CXX=clang++
+        run: make -j$(nproc) all modules LLVM=1 CXX=clang++
 
   release:
     name: Attach debs to GitHub release

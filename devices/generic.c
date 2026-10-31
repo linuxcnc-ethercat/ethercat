@@ -234,7 +234,7 @@ int ec_gen_device_create_socket(
     sa.sll_family = AF_PACKET;
     sa.sll_protocol = htons(ETH_P_ETHERCAT);
     sa.sll_ifindex = desc->ifindex;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
     ret = kernel_bind(dev->socket, (struct sockaddr_unsized *) &sa, sizeof(sa));
 #else
     ret = kernel_bind(dev->socket, (struct sockaddr *) &sa, sizeof(sa));

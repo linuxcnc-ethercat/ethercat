@@ -101,7 +101,7 @@ jobs:
       - name: Install Clang
         run: |
           if command -v zypper >/dev/null; then
-              zypper --non-interactive install -y clang
+              zypper --non-interactive install -y clang llvm lld
               zypper clean -a
           elif command -v apk >/dev/null; then
               apk add --no-cache clang llvm lld

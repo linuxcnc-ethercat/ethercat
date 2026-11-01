@@ -1,3 +1,15 @@
+ethercat (1:1.6.13-2) unstable; urgency=medium
+
+  * Require matching master, userspace library and DKMS package versions.
+  * Fix DKMS paths for epoch-bearing versions and restore target-side build
+    dependencies.
+  * Repair EoE DKMS payload, package identity and versioned library provides.
+  * Restore Debian 11 and arm64 builds, distro version stamping and automatic
+    apt repository ingestion.
+  * Add package dependency and DKMS payload checks to release CI.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Sun, 01 Nov 2026 10:26:01 +0800
+
 ethercat (1:1.6.13-1) unstable; urgency=medium
 
   * Sync EtherLab stable-1.6 through 1.6.13 and subsequent fixes while

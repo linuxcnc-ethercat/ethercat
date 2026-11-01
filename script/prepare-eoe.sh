@@ -51,7 +51,7 @@ import re, pathlib
 p = pathlib.Path('debian/control')
 text = p.read_text()
 
-def add_conflicts_after_header(text, package, conflicts_pkgs):
+def add_conflicts_after_header(text, package, conflicts_pkgs, provides_version=None):
     """Insert Conflicts/Provides/Replaces lines into the named package
     stanza, just before the Description: line. No-op if already there."""
     pat = re.compile(
@@ -61,15 +61,19 @@ def add_conflicts_after_header(text, package, conflicts_pkgs):
         header = m.group(1)
         if 'Conflicts:' in header:
             return m.group(0)
+        provides = ", ".join(conflicts_pkgs)
+        if provides_version:
+            provides += f" (= {provides_version})"
         addition = (
             f'Conflicts: {", ".join(conflicts_pkgs)}\n'
-            f'Provides: {", ".join(conflicts_pkgs)}\n'
+            f'Provides: {provides}\n'
             f'Replaces: {", ".join(conflicts_pkgs)}\n'
         )
         return header + addition + m.group(2)
     return pat.sub(repl, text, count=1)
 
-text = add_conflicts_after_header(text, 'libethercat-eoe',     ['libethercat'])
+text = add_conflicts_after_header(text, 'libethercat-eoe', ['libethercat'],
+                                  '${source:Version}')
 text = add_conflicts_after_header(text, 'libethercat-eoe-dev', ['libethercat-dev'])
 text = add_conflicts_after_header(text, 'ethercat-dkms-eoe',   ['ethercat-dkms'])
 p.write_text(text)
@@ -80,6 +84,7 @@ PY
 sed -i \
     -e 's/--disable-eoe/--enable-eoe/' \
     -e 's/-p ethercat-master /-p ethercat-master-eoe /' \
+    -e 's|debian/ethercat-dkms/usr/src/ethercat-|debian/ethercat-dkms-eoe/usr/src/ethercat-eoe-|' \
     debian/rules
 
 # debian/dkms.conf: flip --disable-eoe and rename PACKAGE_NAME.
@@ -103,6 +108,8 @@ fi
 for ext in postinst prerm; do
     if [ -f "debian/ethercat-dkms.$ext" ]; then
         mv "debian/ethercat-dkms.$ext" "debian/ethercat-dkms-eoe.$ext"
+        sed -i 's/^NAME=ethercat$/NAME=ethercat-eoe/' \
+            "debian/ethercat-dkms-eoe.$ext"
     fi
 done
 

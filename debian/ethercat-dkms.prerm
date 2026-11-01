@@ -2,7 +2,7 @@
 set -e
 
 NAME=ethercat
-VERSION=$(dpkg-query -W -f='${Version}' ethercat-dkms 2>/dev/null | cut -d- -f1)
+VERSION=$(dpkg-query -W -f='${Version}' "${DPKG_MAINTSCRIPT_PACKAGE:-ethercat-dkms}" 2>/dev/null | sed -e 's/^[0-9]*://' -e 's/-.*//')
 
 case "$1" in
     remove|upgrade|deconfigure)

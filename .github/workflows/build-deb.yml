@@ -9,14 +9,20 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.distro }} (${{ matrix.variant }})
-    runs-on: ubuntu-latest
+    name: ${{ matrix.distro }} (${{ matrix.arch }}, ${{ matrix.variant }})
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
-        distro: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]
+        distro: [debian-11, debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]
+        arch: [amd64, arm64]
         variant: [main, eoe]
+        # Distro containers are multi-arch; native arm64 runners select the
+        # matching image variant automatically.
         include:
+          - distro: debian-11
+            image: debian:bullseye
+            deb_rev: deb11u1
           - distro: debian-12
             image: debian:bookworm
             deb_rev: deb12u1
@@ -37,11 +43,18 @@ jobs:
       - name: Install build dependencies
         env:
           DEBIAN_FRONTEND: noninteractive
+          DISTRO: ${{ matrix.distro }}
         run: |
-          # Make apt resilient against archive.ubuntu.com hiccups that
-          # have intermittently stalled the ubuntu-24.04 jobs.
           echo 'Acquire::Retries "10";' > /etc/apt/apt.conf.d/80-retries
           echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries
+          if [ "$DISTRO" = debian-11 ]; then
+              # Bullseye is EOL: use the main archive and the last security
+              # snapshot rather than the removed deb.debian.org entries.
+              sed -i -e 's|http://deb.debian.org/debian-security|http://snapshot.debian.org/archive/debian-security/20260831T000000Z|' \
+                     -e 's|http://deb.debian.org/debian|http://archive.debian.org/debian|' \
+                     /etc/apt/sources.list
+              echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/90-archive
+          fi
           install_pkgs() {
               apt-get update && \
               apt-get install -y --no-install-recommends \
@@ -61,12 +74,12 @@ jobs:
           for i in 1 2 3 4 5; do
               install_pkgs && break || { echo "apt attempt $i failed; sleeping"; sleep 30; }
           done
-          # Sanity-check the packages we actually need at later steps.
           command -v git
           command -v dpkg-buildpackage
+          command -v dch
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Mark repo as safe (container runs as root)
         run: git config --global --add safe.directory "$PWD"
@@ -95,30 +108,54 @@ jobs:
         run: |
           ./script/build-deb.sh -j$(nproc)
 
-      - name: Collect artefacts
+      - name: Check package dependencies and DKMS payload
         shell: bash
+        env:
+          VARIANT: ${{ matrix.variant }}
         run: |
           set -euo pipefail
-          out="artifacts/${{ matrix.distro }}-${{ matrix.variant }}"
-          mkdir -p "$out"
-          # Tag each .deb with distro+variant so release upload sees
-          # unique names across the matrix (softprops races on dupes).
-          # The wildcard suffixes catch both base and -eoe package names.
+          suffix=""
+          if [ "$VARIANT" = eoe ]; then suffix="-eoe"; fi
+          master_pkg=(../ethercat-master${suffix}_*_*.deb)
+          dkms_pkg=(../ethercat-dkms${suffix}_*_all.deb)
+          version=$(dpkg-deb -f "${master_pkg[0]}" Version)
+          master_depends=$(dpkg-deb -f "${master_pkg[0]}" Depends)
+          grep -F "ethercat-dkms${suffix} (= ${version})" <<<"$master_depends"
+          grep -F "libethercat${suffix} (= ${version})" <<<"$master_depends"
+          dkms_depends=$(dpkg-deb -f "${dkms_pkg[0]}" Depends)
+          for tool in autoconf automake libtool pkg-config; do
+              grep -w "$tool" <<<"$dkms_depends"
+          done
+          dpkg-deb --contents "${dkms_pkg[0]}" | \
+              grep -E "usr/src/ethercat${suffix}-[^/]+/dkms.conf$"
+          dpkg-deb --contents "${dkms_pkg[0]}" | \
+              grep -E "usr/src/ethercat${suffix}-[^/]+/master/module.c$"
+
+      - name: Collect artefacts
+        shell: bash
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
           for src in ../ethercat-master*_*.deb \
                      ../ethercat-dkms*_all.deb \
                      ../libethercat*_*.deb; do
               [ -f "$src" ] || continue
-              fname="$(basename "$src")"
-              base="${fname%_*.deb}"
-              suffix="${fname##*_}"
-              cp "$src" "$out/${base}_${{ matrix.distro }}_${suffix}"
+              case "$src" in *-dbgsym*) continue ;; esac
+              # DKMS is arch:all. Ship it only from amd64 so the release
+              # never receives duplicate assets from the arm64 job.
+              if [ "$ARCH" != "amd64" ]; then
+                  case "$src" in *ethercat-dkms*) continue ;; esac
+              fi
+              cp "$src" "artifacts/$(basename "$src")"
           done
 
       - name: Upload artefacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: ethercat-deb-${{ matrix.distro }}-${{ matrix.variant }}
-          path: artifacts/${{ matrix.distro }}-${{ matrix.variant }}/*.deb
+          name: ethercat-deb-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.variant }}
+          path: artifacts/*.deb
           if-no-files-found: error
 
   kernel-6-18-clang:
@@ -148,7 +185,7 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Mark repo as safe (container runs as root)
         run: git config --global --add safe.directory "$PWD"
@@ -192,7 +229,7 @@ jobs:
       contents: write
     steps:
       - name: Download all artefacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 

@@ -56,6 +56,10 @@ Section: kernel
 Depends:
  ${misc:Depends},
  dkms,
+ autoconf,
+ automake,
+ libtool,
+ pkg-config,
  make,
  gcc,
  libc6-dev | libc-dev

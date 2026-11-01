@@ -220,6 +220,55 @@ jobs:
       - name: Build with Clang
         run: make -j$(nproc) all modules LLVM=1 CXX=clang++
 
+  dkms-llvm:
+    name: DKMS (LLVM auto-detection)
+    runs-on: ubuntu-latest
+    # Experimental coverage for LLVM-built kernels; do not block releases.
+    continue-on-error: true
+    container:
+      image: registry.gitlab.com/etherlab.org/build-container-factory/ethercat-kernels:k6.18-rt
+    env:
+      # The prepared kernel tree has no complete Module.symvers.
+      KBUILD_MODPOST_WARN: "1"
+    steps:
+      - name: Install DKMS and Clang
+        run: |
+          zypper --non-interactive install -y dkms clang llvm lld
+          zypper clean -a
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Mark repo as safe (container runs as root)
+        run: git config --global --add safe.directory "$PWD"
+
+      - name: Prepare kernel with Clang
+        run: |
+          make -C "$KERNEL_SRC" LLVM=1 x86_64_defconfig
+          "$KERNEL_SRC/scripts/config" --file "$KERNEL_SRC/.config" \
+              --enable CONFIG_EXPERT --enable CONFIG_PREEMPT_RT
+          make -C "$KERNEL_SRC" LLVM=1 olddefconfig modules_prepare
+
+      - name: Build modules with DKMS
+        shell: bash
+        run: |
+          set -euo pipefail
+          kernelver=$(make -s -C "$KERNEL_SRC" kernelrelease)
+          mkdir -p "/lib/modules/$kernelver"
+          ln -s "$KERNEL_SRC" "/lib/modules/$kernelver/build"
+          mkdir /usr/src/ethercat-ci
+          cp -a . /usr/src/ethercat-ci
+          sed 's/#MODULE_VERSION#/ci/' debian/dkms.conf \
+              > /usr/src/ethercat-ci/dkms.conf
+          dkms add -m ethercat -v ci
+          # DKMS detects the Clang-built kernel and appends LLVM=1 itself.
+          dkms build -m ethercat -v ci -k "$kernelver"
+          module=$(find "/var/lib/dkms/ethercat/ci/$kernelver" \
+              -path '*/module/ec_master.ko' -print -quit)
+          [ -n "$module" ]
+          readelf -p .comment "$module" | grep -i clang
+          dkms status -m ethercat -v ci -k "$kernelver"
+
   release:
     name: Attach debs to GitHub release
     needs: [build, kernel-6-18-clang]

@@ -19,7 +19,7 @@ jobs:
     env:
       UPSTREAM_URL: https://gitlab.com/etherlab.org/ethercat.git
       # Branches that live only here and must never be overwritten.
-      CUSTOM_BRANCHES: 'dev-1.6 stable-1.6'
+      CUSTOM_BRANCHES: 'dev-1.6'
     steps:
       - name: Configure git identity
         run: |

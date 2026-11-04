@@ -74,6 +74,8 @@ override_dh_auto_install:
 override_dh_auto_clean:
 	$(MAKE) distclean || true
 	rm -rf autom4te.cache
+	# Created empty by ./bootstrap; not part of the source.
+	rm -f ChangeLog
 
 override_dh_installsystemd:
 	# Master systemd service ships as /usr/lib/systemd/system/ethercat.service

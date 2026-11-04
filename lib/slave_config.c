@@ -1036,6 +1036,53 @@ int ecrt_slave_config_eoe_hostname(ec_slave_config_t *sc,
     return 0;
 }
 
+#else // EC_EOE
+
+/* ecrt.h declares these and libethercat.map exports them unconditionally,
+ * so keep the symbols when EoE is disabled. */
+
+static int ec_slave_config_eoe_disabled(void)
+{
+    fprintf(stderr, "Failed to configure EoE: EoE support not compiled in\n");
+    return -EOPNOTSUPP;
+}
+
+int ecrt_slave_config_eoe_mac_address(ec_slave_config_t *sc,
+        const unsigned char *mac_address)
+{
+    return ec_slave_config_eoe_disabled();
+}
+
+int ecrt_slave_config_eoe_ip_address(ec_slave_config_t *sc,
+        struct in_addr ip_address)
+{
+    return ec_slave_config_eoe_disabled();
+}
+
+int ecrt_slave_config_eoe_subnet_mask(ec_slave_config_t *sc,
+        struct in_addr subnet_mask)
+{
+    return ec_slave_config_eoe_disabled();
+}
+
+int ecrt_slave_config_eoe_default_gateway(ec_slave_config_t *sc,
+        struct in_addr gateway_address)
+{
+    return ec_slave_config_eoe_disabled();
+}
+
+int ecrt_slave_config_eoe_dns_address(ec_slave_config_t *sc,
+        struct in_addr dns_address)
+{
+    return ec_slave_config_eoe_disabled();
+}
+
+int ecrt_slave_config_eoe_hostname(ec_slave_config_t *sc,
+        const char *name)
+{
+    return ec_slave_config_eoe_disabled();
+}
+
 #endif // EC_EOE
 
 /****************************************************************************/

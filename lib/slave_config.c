@@ -258,7 +258,6 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
         ecrt_slave_config_pdo_assign_clear(sc, sync_info->index);
 
         if (sync_info->n_pdos && sync_info->pdos) {
-
             for (j = 0; j < sync_info->n_pdos; j++) {
                 pdo_info = &sync_info->pdos[j];
 
@@ -846,7 +845,8 @@ int ecrt_slave_config_state(const ec_slave_config_t *sc,
 /****************************************************************************/
 
 int ecrt_slave_config_idn(ec_slave_config_t *sc, uint8_t drive_no,
-        uint16_t idn, ec_al_state_t al_state, const uint8_t *data, size_t size)
+        uint16_t idn, ec_al_state_t al_state, const uint8_t *data,
+        size_t size)
 {
     ec_ioctl_sc_idn_t io;
     int ret;

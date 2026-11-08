@@ -1,3 +1,13 @@
+ethercat (1:1.6.13-3) unstable; urgency=medium
+
+  * Keep EoE configuration symbols available when EoE is disabled, fixing
+    builds with LLD 17 and newer.
+  * Build source packages as 3.0 (quilt) and add build-deb.sh -s.
+  * Fix debug symbol packaging and Clang builds with Debian 13 dwz.
+  * Enable slave identity wildcards in userspace and DKMS configurations.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Sun, 08 Nov 2026 09:58:09 +0800
+
 ethercat (1:1.6.13-2) unstable; urgency=medium
 
   * Require matching master, userspace library and DKMS package versions.

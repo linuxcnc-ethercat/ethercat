@@ -35,7 +35,11 @@ ethercat.spec
 examples/dc_user/ec_dc_user_example
 examples/user/build/
 examples/user/ec_user_example
+fake_lib/*_test
+fake_lib/*_test.log
+fake_lib/*_test.trs
 fake_lib/libfakeethercat.la
+fake_lib/test-suite.log
 generated_table.md
 lib/*.cmake
 lib/libethercat.la

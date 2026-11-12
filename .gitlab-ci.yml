@@ -18,8 +18,9 @@ pre-commit:
 
     variables:
       PRE_COMMIT_HOME: "${CI_PROJECT_DIR}/.cache/pre-commit"
-      # runs in the 'commands' job, the pre-commit image has no compiler
-      SKIP: cli-tool-test
+      # run in the 'commands' and 'build' jobs, the pre-commit image has no
+      # compiler
+      SKIP: cli-tool-test,fake-lib-test
 
     cache:
       key:
@@ -117,6 +118,7 @@ build:
         - ./bootstrap
         - ./configure --with-linux-dir=/usr/src/linux-obj/$(uname -i)/default --enable-tty --with-devices=2 --enable-ccat --enable-fakeuserlib
         - make -j8 all modules
+        - make -j8 -C fake_lib check || { cat fake_lib/test-suite.log; exit 1; }
         - make -C lib symbol-version-check
         - make DISTCHECK_CONFIGURE_FLAGS="--with-linux-dir=/usr/src/linux-obj/$(uname -i)/default" distcheck
         - make dist

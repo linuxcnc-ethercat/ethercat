@@ -126,4 +126,12 @@ ethercat_CXXFLAGS = \
 	-Wall -DREV=$(REV) \
 	-fno-strict-aliasing
 
+check_PROGRAMS = foe_read_test
+TESTS = $(check_PROGRAMS)
+
+foe_read_test_SOURCES = foe_read_test.cpp CommandFoeRead.cpp FoeCommand.cpp
+foe_read_test_CPPFLAGS = \
+	-I$(top_srcdir)/include -I$(top_srcdir)/master
+foe_read_test_CXXFLAGS = -Wall
+
 #-----------------------------------------------------------------------------

@@ -18,6 +18,8 @@ pre-commit:
 
     variables:
       PRE_COMMIT_HOME: "${CI_PROJECT_DIR}/.cache/pre-commit"
+      # runs in the 'commands' job, the pre-commit image has no compiler
+      SKIP: cli-tool-test
 
     cache:
       key:
@@ -135,6 +137,7 @@ commands:
         - ./bootstrap
         - ./configure --disable-kernel --disable-userlib
         - make -j8 all
+        - make -j8 -C tool check || { cat tool/test-suite.log; exit 1; }
         - mkdir documentation/external
         - make -C documentation ext
     artifacts:

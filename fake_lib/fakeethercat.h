@@ -31,6 +31,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 struct Offset
@@ -46,6 +47,11 @@ struct Offset
         constexpr bool operator!=(const Offset &other) const noexcept
         {
             return bytes != other.bytes || bits != other.bits;
+        }
+
+        constexpr bool operator==(const Offset &other) const noexcept
+        {
+            return !(*this != other);
         }
 };
 
@@ -64,7 +70,31 @@ struct pdo
 struct syncManager
 {
         ec_direction_t dir;
-        std::map<uint16_t /* index */, pdo> pdos;
+        std::vector<std::pair<uint16_t /* index */, pdo>> pdos;
+
+        pdo *findPdo(uint16_t index)
+        {
+            for (auto &assigned_pdo : pdos) {
+                if (assigned_pdo.first == index) {
+                    return &assigned_pdo.second;
+                }
+            }
+            return nullptr;
+        }
+
+        pdo &addPdo(uint16_t index)
+        {
+            if (auto existing = findPdo(index)) {
+                return *existing;
+            }
+            pdos.emplace_back(index, pdo());
+            return pdos.back().second;
+        }
+
+        void clearPdos()
+        {
+            pdos.clear();
+        }
 };
 
 class ec_address

@@ -18,6 +18,9 @@ pre-commit:
 
     variables:
       PRE_COMMIT_HOME: "${CI_PROJECT_DIR}/.cache/pre-commit"
+      # run in the 'commands' and 'build' jobs, the pre-commit image has no
+      # compiler
+      SKIP: cli-tool-test,fake-lib-test
 
     cache:
       key:
@@ -29,7 +32,7 @@ pre-commit:
     script:
       - |
           pre-commit run \
-            --from-ref origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME \
+            --from-ref "$CI_MERGE_REQUEST_DIFF_BASE_SHA" \
             --to-ref HEAD \
             --show-diff-on-failure
 
@@ -115,6 +118,7 @@ build:
         - ./bootstrap
         - ./configure --with-linux-dir=/usr/src/linux-obj/$(uname -i)/default --enable-tty --with-devices=2 --enable-ccat --enable-fakeuserlib
         - make -j8 all modules
+        - make -j8 -C fake_lib check || { cat fake_lib/test-suite.log; exit 1; }
         - make -C lib symbol-version-check
         - make DISTCHECK_CONFIGURE_FLAGS="--with-linux-dir=/usr/src/linux-obj/$(uname -i)/default" distcheck
         - make dist
@@ -135,6 +139,7 @@ commands:
         - ./bootstrap
         - ./configure --disable-kernel --disable-userlib
         - make -j8 all
+        - make -j8 -C tool check || { cat tool/test-suite.log; exit 1; }
         - mkdir documentation/external
         - make -C documentation ext
     artifacts:

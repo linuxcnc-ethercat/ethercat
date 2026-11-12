@@ -45,3 +45,12 @@ libfakeethercat_la_LDFLAGS = -version-info $(LIBETHERCAT_VERSION_INFO) \
 	-fvisibility=hidden
 
 libfakeethercat_la_DEPENDENCIES = ../lib/libethercat.map
+
+# Public API regression tests; no EtherCAT devices or activation required.
+check_PROGRAMS = pdo_position_test
+TESTS = $(check_PROGRAMS)
+
+pdo_position_test_SOURCES = pdo_position_test.cpp
+pdo_position_test_CPPFLAGS = -I$(top_srcdir)/include
+pdo_position_test_CXXFLAGS = -std=c++11 -Wall -Wextra
+pdo_position_test_LDADD = libfakeethercat.la

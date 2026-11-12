@@ -11,7 +11,7 @@ KERNELVER=$3
 
 IGBDIR=drivers/net/ethernet/intel/igb
 
-FILES="e1000_82575.c e1000_82575.h e1000_defines.h e1000_hw.h e1000_i210.c e1000_i210.h e1000_mac.c e1000_mac.h e1000_mbx.c e1000_mbx.h e1000_nvm.c e1000_nvm.h e1000_phy.c e1000_phy.h e1000_regs.h igb_ethtool.c igb.h igb_hwmon.c igb_main.c igb_ptp.c"
+FILES="e1000_82575.c e1000_82575.h e1000_defines.h e1000_hw.h e1000_i210.c e1000_i210.h e1000_mac.c e1000_mac.h e1000_mbx.c e1000_mbx.h e1000_nvm.c e1000_nvm.h e1000_phy.c e1000_phy.h e1000_regs.h igb_ethtool.c igb.h igb_hwmon.c igb_main.c igb_ptp.c igb_xsk.c"
 
 set -x
 

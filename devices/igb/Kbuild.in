@@ -53,6 +53,10 @@ endif
 		igb_main-@KERNEL_IGB@-ethercat.o \
 		igb_ptp-@KERNEL_IGB@-ethercat.o
 
+	ifeq (@HAS_IGB_XSK@,1)
+		ec_igb-objs += igb_xsk-@KERNEL_IGB@-ethercat.o
+	endif
+
 	CFLAGS_igb_main-@KERNEL_IGB@-ethercat.o = -DREV=$(REV)
 endif
 

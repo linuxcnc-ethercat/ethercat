@@ -603,6 +603,8 @@ AC_ARG_WITH([igb-kernel],
     ]
 )
 
+has_igb_xsk=0
+
 if test "x${enableigb}" = "x1"; then
     AC_MSG_CHECKING([for kernel for igb driver])
 
@@ -611,9 +613,20 @@ if test "x${enableigb}" = "x1"; then
     fi
 
     AC_MSG_RESULT([$kerneligb])
+
+    AC_MSG_CHECKING([for igb_xsk.c])
+
+    if test -r "${srcdir}/devices/igb/igb_xsk-${kerneligb}-ethercat.c"; then
+        AC_MSG_RESULT([yes])
+        has_igb_xsk=1
+    else
+        AC_MSG_RESULT([no])
+        has_igb_xsk=0
+    fi
 fi
 
 AC_SUBST(KERNEL_IGB, [$kerneligb])
+AC_SUBST(HAS_IGB_XSK, [$has_igb_xsk])
 
 #-----------------------------------------------------------------------------
 # igc driver

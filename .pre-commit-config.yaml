@@ -1,4 +1,3 @@
-# nodeenv's 'latest' picks pre-releases (e.g. v27.0.0-alpha) and fails
 default_language_version:
     node: lts
 
@@ -22,6 +21,11 @@ repos:
     rev: v0.49.1
     hooks:
     -   id: markdownlint
+        exclude: ^\.gitlab/
+    -   id: markdownlint
+        name: markdownlint (GitLab templates)
+        files: ^\.gitlab/.*\.md$
+        args: [--config, .gitlab/markdownlint.yaml]
 
 -   repo: https://github.com/tcort/markdown-link-check
     rev: v3.14.2

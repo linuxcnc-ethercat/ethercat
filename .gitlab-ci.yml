@@ -31,7 +31,7 @@ pre-commit:
     script:
       - |
           pre-commit run \
-            --from-ref origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME \
+            --from-ref "$CI_MERGE_REQUEST_DIFF_BASE_SHA" \
             --to-ref HEAD \
             --show-diff-on-failure
 

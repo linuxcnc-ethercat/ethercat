@@ -28,3 +28,19 @@ repos:
     rev: 2.0.2
     hooks:
       - id: cpplint
+
+-   repo: local
+    hooks:
+    -   id: cli-tool-test
+        name: cli-tool-test
+        language: system
+        pass_filenames: false
+        files: ^(tool/.*\.(cpp|h)|include/ecrt\.h|master/(foe|ioctl|globals)\.h)$
+        entry: >-
+          sh -c 'if test ! -f tool/Makefile; then
+          { echo; echo "WARNING: tool/Makefile missing, skipping tests.";
+          echo "Run ./bootstrap && ./configure to enable them.";
+          printf "%73s" ""; } 2>/dev/null >/dev/tty;
+          exit 0; fi;
+          log=$(mktemp) && trap "rm -f $log" EXIT &&
+          make -s -C tool check >$log 2>&1 || { cat $log; exit 1; }'

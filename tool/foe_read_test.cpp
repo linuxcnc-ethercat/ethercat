@@ -24,10 +24,12 @@
 #include "foe.h"
 
 #include <unistd.h>
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 static const char bytes[] = {
     0, 'A', static_cast<char>(0xff), 'B', '\r', '\n'};
@@ -125,8 +127,17 @@ static void check(bool ok, const char *description)
 
 int main()
 {
-    char directory[] = "/tmp/ethercat-foe-read-XXXXXX";
-    if (!mkdtemp(directory)) return 1;
+    const char *tmp = getenv("TMPDIR");
+    std::string pattern = std::string(tmp && *tmp ? tmp : "/tmp")
+        + "/ethercat-foe-read-XXXXXX";
+    std::vector<char> buffer(pattern.begin(), pattern.end());
+    buffer.push_back('\0');
+    char *directory = &buffer[0];
+    if (!mkdtemp(directory)) {
+        std::cerr << "mkdtemp(" << pattern << "): "
+            << strerror(errno) << std::endl;
+        return 1;
+    }
     const std::string target = std::string(directory) + "/output.bin";
     const std::string absent = std::string(directory) + "/absent.bin";
     Result result = run("");

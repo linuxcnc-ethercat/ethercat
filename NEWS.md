@@ -2,40 +2,87 @@
 
 ## Version 1.7.0
 
-- Added `ecrt_slave_config_pdo_mode()` to select whether a slave's PDO
-  assignment and PDO configuration are read from resp. written to it via
-  CoE, for slaves with a fixed or otherwise well-known PDO layout.
-- Added SII caching functionality with
-  - the kernel module parameter `sii_caching`,
-  - the configuration variable `SII_CACHING`,
-  - and the API method `ecrt_master_sii_caching()`.
-- Security fixes against malicious subdevices
+- New features:
+  - Added `ecrt_slave_config_pdo_mode()` to select whether a slave's PDO
+    assignment and PDO configuration are read from resp. written to it via
+    CoE, for slaves with a fixed or otherwise well-known PDO layout.
+  - Added SII caching functionality with the kernel module parameter
+    `sii_caching`, the configuration variable `SII_CACHING` and the API
+    method `ecrt_master_sii_caching()`.
+  - `ethercat foe_read` honors `--output-file`.
+- Reworked the mailbox handling to support multiple mailbox protocols per
+  slave:
+  - Common mailbox receive state machine for CoE, FoE, SoE, EoE and VoE.
+  - Mailbox buffers are allocated only once per slave.
+  - Mailbox error responses are reported instead of running into timeouts.
+  - Fixed several leaks of the mailbox read lock (CoE, VoE, EoE, aborted
+    requests) and made the lock usable in realtime context.
+  - Clear slave mailboxes after a re-scan.
+  - Warn about overwritten, unfetched mailbox messages.
+- Security fixes against malicious subdevices:
   - Protected `rec_size` calculation in FoE.
   - Check for malicious EoE frame details.
-- Avoid writing invalid MAC onto r8169 NIC on removal
-- Fixed insufficient re-allocation of SoE request buffer
-- Protect datagram receiving mechanism against re-ordering
-- Prevent creating datagrams that are too large for one frame
-- Reacted to stmmac API changed during Linux 6.12
-- Adapted debug ring to kernel 5.6+ time API changes
-- Use str.read() to read into char* (deprecated in C++20)
-- Unload `ec_bhf` before loading CCAT
-- Added cpplint checks in pre-commit and CI tests.
-- Improved and formatted markdown documents and added pre-commit checks
-- Backported CCAT fixes from Beckhoff
-- Added macb (Cadence GEM / RP1) driver for kernel 6.18
-- Improved macb driver performance
-- Do not print routine errors (no reference clock or no reference clock time
-  yet) in `ecrt_master_reference_clock_time()` (#231)
-- Made the macb (Cadence GEM) EtherCAT RX path allocation-free to
-  avoid receive latency spikes under host memory pressure.
-- Included macb in the device driver table and fixed a
-  `CONFIG_MACB_USE_HWSTAMP` build issue.
-- Use `strscpy` instead of the deprecated `strncpy` in kernel space,
-  with a fallback for Linux < 4.2.
-- Added a test build for kernel 6.18.
-- Improved `ecrt_slave_config_dc()` documentation.
-- Use an own pre-commit container with cache in CI.
+- Distributed clocks:
+  - Pre-fill the DC sync datagram with the application time, so that DC
+    slaves in front of the reference clock are no longer disturbed by a
+    zero system time.
+  - `ecrt_master_reference_clock_time()` detects a sync datagram that did
+    not pass the reference clock, and does not print routine errors (no
+    reference clock or no reference clock time yet) any more (#231).
+  - Documented the frame-order limitation of the reference clock and
+    improved the `ecrt_slave_config_dc()` documentation.
+- Master robustness:
+  - Protect datagram receiving mechanism against re-ordering.
+  - Prevent creating datagrams that are too large for one frame.
+  - Fixed lost or shared external datagrams that could corrupt SII
+    reading.
+  - Fixed insufficient re-allocation of SoE request buffer.
+- Userspace library:
+  - The EoE IP functions are exported also with `--disable-eoe` and return
+    `-EOPNOTSUPP` there.
+  - Use `str.read()` to read into `char*` (deprecated in C++20).
+- Fake library:
+  - The domain layout follows the PDO assignment order (like the real
+    master) instead of the ascending PDO index. Offsets change for
+    configurations with a non-ascending PDO order; applications using the
+    offsets returned by the registration functions are not affected.
+  - `ecrt_slave_config_pdos()` replaces a previous configuration of a sync
+    manager instead of adding the PDO entries again.
+  - `ecrt_slave_config_reg_pdo_entry_pos()` interprets the PDO position
+    correctly; it failed before.
+  - Registering an unaligned PDO entry without `bit_position` fails before
+    the sync manager is mapped into the domain.
+  - Built with `-std=c++11` to support older compilers.
+- Device drivers:
+  - Added macb (Cadence GEM / RP1) driver for kernel 6.18, improved its
+    performance and made its RX path allocation-free to avoid receive
+    latency spikes under host memory pressure. Included it in the device
+    driver table and fixed a `CONFIG_MACB_USE_HWSTAMP` build issue.
+  - ccat: Backported fixes from Beckhoff, unload `ec_bhf` before loading
+    CCAT, include `suse_version.h` only for kernels >= 5.14.
+  - r8169: Avoid writing invalid MAC onto the NIC on removal.
+  - stmmac: Reacted to API changes during Linux 6.12.
+  - dwmac-intel: Fixed build with Linux 6.1.167 and later; build it on x86
+    only.
+  - genet (6.18): Fixed the default RX ring index.
+  - generic: `kernel_bind()` compatibility with Linux 6.18.57 and later.
+- Kernel compatibility:
+  - Use `strscpy` instead of the deprecated `strncpy` in kernel space,
+    with a fallback for Linux < 4.2.
+  - Adapted debug ring to kernel 5.6+ time API changes.
+- Build:
+  - Clang build fixes.
+  - Support Python < 3.5 in `create_driver_table.py`.
+- Development and CI:
+  - Added unit tests (`make check`) for the command-line tool and the fake
+    library, run in CI and pre-commit.
+  - Added cpplint and markdown checks in pre-commit and CI; improved and
+    formatted the markdown documents.
+  - Use an own pre-commit container with cache in CI; it checks merge
+    request changes only.
+  - Added a test build for kernel 6.18.
+  - Added GitLab issue and merge request templates and contribution rules
+    for AI-assisted changes.
 
 ## Version 1.6.9
 

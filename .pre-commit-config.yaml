@@ -1,3 +1,7 @@
+# nodeenv's 'latest' picks pre-releases (e.g. v27.0.0-alpha) and fails
+default_language_version:
+    node: lts
+
 repos:
 
 -   repo: https://github.com/pre-commit/pre-commit-hooks

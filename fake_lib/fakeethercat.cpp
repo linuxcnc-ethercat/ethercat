@@ -693,8 +693,8 @@ int ecrt_slave_config_pdo_mapping_add(
     for (auto smIt = sc->sync_managers.begin();
          smIt != sc->sync_managers.end();
          ++smIt) {
-        auto mapped_pdo = smIt->second.findPdo(pdo_index);
-        if (!mapped_pdo) {
+        auto assigned_pdo = smIt->second.findPdo(pdo_index);
+        if (!assigned_pdo) {
             continue;
         }
 
@@ -702,7 +702,7 @@ int ecrt_slave_config_pdo_mapping_add(
         entry_info.index = entry_index;
         entry_info.subindex = entry_subindex;
         entry_info.bit_length = entry_bit_length;
-        mapped_pdo->entries.push_back(entry_info);
+        assigned_pdo->entries.push_back(entry_info);
         return 0;
     }
 
@@ -719,12 +719,12 @@ int ecrt_slave_config_pdo_mapping_clear(
     for (auto smIt = sc->sync_managers.begin();
          smIt != sc->sync_managers.end();
          ++smIt) {
-        auto mapped_pdo = smIt->second.findPdo(pdo_index);
-        if (!mapped_pdo) {
+        auto assigned_pdo = smIt->second.findPdo(pdo_index);
+        if (!assigned_pdo) {
             continue;
         }
 
-        mapped_pdo->entries.clear();
+        assigned_pdo->entries.clear();
         return 0;
     }
 

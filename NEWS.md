@@ -37,6 +37,9 @@
   - Fixed lost or shared external datagrams that could corrupt SII
     reading.
   - Fixed insufficient re-allocation of SoE request buffer.
+  - Redundancy: Send SDO, SoE, FoE, EoE, VoE and SII write requests via
+    the device the slave is reachable through, so that slaves behind a
+    ring break can still be accessed.
 - Userspace library:
   - The EoE IP functions are exported also with `--disable-eoe` and return
     `-EOPNOTSUPP` there.

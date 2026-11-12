@@ -206,6 +206,7 @@ int ecrt_voe_handler_write(ec_voe_handler_t *voe, size_t size)
 ec_request_state_t ecrt_voe_handler_execute(ec_voe_handler_t *voe)
 {
     if (voe->config->slave) { // FIXME locking?
+        voe->datagram.device_index = voe->config->slave->device_index;
         voe->state(voe);
         if (voe->request_state == EC_INT_REQUEST_BUSY) {
             ec_master_queue_datagram(voe->config->master, &voe->datagram);

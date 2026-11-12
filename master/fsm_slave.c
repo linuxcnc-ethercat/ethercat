@@ -139,6 +139,10 @@ int ec_fsm_slave_exec(
 {
     int datagram_used;
 
+    // datagrams are taken from the shared external ring, so the device
+    // index has to be set according to the slave every time
+    datagram->device_index = fsm->slave->device_index;
+
     fsm->state(fsm, datagram);
 
     datagram_used = fsm->state != ec_fsm_slave_state_idle &&
@@ -380,7 +384,6 @@ int ec_fsm_slave_action_process_reg(
         memcpy(datagram->data, fsm->reg_request->data,
                 fsm->reg_request->transfer_size);
     }
-    datagram->device_index = slave->device_index;
     fsm->state = ec_fsm_slave_state_reg_request;
     return 1;
 }

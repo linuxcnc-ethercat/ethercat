@@ -52,3 +52,16 @@ repos:
           exit 0; fi;
           log=$(mktemp) && trap "rm -f $log" EXIT &&
           make -s -C tool check >$log 2>&1 || { cat $log; exit 1; }'
+    -   id: fake-lib-test
+        name: fake-lib-test
+        language: system
+        pass_filenames: false
+        files: ^(fake_lib/.*\.(cpp|h)|include/ecrt\.h|lib/libethercat\.map)$
+        entry: >-
+          sh -c 'if ! grep -qs "^[[:space:]]fake_lib$" Makefile; then
+          { echo; echo "WARNING: fake_lib not configured, skipping tests.";
+          echo "Run ./bootstrap && ./configure --enable-fakeuserlib.";
+          printf "%73s" ""; } 2>/dev/null >/dev/tty;
+          exit 0; fi;
+          log=$(mktemp) && trap "rm -f $log" EXIT &&
+          make -s -C fake_lib check >$log 2>&1 || { cat $log; exit 1; }'

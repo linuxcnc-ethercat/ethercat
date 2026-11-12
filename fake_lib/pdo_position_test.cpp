@@ -23,9 +23,13 @@
 
 #include <ecrt.h>
 
+#include <cerrno>
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
 #include <unistd.h>
 
 static unsigned int checks = 0;
@@ -201,8 +205,15 @@ static void failed_registration_and_retry(bool by_position, bool incremental)
 int main()
 {
     // Isolate RtIPC from the user's settings, files and concurrent test runs.
-    char home[] = "/tmp/fake-pdo-position-XXXXXX";
+    const char *tmp = getenv("TMPDIR");
+    std::string pattern = std::string(tmp && *tmp ? tmp : "/tmp")
+        + "/fake-pdo-position-XXXXXX";
+    std::vector<char> buffer(pattern.begin(), pattern.end());
+    buffer.push_back('\0');
+    char *home = &buffer[0];
     if (!mkdtemp(home)) {
+        std::fprintf(stderr, "mkdtemp(%s): %s\n", pattern.c_str(),
+                std::strerror(errno));
         return EXIT_FAILURE;
     }
     if (setenv("FAKE_EC_HOMEDIR", home, 1)
@@ -217,9 +228,8 @@ int main()
     failed_registration_and_retry(false, true);
     failed_registration_and_retry(true, false);
     failed_registration_and_retry(true, true);
-    char master_home[sizeof(home) + 2];
-    std::snprintf(master_home, sizeof(master_home), "%s/0", home);
-    EXPECT(rmdir(master_home) == 0);
+    const std::string master_home = std::string(home) + "/0";
+    EXPECT(rmdir(master_home.c_str()) == 0);
     EXPECT(rmdir(home) == 0);
     std::printf("%u checks, %u failures\n", checks, failures);
     return failures ? EXIT_FAILURE : EXIT_SUCCESS;

@@ -18,7 +18,7 @@ pre-commit:
 
     variables:
       PRE_COMMIT_HOME: "${CI_PROJECT_DIR}/.cache/pre-commit"
-      # runs in the 'cli-tool-test' job, the pre-commit image has no compiler
+      # runs in the 'commands' job, the pre-commit image has no compiler
       SKIP: cli-tool-test
 
     cache:
@@ -137,6 +137,7 @@ commands:
         - ./bootstrap
         - ./configure --disable-kernel --disable-userlib
         - make -j8 all
+        - make -j8 -C tool check || { cat tool/test-suite.log; exit 1; }
         - mkdir documentation/external
         - make -C documentation ext
     artifacts:
@@ -145,18 +146,6 @@ commands:
             - script/ethercat.service
             - tool/ethercat
             - documentation/external/
-
-cli-tool-test:
-    stage: test
-
-    script:
-        - ./bootstrap
-        - ./configure --disable-kernel --disable-userlib
-        - make -j8 -C tool check
-    artifacts:
-        when: on_failure
-        paths:
-            - tool/*.log
 
 test cmake:
     stage: test

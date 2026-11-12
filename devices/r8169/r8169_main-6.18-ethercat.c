@@ -5681,7 +5681,9 @@ static int rtl_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 			return rc;
 	}
 
-	if (IS_ENABLED(CONFIG_R8169_LEDS)) {
+	/* LEDs are registered as children of the net_device, which is not
+	 * registered for EtherCAT devices. */
+	if (IS_ENABLED(CONFIG_R8169_LEDS) && !get_ecdev(tp)) {
 		if (rtl_is_8125(tp))
 			tp->leds = rtl8125_init_leds(dev);
 		else if (tp->mac_version > RTL_GIGA_MAC_VER_06)

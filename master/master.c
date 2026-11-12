@@ -1675,6 +1675,12 @@ void ec_master_exec_slave_fsms(
             && count < master->slave_count) {
         if (ec_fsm_slave_is_ready(&master->fsm_slave->fsm)) {
             datagram = ec_master_get_external_datagram(master);
+            if (!datagram) {
+                // no free datagrams at the moment
+                EC_MASTER_WARN(master, "No free datagram during"
+                        " slave FSM execution. This is a bug!\n");
+                break;
+            }
 
             if (ec_fsm_slave_exec(&master->fsm_slave->fsm, datagram)) {
                 if (datagram->state != EC_DATAGRAM_UNUSED) {

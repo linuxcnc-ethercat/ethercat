@@ -458,6 +458,8 @@ EXTRA_DIST = \
 	igb_ptp-6.12-orig.c \
 	igb_ptp-6.18-ethercat.c \
 	igb_ptp-6.18-orig.c \
+	igb_xsk-6.18-ethercat.c \
+	igb_xsk-6.18-orig.c \
 	update.sh
 
 #------------------------------------------------------------------------------

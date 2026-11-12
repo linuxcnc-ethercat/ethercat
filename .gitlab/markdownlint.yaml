@@ -1,0 +1,4 @@
+# markdownlint configuration for the GitLab issue and merge request
+# templates: they start with a level-2 heading on purpose.
+default: true
+MD041: false

@@ -28,6 +28,8 @@
 
 #include <iostream>
 #include <iomanip>
+#include <fstream>
+#include <vector>
 
 using std::string;
 using std::stringstream;
@@ -79,8 +81,7 @@ void CommandFoeRead::execute(const StringVector &args)
 {
     SlaveList slaves;
     ec_ioctl_slave_t *slave;
-    ec_ioctl_slave_foe_t data;
-    unsigned int i;
+    ec_ioctl_slave_foe_t data = {};
     stringstream err;
 
     if (args.size() != 1) {
@@ -103,14 +104,14 @@ void CommandFoeRead::execute(const StringVector &args)
      */
     data.offset = 0;
     data.buffer_size = 0x8800;
-    data.buffer = new uint8_t[data.buffer_size];
+    std::vector<uint8_t> buffer(data.buffer_size);
+    data.buffer = &buffer[0];
 
     strncpy(data.file_name, args[0].c_str(), sizeof(data.file_name) - 1);
 
     try {
         m.readFoe(&data);
     } catch (MasterDeviceException &e) {
-        delete [] data.buffer;
         if (data.result) {
             if (data.result == FOE_OPCODE_ERROR) {
                 err << "FoE read aborted with error code 0x"
@@ -126,13 +127,34 @@ void CommandFoeRead::execute(const StringVector &args)
         }
     }
 
-    // TODO(fp) --output-file
-    for (i = 0; i < data.data_size; i++) {
-        uint8_t *w = data.buffer + i;
-        cout << *(uint8_t *) w;
+    std::ofstream file;
+    std::ostream *out = &cout;
+    if (!getOutputFile().empty() && getOutputFile() != "-") {
+        // Open after the transfer, so a FoE error preserves an existing file.
+        file.open(getOutputFile().c_str(),
+                std::ios::out | std::ios::trunc | std::ios::binary);
+        if (!file.is_open()) {
+            err << "Failed to open output file '" << getOutputFile() << "'!";
+            throwCommandException(err);
+        }
+        out = &file;
     }
 
-    delete [] data.buffer;
+    out->write(reinterpret_cast<const char *>(data.buffer), data.data_size);
+    if (file.is_open()) {
+        file.close(); // Also check errors from flushing buffered file data.
+    } else {
+        out->flush();
+    }
+    if (out->fail()) {
+        err << "Failed to write FoE data to ";
+        if (out == &file) {
+            err << "output file '" << getOutputFile() << "'!";
+        } else {
+            err << "standard output!";
+        }
+        throwCommandException(err);
+    }
 }
 
 /****************************************************************************/

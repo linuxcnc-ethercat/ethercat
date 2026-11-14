@@ -1,3 +1,20 @@
+ethercat (1:1.7.0~rc3-1) unstable; urgency=medium
+
+  * Merge current EtherLab stable-1.7, including FoE output handling,
+    external-request device routing, DC synchronization prefill, and Linux
+    6.18 and Clang fixes.
+  * Fix igc/stmmac builds on Linux 6.12.114 and newer 6.12 stable kernels.
+  * Suggest distribution kernel headers instead of recommending them, avoiding
+    unwanted kernel image installs for custom-kernel users.
+  * Keep EoE configuration symbols available when EoE is disabled, fixing
+    builds with LLD 17 and newer.
+  * Enable slave identity wildcards in userspace and DKMS configurations.
+  * Build source packages as 3.0 (quilt) and fix debug symbol and Clang/dwz
+    packaging.
+  * Add LLVM-built kernel DKMS CI and the downstream release guide.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Sat, 14 Nov 2026 09:42:27 +0800
+
 ethercat (1:1.7.0~rc2-1) unstable; urgency=medium
 
   * Align Debian packaging with the 1.6 release line, including the

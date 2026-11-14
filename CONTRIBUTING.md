@@ -24,6 +24,7 @@ forward to your contributions. 🎉
 
 - [I Have a Question](#i-have-a-question)
   - [I Want To Contribute](#i-want-to-contribute)
+  - [Use of AI Tools](#use-of-ai-tools)
   - [Reporting Bugs](#reporting-bugs)
   - [Suggesting Enhancements](#suggesting-enhancements)
 - [Styleguides](#styleguides)
@@ -64,6 +65,30 @@ We will then take care of the issue as soon as possible.
 > of the content, that you have the necessary rights to the content and that
 > the content you contribute may be provided under the project licence.
 
+### Use of AI Tools
+
+We do not forbid the use of AI tools, but you remain the author of your
+contribution and are fully responsible for it. Before opening a merge request,
+you must have read, understood and tested every line you submit — in the case
+of driver or master changes, on real hardware. You must be able to explain
+*why* the change is necessary and correct, without consulting an AI.
+Merge requests addressing issues that have only been "found" by an AI tool,
+without a reproducible problem in a real setup, will not be accepted.
+
+Issue and merge request descriptions must be short and to the point: in a
+few sentences, explain what the problem is, what the solution looks like and
+why it was solved this way. Lengthy, generated descriptions will not be read.
+Please also state whether and to what extent AI tools were used. Keep merge
+requests small and focused on a single topic; large generated refactorings or
+"cleanups" cannot be reviewed by our small team.
+
+Discussions in issues and merge requests are conversations between people.
+Please write your comments yourself and in your own words — short and
+imperfect English is perfectly fine. Do not paste AI-generated answers into
+discussions. Reviewing takes considerable time on our side; we reserve the
+right to close merge requests and discussions without further comment if they
+appear to consist of unreviewed AI output.
+
 ### Reporting Bugs
 
 <!-- omit in toc -->
@@ -88,8 +113,13 @@ possible.
   users outside of the GitLab community have discussed the issue.
 - Collect information about the bug:
   - Stack trace (Traceback)
-  - OS, Platform and Version (Linux Kernel, Distribution, x86, ARM, ...)
-  - The Ethernet driver use are using (generic, 8139too, ccat, ...)
+  - EtherCAT master version (branch, tag or commit)
+  - Hardware (CPU / board, Ethernet controller)
+  - Linux distribution and kernel version
+  - Real-time environment (none, PREEMPT_RT, RTAI, Xenomai, ...)
+  - The Ethernet driver you are using (generic or native; if native, which
+    one, e.g. 8139too, igb, ccat, ...)
+  - Any local patches applied to the master or the drivers
   - Can you reliably reproduce the issue? And can you also reproduce it with
     older versions?
 

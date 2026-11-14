@@ -29,7 +29,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-using namespace std;
+#include <vector>
 
 using std::string;
 using std::stringstream;
@@ -82,10 +82,8 @@ void CommandFoeRead::execute(const StringVector &args)
 {
     SlaveList slaves;
     ec_ioctl_slave_t *slave;
-    ec_ioctl_slave_foe_t data;
+    ec_ioctl_slave_foe_t data = {};
     stringstream err;
-    fstream out_file;
-    ostream* out = &cout;
 
     if (args.size() < 1 || args.size() > 2) {
         err << "'" << getName() << "' takes one or two arguments!";
@@ -102,23 +100,13 @@ void CommandFoeRead::execute(const StringVector &args)
     slave = &slaves.front();
     data.slave_position = slave->position;
 
-    if (!getOutputFile().empty() && getOutputFile() != "-") {
-        out_file.open(getOutputFile().c_str(),
-                ios::out | ios::trunc | ios::binary);
-        if (!out_file.good()) {
-            err << "Failed to open '" << getOutputFile() << "'";
-            throwCommandException(err);
-        }
-        out = &out_file;
-    }
-
     /* FIXME: No good idea to have a fixed buffer size.
      * Read in chunks and fill a buffer instead.
      */
-    data.password = 0;
     data.offset = 0;
     data.buffer_size = 0x8800;
-    data.buffer = new uint8_t[data.buffer_size];
+    std::vector<uint8_t> buffer(data.buffer_size);
+    data.buffer = &buffer[0];
 
     strncpy(data.file_name, args[0].c_str(), sizeof(data.file_name) - 1);
     data.file_name[sizeof(data.file_name) - 1] = 0;
@@ -126,10 +114,9 @@ void CommandFoeRead::execute(const StringVector &args)
         stringstream strPassword;
         strPassword << args[1];
         strPassword
-            >> resetiosflags(ios::basefield) // guess base from prefix
+            >> std::resetiosflags(std::ios::basefield) // guess base from prefix
             >> data.password;
         if (strPassword.fail()) {
-            delete [] data.buffer;
             err << "Invalid password '" << args[1] << "'!";
             throwInvalidUsageException(err);
         }
@@ -138,7 +125,6 @@ void CommandFoeRead::execute(const StringVector &args)
     try {
         m.readFoe(&data);
     } catch (MasterDeviceException &e) {
-        delete [] data.buffer;
         if (data.result) {
             if (data.result == FOE_OPCODE_ERROR) {
                 err << "FoE read aborted with error code 0x"
@@ -154,8 +140,34 @@ void CommandFoeRead::execute(const StringVector &args)
         }
     }
 
-    out->write((const char*) data.buffer, data.data_size);
-    delete [] data.buffer;
+    std::ofstream file;
+    std::ostream *out = &cout;
+    if (!getOutputFile().empty() && getOutputFile() != "-") {
+        // Open after the transfer, so a FoE error preserves an existing file.
+        file.open(getOutputFile().c_str(),
+                std::ios::out | std::ios::trunc | std::ios::binary);
+        if (!file.is_open()) {
+            err << "Failed to open output file '" << getOutputFile() << "'!";
+            throwCommandException(err);
+        }
+        out = &file;
+    }
+
+    out->write(reinterpret_cast<const char *>(data.buffer), data.data_size);
+    if (file.is_open()) {
+        file.close(); // Also check errors from flushing buffered file data.
+    } else {
+        out->flush();
+    }
+    if (out->fail()) {
+        err << "Failed to write FoE data to ";
+        if (out == &file) {
+            err << "output file '" << getOutputFile() << "'!";
+        } else {
+            err << "standard output!";
+        }
+        throwCommandException(err);
+    }
 }
 
 /****************************************************************************/

@@ -1,5 +1,5 @@
 default_language_version:
-    node: 26.13.0
+    node: lts
 
 repos:
 
@@ -21,6 +21,11 @@ repos:
     rev: v0.49.1
     hooks:
     -   id: markdownlint
+        exclude: ^\.gitlab/
+    -   id: markdownlint
+        name: markdownlint (GitLab templates)
+        files: ^\.gitlab/.*\.md$
+        args: [--config, .gitlab/markdownlint.yaml]
 
 -   repo: https://github.com/tcort/markdown-link-check
     rev: v3.14.2
@@ -31,3 +36,32 @@ repos:
     rev: 2.0.2
     hooks:
       - id: cpplint
+
+-   repo: local
+    hooks:
+    -   id: cli-tool-test
+        name: cli-tool-test
+        language: system
+        pass_filenames: false
+        files: ^(tool/.*\.(cpp|h)|include/ecrt\.h|master/(foe|ioctl|globals)\.h)$
+        entry: >-
+          sh -c 'if test ! -f tool/Makefile; then
+          { echo; echo "WARNING: tool/Makefile missing, skipping tests.";
+          echo "Run ./bootstrap && ./configure to enable them.";
+          printf "%73s" ""; } 2>/dev/null >/dev/tty;
+          exit 0; fi;
+          log=$(mktemp) && trap "rm -f $log" EXIT &&
+          make -s -C tool check >$log 2>&1 || { cat $log; exit 1; }'
+    -   id: fake-lib-test
+        name: fake-lib-test
+        language: system
+        pass_filenames: false
+        files: ^(fake_lib/.*\.(cpp|h)|include/ecrt\.h|lib/libethercat\.map)$
+        entry: >-
+          sh -c 'if ! grep -qs "^[[:space:]]fake_lib$" Makefile; then
+          { echo; echo "WARNING: fake_lib not configured, skipping tests.";
+          echo "Run ./bootstrap && ./configure --enable-fakeuserlib.";
+          printf "%73s" ""; } 2>/dev/null >/dev/tty;
+          exit 0; fi;
+          log=$(mktemp) && trap "rm -f $log" EXIT &&
+          make -s -C fake_lib check >$log 2>&1 || { cat $log; exit 1; }'

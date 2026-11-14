@@ -16,7 +16,6 @@
 
 #include <linux/clk.h>
 #include <linux/kernel.h>
-#include <linux/version.h>
 #include <linux/interrupt.h>
 #include <linux/ip.h>
 #include <linux/tcp.h>
@@ -2560,14 +2559,7 @@ static bool stmmac_xdp_xmit_zc(struct stmmac_priv *priv, u32 queue, u32 budget)
 			tx_desc = tx_q->dma_tx + entry;
 
 		dma_addr = xsk_buff_raw_get_dma(pool, xdp_desc.addr);
-/* stable 6.12.y >= .114 honors XDP_TX_METADATA via xdp_desc.options */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 114) && \
-	LINUX_VERSION_CODE < KERNEL_VERSION(6, 13, 0)
-		meta = xsk_buff_get_metadata(pool, xdp_desc.addr,
-					     xdp_desc.options);
-#else
 		meta = xsk_buff_get_metadata(pool, xdp_desc.addr);
-#endif
 		xsk_buff_raw_dma_sync_for_device(pool, dma_addr, xdp_desc.len);
 
 		tx_q->tx_skbuff_dma[entry].buf_type = STMMAC_TXBUF_T_XSK_TX;

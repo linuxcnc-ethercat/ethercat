@@ -113,8 +113,9 @@ void CommandFoeRead::execute(const StringVector &args)
     if (args.size() >= 2) {
         stringstream strPassword;
         strPassword << args[1];
+        // Guess the base from the prefix.
         strPassword
-            >> std::resetiosflags(std::ios::basefield) // guess base from prefix
+            >> std::resetiosflags(std::ios::basefield)
             >> data.password;
         if (strPassword.fail()) {
             err << "Invalid password '" << args[1] << "'!";

@@ -3,7 +3,6 @@
 
 #include <linux/module.h>
 #include <linux/types.h>
-#include <linux/version.h>
 #include <linux/if_vlan.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
@@ -3023,14 +3022,7 @@ static void igc_xdp_xmit_zc(struct igc_ring *ring)
 		olinfo_status = xdp_desc.len << IGC_ADVTXD_PAYLEN_SHIFT;
 
 		dma = xsk_buff_raw_get_dma(pool, xdp_desc.addr);
-/* stable 6.12.y >= .114 honors XDP_TX_METADATA via xdp_desc.options */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 114) && \
-	LINUX_VERSION_CODE < KERNEL_VERSION(6, 13, 0)
-		meta = xsk_buff_get_metadata(pool, xdp_desc.addr,
-					     xdp_desc.options);
-#else
 		meta = xsk_buff_get_metadata(pool, xdp_desc.addr);
-#endif
 		xsk_buff_raw_dma_sync_for_device(pool, dma, xdp_desc.len);
 		bi = &ring->tx_buffer_info[ntu];
 

@@ -1,3 +1,12 @@
+ethercat (1:1.6.13-4) unstable; urgency=medium
+
+  * Sync EtherLab stable-1.6.
+  * Fix igc/stmmac builds on Linux 6.12.114 and newer 6.12 stable kernels.
+  * Suggest distribution kernel headers instead of recommending them, avoiding
+    unwanted kernel image installs for custom-kernel users.
+
+ -- Luca Toniolo <toniolo.luca@gmail.com>  Sat, 14 Nov 2026 09:42:27 +0800
+
 ethercat (1:1.6.13-3) unstable; urgency=medium
 
   * Keep EoE configuration symbols available when EoE is disabled, fixing

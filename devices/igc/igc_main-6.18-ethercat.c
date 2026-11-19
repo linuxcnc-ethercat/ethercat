@@ -13,6 +13,7 @@
 #include <net/xdp_sock_drv.h>
 #include <linux/pci.h>
 #include <linux/mdio.h>
+#include <linux/version.h>
 
 #include <net/ipv6.h>
 
@@ -3102,7 +3103,13 @@ static void igc_xdp_xmit_zc(struct igc_ring *ring)
 		olinfo_status = xdp_desc.len << IGC_ADVTXD_PAYLEN_SHIFT;
 
 		dma = xsk_buff_raw_get_dma(pool, xdp_desc.addr);
-		meta = xsk_buff_get_metadata(pool, xdp_desc.addr);
+/* stable 6.18.y >= .52 honor XDP_TX_METADATA via xdp_desc.options */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 52) && \
+     LINUX_VERSION_CODE < KERNEL_VERSION(6, 19, 0))
+	meta = xsk_buff_get_metadata(pool, xdp_desc.addr, xdp_desc.options);
+#else
+	meta = xsk_buff_get_metadata(pool, xdp_desc.addr);
+#endif
 		xsk_buff_raw_dma_sync_for_device(pool, dma, xdp_desc.len);
 		bi = &ring->tx_buffer_info[ntu];
 

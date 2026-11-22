@@ -158,6 +158,54 @@ jobs:
           path: artifacts/*.deb
           if-no-files-found: error
 
+  kernel-7-3-genet-arm64:
+    name: Linux 7.3.4 genet (ARM64)
+    runs-on: ubuntu-24.04-arm
+    env:
+      # The prepared kernel tree has no complete Module.symvers.
+      KBUILD_MODPOST_WARN: "1"
+      KERNEL_VERSION: "7.3.4"
+      KERNEL_SHA256: "b11b6df8295e8e991ff040b71aaa4994a8b55caa23b6b092907f195b5840fd1f"
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              autoconf automake bc bison build-essential ca-certificates curl \
+              flex git libelf-dev libssl-dev libtool pkg-config xz-utils
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download and prepare Linux
+        run: |
+          set -euo pipefail
+          archive="/tmp/linux-$KERNEL_VERSION.tar.xz"
+          kernel_dir="/tmp/linux-$KERNEL_VERSION"
+          curl -fL --retry 3 \
+              "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-$KERNEL_VERSION.tar.xz" \
+              -o "$archive"
+          printf '%s  %s\n' "$KERNEL_SHA256" "$archive" | sha256sum -c -
+          tar -xJf "$archive" -C /tmp
+          make -C "$kernel_dir" defconfig
+          "$kernel_dir/scripts/config" --file "$kernel_dir/.config" \
+              --module BCMGENET
+          make -C "$kernel_dir" olddefconfig
+          make -C "$kernel_dir" -j"$(nproc)" modules_prepare
+
+      - name: Bootstrap
+        run: ./bootstrap
+
+      - name: Configure
+        run: |
+          ./configure \
+              --with-linux-dir="/tmp/linux-$KERNEL_VERSION" \
+              --disable-8139too \
+              --enable-genet
+
+      - name: Build
+        run: make -j"$(nproc)" all modules
+
   kernel-6-18-clang:
     name: Linux 6.18 (Clang)
     runs-on: ubuntu-latest

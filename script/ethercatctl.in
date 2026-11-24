@@ -89,6 +89,62 @@ parse_mac_address() {
 }
 
 #------------------------------------------------------------------------------
+# Print the PCI address of the network interface with MAC address $1
+
+mac_to_pci_addr() {
+    local want addr_file dev
+    want=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+    [ -z "${want}" ] && return 1
+    for addr_file in /sys/class/net/*/address; do
+        [ -r "${addr_file}" ] || continue
+        if [ "$(tr '[:upper:]' '[:lower:]' < "${addr_file}")" = "${want}" ]; then
+            dev="$(dirname "${addr_file}")/device"
+            [ -e "${dev}" ] || continue  # skip virtual interfaces
+            basename "$(readlink -f "${dev}")"
+            return 0
+        fi
+    done
+    return 1
+}
+
+#------------------------------------------------------------------------------
+# Make those PCI devices in space-separated list $3 that are currently bound
+# to standard module $2 bind only to driver $1. Devices bound to other
+# modules (other NIC types) are skipped, so this is safe with mixed drivers.
+# Each claimed device is unbound from its current driver; the standard module
+# stays loaded, so all other devices are left alone.
+# Returns 0 if devices were claimed, 2 if none matched, 1 on error.
+
+claim_pci_devices() {
+    local ecdrv="$1" stdmod="${2//-/_}" addr dev cur rc=2
+    for addr in $3; do
+        dev="/sys/bus/pci/devices/${addr}"
+        cur=$(basename "$(readlink -f "${dev}/driver/module" 2>/dev/null)")
+        [ "${cur}" = "${stdmod}" ] || continue
+        [ -w "${dev}/driver_override" ] || return 1
+        echo "${ecdrv}" > "${dev}/driver_override" || return 1
+        echo "${addr}" > "${dev}/driver/unbind" || return 1
+        rc=0
+    done
+    return ${rc}
+}
+
+#------------------------------------------------------------------------------
+# Clear all driver overrides set to driver $1 and let a matching driver
+# (normally the standard one) probe the devices again
+
+release_pci_overrides() {
+    local f addr
+    for f in /sys/bus/pci/devices/*/driver_override; do
+        [ -r "${f}" ] || continue
+        [ "$(cat "${f}" 2>/dev/null)" = "$1" ] || continue
+        echo > "${f}"
+        addr=$(basename "$(dirname "${f}")")
+        echo "${addr}" > /sys/bus/pci/drivers_probe 2>/dev/null || true
+    done
+}
+
+#------------------------------------------------------------------------------
 
 case "$COMMAND" in
 
@@ -101,6 +157,7 @@ start)
     # construct DEVICES and BACKUPS from configuration variables
     DEVICES=""
     BACKUPS=""
+    ECAT_PCI_ADDRS=""
     MASTER_INDEX=0
 
     while true; do
@@ -115,9 +172,11 @@ start)
 
         parse_mac_address "${DEVICE}"
         DEVICES=${DEVICES}${MAC}
+        ECAT_PCI_ADDRS="${ECAT_PCI_ADDRS} $(mac_to_pci_addr "${MAC}" || true)"
 
         parse_mac_address "${BACKUP}"
         BACKUPS=${BACKUPS}${MAC}
+        ECAT_PCI_ADDRS="${ECAT_PCI_ADDRS} $(mac_to_pci_addr "${MAC}" || true)"
 
         MASTER_INDEX=$((${MASTER_INDEX} + 1))
     done
@@ -153,19 +212,41 @@ start)
             continue # ec_* module not found
         fi
 
+        USED_OVERRIDE=0
         if [ "${MODULE}" != "generic" ]; then
             STDMODULE=$(std_module_name "${MODULE}")
-            # unload standard module and check if unloading was successful
-            ${RMMOD} "${STDMODULE}" 2> /dev/null || true
-            if ${LSMOD} | grep "^${STDMODULE//-/_} " > /dev/null; then
-                # could not unload module
-                ${RMMOD} ${LOADED_MODULES}
-                exit 1
+            CLAIM_RC=1
+            if [ -n "${ECAT_PCI_ADDRS// /}" ]; then
+                claim_pci_devices "${ECMODULE}" "${STDMODULE}" \
+                    "${ECAT_PCI_ADDRS}"
+                CLAIM_RC=$?
+            fi
+            if [ ${CLAIM_RC} -eq 2 ]; then
+                # No configured NIC uses this driver: leave it alone.
+                continue
+            elif [ ${CLAIM_RC} -eq 0 ]; then
+                # Only the configured NICs were released; the standard
+                # module stays loaded and keeps all other devices.
+                USED_OVERRIDE=1
+            else
+                # Fallback (no PCI device or no driver_override support):
+                # undo any partial override, then replace the standard
+                # module as before.
+                release_pci_overrides "${ECMODULE}"
+                # unload standard module and check if unloading was successful
+                ${RMMOD} "${STDMODULE}" 2> /dev/null || true
+                if ${LSMOD} | grep "^${STDMODULE//-/_} " > /dev/null; then
+                    # could not unload module
+                    ${RMMOD} ${LOADED_MODULES}
+                    exit 1
+                fi
             fi
         fi
 
         if ! ${MODPROBE} ${MODPROBE_FLAGS} "${ECMODULE}"; then
-            if [ "${MODULE}" != "generic" ]; then
+            if [ ${USED_OVERRIDE} -eq 1 ]; then
+                release_pci_overrides "${ECMODULE}" # hand NICs back
+            elif [ "${MODULE}" != "generic" ]; then
                 ${MODPROBE} ${MODPROBE_FLAGS} "${STDMODULE}" # try to restore
             fi
             ${RMMOD} ${LOADED_MODULES}
@@ -190,6 +271,8 @@ stop)
         if ! ${RMMOD} "${ECMODULE}"; then
             exit 1
         fi;
+        # clear driver_override so the standard driver can bind again
+        release_pci_overrides "${ECMODULE}"
     done
 
     sleep 1

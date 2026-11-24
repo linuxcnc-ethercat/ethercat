@@ -89,6 +89,79 @@ parse_mac_address() {
 }
 
 #------------------------------------------------------------------------------
+# Print the PCI address of the network interface with MAC address $1
+
+mac_to_pci_addr() {
+    local want addr_file dev cur_mac
+
+    want=$(printf '%s\n' "$1" | sed 'y/ABCDEF/abcdef/')
+    [ -z "${want}" ] && return 1
+
+    for addr_file in /sys/class/net/*/address; do
+        [ -r "${addr_file}" ] || continue
+        cur_mac=$(sed 'y/ABCDEF/abcdef/' < "${addr_file}")
+        if [ "${cur_mac}" = "${want}" ]; then
+            dev="$(dirname "${addr_file}")/device"
+            [ -e "${dev}" ] || continue  # skip virtual interfaces
+            basename "$(readlink -f "${dev}")"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+#------------------------------------------------------------------------------
+# Unbind those PCI devices in space-separated list $2 that are currently bound
+# to standard module $1. Devices bound to other modules (other NIC types) are
+# skipped. The standard module stays loaded, so all other devices keep their
+# driver. Unbound addresses are appended to CLAIMED_PCI.
+# Returns 0 if devices were unbound, 2 if none matched, 1 on error.
+
+unbind_pci_devices() {
+    local stdmod addr dev cur rc
+
+    stdmod=$(printf '%s\n' "$1" | sed 's/-/_/g')
+    rc=2
+
+    for addr in $2; do
+        dev="/sys/bus/pci/devices/${addr}"
+        cur=$(basename "$(readlink -f "${dev}/driver/module" 2>/dev/null)")
+        [ "${cur}" = "${stdmod}" ] || continue
+        printf '%s\n' "${addr}" > "${dev}/driver/unbind" || return 1
+        CLAIMED_PCI="${CLAIMED_PCI} ${addr}"
+        rc=0
+    done
+
+    return "${rc}"
+}
+
+#------------------------------------------------------------------------------
+# Ask the kernel to probe the PCI devices in space-separated list $1 again, so
+# that a loaded standard driver can claim them
+
+reprobe_pci_devices() {
+    local addr
+    for addr in $1; do
+        echo "${addr}" > /sys/bus/pci/drivers_probe 2>/dev/null || true
+    done
+}
+
+#------------------------------------------------------------------------------
+# Print the PCI addresses of all devices currently bound to module $1
+
+module_pci_devices() {
+    local entry addr
+    for entry in /sys/module/"$1"/drivers/pci:*/*; do
+        [ -L "${entry}" ] || continue
+        addr=$(basename "${entry}")
+        case "${addr}" in
+            [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]:*) echo "${addr}" ;;
+        esac
+    done
+}
+
+#------------------------------------------------------------------------------
 
 case "$COMMAND" in
 
@@ -101,6 +174,7 @@ start)
     # construct DEVICES and BACKUPS from configuration variables
     DEVICES=""
     BACKUPS=""
+    ECAT_PCI_ADDRS=""
     MASTER_INDEX=0
 
     while true; do
@@ -115,9 +189,11 @@ start)
 
         parse_mac_address "${DEVICE}"
         DEVICES=${DEVICES}${MAC}
+        ECAT_PCI_ADDRS="${ECAT_PCI_ADDRS} $(mac_to_pci_addr "${MAC}" || true)"
 
         parse_mac_address "${BACKUP}"
         BACKUPS=${BACKUPS}${MAC}
+        ECAT_PCI_ADDRS="${ECAT_PCI_ADDRS} $(mac_to_pci_addr "${MAC}" || true)"
 
         MASTER_INDEX=$((${MASTER_INDEX} + 1))
     done
@@ -153,19 +229,45 @@ start)
             continue # ec_* module not found
         fi
 
+        UNBOUND=0
+        CLAIMED_PCI=""
         if [ "${MODULE}" != "generic" ]; then
             STDMODULE=$(std_module_name "${MODULE}")
-            # unload standard module and check if unloading was successful
-            ${RMMOD} "${STDMODULE}" 2> /dev/null || true
-            if ${LSMOD} | grep "^${STDMODULE//-/_} " > /dev/null; then
-                # could not unload module
-                ${RMMOD} ${LOADED_MODULES}
-                exit 1
+            CLAIM_RC=1
+            if [ -n "${ECAT_PCI_ADDRS// /}" ]; then
+                unbind_pci_devices "${STDMODULE}" "${ECAT_PCI_ADDRS}"
+                CLAIM_RC=$?
             fi
+            case "${CLAIM_RC}" in
+                2)
+                    # No configured NIC uses this driver: leave it alone.
+                    continue
+                    ;;
+                0)
+                    # Only the configured NICs were unbound; the standard module
+                    # stays loaded and keeps all other devices. The ec_* module
+                    # will bind the free devices when it is loaded.
+                    UNBOUND=1
+                    ;;
+                *)
+                    # Fallback (no PCI device or unbinding failed): hand back
+                    # anything unbound, then replace the standard module as before.
+                    reprobe_pci_devices "${CLAIMED_PCI}"
+                    # unload standard module and check if unloading was successful
+                    ${RMMOD} "${STDMODULE}" 2> /dev/null || true
+                    if ${LSMOD} | grep "^${STDMODULE//-/_} " > /dev/null; then
+                        # could not unload module
+                        ${RMMOD} ${LOADED_MODULES}
+                        exit 1
+                    fi
+                    ;;
+            esac
         fi
 
         if ! ${MODPROBE} ${MODPROBE_FLAGS} "${ECMODULE}"; then
-            if [ "${MODULE}" != "generic" ]; then
+            if [ ${UNBOUND} -eq 1 ]; then
+                reprobe_pci_devices "${CLAIMED_PCI}" # hand NICs back
+            elif [ "${MODULE}" != "generic" ]; then
                 ${MODPROBE} ${MODPROBE_FLAGS} "${STDMODULE}" # try to restore
             fi
             ${RMMOD} ${LOADED_MODULES}
@@ -187,9 +289,13 @@ stop)
         if ! ${LSMOD} | grep -q "^${ECMODULE//-/_} "; then
             continue # ec_* module not loaded
         fi
+        ECAT_PCI_BOUND=$(module_pci_devices "${ECMODULE}")
         if ! ${RMMOD} "${ECMODULE}"; then
             exit 1
         fi;
+        # The standard module may still be loaded, so it will not pick the
+        # released NICs up by itself: probe them explicitly.
+        reprobe_pci_devices "${ECAT_PCI_BOUND}"
     done
 
     sleep 1

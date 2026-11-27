@@ -35,23 +35,39 @@ ETHERCAT="@bindir@/ethercat"
 
 #------------------------------------------------------------------------------
 
-if [ "$1" = "-c" ]; then
-    ETHERCAT_CONFIG="$2"
-    COMMAND="$3"
+if [[ "${1:-}" = "-c" ]]; then
+    ETHERCAT_CONFIG="${2:-}"
+    COMMAND="${3:-}"
 else
     ETHERCAT_CONFIG="@sysconfdir@/ethercat.conf"
-    COMMAND="$1"
+    COMMAND="${1:-}"
 fi
 
 #------------------------------------------------------------------------------
 
-if [ ! -r ${ETHERCAT_CONFIG} ]; then
-    echo ${ETHERCAT_CONFIG} not existing;
+if [[ ! -r "${ETHERCAT_CONFIG}" ]]; then
+    echo "${ETHERCAT_CONFIG} not existing"
     exit 6
 fi
 
+UPDOWN_INTERFACES=""
+DEVICE_MODULES=""
+MODPROBE_FLAGS=""
+SII_CACHING=""
+
 # shellcheck source=/etc/ethercat.conf
-. ${ETHERCAT_CONFIG}
+. "${ETHERCAT_CONFIG}"
+
+read -r -a UPDOWN_ARR <<< "${UPDOWN_INTERFACES}"
+read -r -a DEVICE_MODULES_ARR <<< "${DEVICE_MODULES}"
+read -r -a MODPROBE_FLAGS_ARR <<< "${MODPROBE_FLAGS}"
+
+#------------------------------------------------------------------------------
+
+master_var() {
+    local name="MASTER${1}_${2}"
+    printf '%s' "${!name:-}"
+}
 
 #------------------------------------------------------------------------------
 
@@ -65,15 +81,14 @@ std_module_name() {
 #------------------------------------------------------------------------------
 
 is_mac_address() {
-    local x='[0-9a-fA-F]'
-    echo "$1" | grep -qE "^($x$x:){5}$x$x\$" -
+    [[ "${1}" =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]]
 }
 
 #------------------------------------------------------------------------------
 
 parse_mac_address() {
     local DEVICENAMETOMAC
-    if [ -z "${1}" ] || is_mac_address "${1}"; then
+    if [[ -z "${1}" ]] || is_mac_address "${1}"; then
         MAC="${1}"
     else
         DEVICENAMETOMAC=$("${IP}" address show dev "${1}" |
@@ -81,51 +96,129 @@ parse_mac_address() {
         if is_mac_address "${DEVICENAMETOMAC}"; then
             MAC="${DEVICENAMETOMAC}"
         else
-            echo Invalid MAC address or interface name \""${1}"\" \
-                in ${ETHERCAT_CONFIG}
+            echo "Invalid MAC address or interface name \"${1}\" in ${ETHERCAT_CONFIG}"
             exit 1
         fi
     fi
 }
 
 #------------------------------------------------------------------------------
+# Print the PCI address of the network interface with MAC address $1
 
-case "$COMMAND" in
+mac_to_pci_addr() {
+    local want addr_file dev cur_mac
+
+    want="${1,,}"
+    [[ -z "${want}" ]] && return 1
+
+    for addr_file in /sys/class/net/*/address; do
+        [[ -r "${addr_file}" ]] || continue
+        read -r cur_mac < "${addr_file}" || continue
+        if [[ "${cur_mac,,}" = "${want}" ]]; then
+            dev="$(dirname "${addr_file}")/device"
+            [[ -e "${dev}" ]] || continue  # skip virtual interfaces
+            basename "$(readlink -f "${dev}")"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+#------------------------------------------------------------------------------
+# Unbind those PCI devices in the address list $2... that are currently bound
+# to standard module $1. Devices bound to other modules (other NIC types) are
+# skipped. The standard module stays loaded, so all other devices keep their
+# driver. Unbound addresses are appended to the CLAIMED_PCI array.
+# Returns 0 if devices were unbound, 2 if none matched, 1 on error.
+
+unbind_pci_devices() {
+    local stdmod addr dev cur rc
+
+    stdmod="${1//-/_}"
+    shift
+    rc=2
+
+    for addr in "$@"; do
+        dev="/sys/bus/pci/devices/${addr}"
+        cur=$(basename "$(readlink -f "${dev}/driver/module" 2>/dev/null)")
+        [[ "${cur}" = "${stdmod}" ]] || continue
+        printf '%s\n' "${addr}" > "${dev}/driver/unbind" || return 1
+        CLAIMED_PCI+=("${addr}")
+        rc=0
+    done
+
+    return "${rc}"
+}
+
+#------------------------------------------------------------------------------
+# Ask the kernel to probe the PCI devices in the address list $@ again, so
+# that a loaded standard driver can claim them
+
+reprobe_pci_devices() {
+    local addr
+    for addr in "$@"; do
+        echo "${addr}" > /sys/bus/pci/drivers_probe 2>/dev/null || true
+    done
+}
+
+#------------------------------------------------------------------------------
+# Print the PCI addresses of all devices currently bound to module $1
+
+module_pci_devices() {
+    local entry addr
+    for entry in /sys/module/"$1"/drivers/pci:*/*; do
+        [[ -L "${entry}" ]] || continue
+        addr=$(basename "${entry}")
+        case "${addr}" in
+            [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]:*) echo "${addr}" ;;
+        esac
+    done
+}
+
+#------------------------------------------------------------------------------
+
+case "${COMMAND}" in
 
 start)
     # bring up all updown interfaces before anything else
-    for interface in $UPDOWN_INTERFACES; do
-        $IP link set dev $interface up
+    for interface in "${UPDOWN_ARR[@]}"; do
+        "${IP}" link set dev "${interface}" up
     done
 
     # construct DEVICES and BACKUPS from configuration variables
     DEVICES=""
     BACKUPS=""
+    ECAT_PCI_ADDRS=()
     MASTER_INDEX=0
 
     while true; do
-        DEVICE=$(eval echo "\${MASTER${MASTER_INDEX}_DEVICE}")
-        BACKUP=$(eval echo "\${MASTER${MASTER_INDEX}_BACKUP}")
-        if [ -z "${DEVICE}" ]; then break; fi
+        DEVICE=$(master_var "${MASTER_INDEX}" DEVICE)
+        BACKUP=$(master_var "${MASTER_INDEX}" BACKUP)
+        if [[ -z "${DEVICE}" ]]; then break; fi
 
-        if [ ${MASTER_INDEX} -gt 0 ]; then
-            DEVICES=${DEVICES},
-            BACKUPS=${BACKUPS},
+        if [[ "${MASTER_INDEX}" -gt 0 ]]; then
+            DEVICES="${DEVICES},"
+            BACKUPS="${BACKUPS},"
         fi
 
         parse_mac_address "${DEVICE}"
-        DEVICES=${DEVICES}${MAC}
+        DEVICES="${DEVICES}${MAC}"
+        PCI_ADDR=$(mac_to_pci_addr "${MAC}" || true)
+        if [[ -n "${PCI_ADDR}" ]]; then ECAT_PCI_ADDRS+=("${PCI_ADDR}"); fi
 
         parse_mac_address "${BACKUP}"
-        BACKUPS=${BACKUPS}${MAC}
+        BACKUPS="${BACKUPS}${MAC}"
+        PCI_ADDR=$(mac_to_pci_addr "${MAC}" || true)
+        if [[ -n "${PCI_ADDR}" ]]; then ECAT_PCI_ADDRS+=("${PCI_ADDR}"); fi
 
-        MASTER_INDEX=$((${MASTER_INDEX} + 1))
+        MASTER_INDEX=$((MASTER_INDEX + 1))
     done
 
-    if [ -z "${DEVICES}" ]; then
+    if [[ -z "${DEVICES}" ]]; then
         echo "ERROR: No network cards for EtherCAT specified."
-        echo -n "Please edit ${ETHERCAT_CONFIG} with root permissions"
-        echo -n " and set MASTER0_DEVICE variable to either a "
+        printf '%s' "Please edit ${ETHERCAT_CONFIG} with root permissions"
+        printf '%s' " and set MASTER0_DEVICE variable to either a "
         echo "network interface name (like eth0) or to a MAC address."
         exit 1
     fi
@@ -135,44 +228,70 @@ start)
         backup_devices="${BACKUPS}"
     )
 
-    if [ -n "$SII_CACHING" ]; then
-        MODULE_PARAMS+=(sii_caching="$SII_CACHING")
+    if [[ -n "${SII_CACHING}" ]]; then
+        MODULE_PARAMS+=(sii_caching="${SII_CACHING}")
     fi
 
     # load master module
-    if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master "${MODULE_PARAMS[@]}"; then
+    if ! "${MODPROBE}" "${MODPROBE_FLAGS_ARR[@]}" ec_master "${MODULE_PARAMS[@]}"; then
         exit 1
     fi
 
-    LOADED_MODULES=ec_master
+    LOADED_MODULES=(ec_master)
 
     # check for modules to replace
-    for MODULE in ${DEVICE_MODULES}; do
-        ECMODULE=ec_${MODULE}
-        if ! ${MODINFO} "${ECMODULE}" > /dev/null; then
+    for MODULE in "${DEVICE_MODULES_ARR[@]}"; do
+        ECMODULE="ec_${MODULE}"
+        if ! "${MODINFO}" "${ECMODULE}" > /dev/null; then
             continue # ec_* module not found
         fi
 
-        if [ "${MODULE}" != "generic" ]; then
+        UNBOUND=0
+        CLAIMED_PCI=()
+        if [[ "${MODULE}" != "generic" ]]; then
             STDMODULE=$(std_module_name "${MODULE}")
-            # unload standard module and check if unloading was successful
-            ${RMMOD} "${STDMODULE}" 2> /dev/null || true
-            if ${LSMOD} | grep "^${STDMODULE//-/_} " > /dev/null; then
-                # could not unload module
-                ${RMMOD} ${LOADED_MODULES}
-                exit 1
+            CLAIM_RC=1
+            if [[ "${#ECAT_PCI_ADDRS[@]}" -gt 0 ]]; then
+                unbind_pci_devices "${STDMODULE}" "${ECAT_PCI_ADDRS[@]}"
+                CLAIM_RC=$?
             fi
+            case "${CLAIM_RC}" in
+                2)
+                    # No configured NIC uses this driver: leave it alone.
+                    continue
+                    ;;
+                0)
+                    # Only the configured NICs were unbound; the standard module
+                    # stays loaded and keeps all other devices. The ec_* module
+                    # will bind the free devices when it is loaded.
+                    UNBOUND=1
+                    ;;
+                *)
+                    # Fallback (no PCI device or unbinding failed): hand back
+                    # anything unbound, then replace the standard module as before.
+                    reprobe_pci_devices "${CLAIMED_PCI[@]}"
+                    # unload standard module and check if unloading was successful
+                    "${RMMOD}" "${STDMODULE}" 2> /dev/null || true
+                    if "${LSMOD}" | grep -q "^${STDMODULE//-/_} "; then
+                        # could not unload module
+                        "${RMMOD}" "${LOADED_MODULES[@]}"
+                        exit 1
+                    fi
+                    ;;
+            esac
         fi
 
-        if ! ${MODPROBE} ${MODPROBE_FLAGS} "${ECMODULE}"; then
-            if [ "${MODULE}" != "generic" ]; then
-                ${MODPROBE} ${MODPROBE_FLAGS} "${STDMODULE}" # try to restore
+        if ! "${MODPROBE}" "${MODPROBE_FLAGS_ARR[@]}" "${ECMODULE}"; then
+            if [[ "${UNBOUND}" -eq 1 ]]; then
+                reprobe_pci_devices "${CLAIMED_PCI[@]}" # hand NICs back
+            elif [[ "${MODULE}" != "generic" ]]; then
+                "${MODPROBE}" "${MODPROBE_FLAGS_ARR[@]}" "${STDMODULE}" # try to restore
             fi
-            ${RMMOD} ${LOADED_MODULES}
+            "${RMMOD}" "${LOADED_MODULES[@]}"
             exit 1
         fi
 
-        LOADED_MODULES="${ECMODULE} ${LOADED_MODULES}"
+        LOADED_MODULES=("${ECMODULE}" "${LOADED_MODULES[@]}")
     done
 
     exit 0
@@ -182,29 +301,33 @@ start)
 
 stop)
     # unload EtherCAT device modules
-    for MODULE in ${DEVICE_MODULES} master; do
-        ECMODULE=ec_${MODULE}
-        if ! ${LSMOD} | grep -q "^${ECMODULE//-/_} "; then
+    for MODULE in "${DEVICE_MODULES_ARR[@]}" master; do
+        ECMODULE="ec_${MODULE}"
+        if ! "${LSMOD}" | grep -q "^${ECMODULE//-/_} "; then
             continue # ec_* module not loaded
         fi
-        if ! ${RMMOD} "${ECMODULE}"; then
+        mapfile -t ECAT_PCI_BOUND < <(module_pci_devices "${ECMODULE}")
+        if ! "${RMMOD}" "${ECMODULE}"; then
             exit 1
-        fi;
+        fi
+        # The standard module may still be loaded, so it will not pick the
+        # released NICs up by itself: probe them explicitly.
+        reprobe_pci_devices "${ECAT_PCI_BOUND[@]}"
     done
 
     sleep 1
 
     # load standard modules again
-    for MODULE in ${DEVICE_MODULES}; do
-        if [ "${MODULE}" == "generic" ]; then
+    for MODULE in "${DEVICE_MODULES_ARR[@]}"; do
+        if [[ "${MODULE}" == "generic" ]]; then
             continue
         fi
-        ${MODPROBE} ${MODPROBE_FLAGS} "$(std_module_name "${MODULE}")"
+        "${MODPROBE}" "${MODPROBE_FLAGS_ARR[@]}" "$(std_module_name "${MODULE}")"
     done
 
     # bring down all updown interfaces
-    for interface in $UPDOWN_INTERFACES; do
-        $IP link set dev $interface down
+    for interface in "${UPDOWN_ARR[@]}"; do
+        "${IP}" link set dev "${interface}" down
     done
 
     exit 0
@@ -213,9 +336,9 @@ stop)
 #------------------------------------------------------------------------------
 
 restart)
-    $0 stop || exit 1
+    "$0" -c "${ETHERCAT_CONFIG}" stop || exit 1
     sleep 1
-    $0 start
+    "$0" -c "${ETHERCAT_CONFIG}" start
     ;;
 
 #------------------------------------------------------------------------------
@@ -226,22 +349,19 @@ status)
     # count masters in configuration file
     MASTER_COUNT=0
     while true; do
-        DEVICE=$(eval echo "\${MASTER${MASTER_COUNT}_DEVICE}")
-        if [ -z "${DEVICE}" ]; then break; fi
-        MASTER_COUNT=$((${MASTER_COUNT} + 1))
+        DEVICE=$(master_var "${MASTER_COUNT}" DEVICE)
+        if [[ -z "${DEVICE}" ]]; then break; fi
+        MASTER_COUNT=$((MASTER_COUNT + 1))
     done
 
     RESULT=0
 
-    for i in $(seq 0 "$((${MASTER_COUNT} - 1))"); do
-        echo -n "Master${i} "
+    for ((i = 0; i < MASTER_COUNT; i++)); do
+        printf '%s' "Master${i} "
 
         # Check if the master is in idle or operation phase
-        ${ETHERCAT} master --master "${i}" 2>/dev/null | \
-            grep -qE 'Phase:[[:space:]]*Idle|Phase:[[:space:]]*Operation'
-        EXITCODE=$?
-
-        if [ ${EXITCODE} -eq 0 ]; then
+        if "${ETHERCAT}" master --master "${i}" 2>/dev/null |
+            grep -qE 'Phase:[[:space:]]*Idle|Phase:[[:space:]]*Operation'; then
             echo " running"
         else
             echo " dead"
@@ -249,7 +369,7 @@ status)
         fi
     done
 
-    exit ${RESULT}
+    exit "${RESULT}"
     ;;
 
 #------------------------------------------------------------------------------
